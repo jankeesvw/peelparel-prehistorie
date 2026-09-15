@@ -5,15 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>test</title>
   <style>
-    html, body { margin: 0; height: 100%; background: #fff; color: #111; font-family: sans-serif; }
-    canvas { display: block; margin: 0 auto; background: #fff; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; color: #111; font-family: sans-serif; }
+    canvas { display: block; background: #fff; }
   </style>
 </head>
 <body>
-  <canvas id="game" width="800" height="600"></canvas>
+  <canvas id="game"></canvas>
   <script>
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
+
+    // Het canvas vult de hele pagina, ook als het venster van grootte verandert.
+    function pasGrootteAan() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    pasGrootteAan();
+    window.addEventListener('resize', pasGrootteAan);
 
     // De bal: waar hij is, hoe groot hij is en hoe snel hij valt.
     const bal = { x: canvas.width / 2, y: canvas.height / 2, straal: 30, snelheid: 0 };
