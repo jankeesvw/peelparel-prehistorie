@@ -20,7 +20,7 @@ cd "$(git rev-parse --show-toplevel)"
 bin/new-game <naam>
 ```
 
-Dit kopieert `template/index.html` (een canvas met een lege game-loop) naar `<naam>/index.html` en zet de game in het overzicht in `index.html`.
+Dit kopieert `template/index.html` (een canvas met een lege game-loop) naar `<naam>/index.html` en zet de game in het overzicht in `index.html`. Een nieuwe game begint als een leeg canvas: voeg niets toe wat de gebruiker niet gevraagd heeft, geen voorbeeldscène, geen opmaak rond het canvas. Elke stap komt uit een prompt in de les.
 
 ## Stap 3: Dev-server starten en browser openen
 
