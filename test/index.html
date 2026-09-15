@@ -23,19 +23,36 @@
     pasGrootteAan();
     window.addEventListener('resize', pasGrootteAan);
 
-    // De bal: waar hij is, hoe groot hij is en hoe snel hij valt.
-    const bal = { x: canvas.width / 2, y: canvas.height / 2, straal: 30, snelheid: 0 };
+    // De bal: waar hij is, hoe groot hij is en hoe snel hij beweegt (opzij en omhoog/omlaag).
+    const bal = { x: canvas.width / 2, y: canvas.height / 2, straal: 30, snelheidX: 0, snelheidY: 0 };
     const zwaartekracht = 1500;
     const stuiter = 0.8; // hoeveel snelheid de bal overhoudt na een stuit (1 = alles, 0 = niets)
 
+    // Klik op de pagina: de bal schiet omhoog en een beetje schuin, links of rechts.
+    canvas.addEventListener('click', () => {
+      bal.snelheidY = -1000;
+      bal.snelheidX = (Math.random() - 0.5) * 600;
+    });
+
     function update(dt) {
-      bal.snelheid += zwaartekracht * dt;
-      bal.y += bal.snelheid * dt;
+      bal.snelheidY += zwaartekracht * dt;
+      bal.x += bal.snelheidX * dt;
+      bal.y += bal.snelheidY * dt;
 
       // Raakt de bal de bodem? Dan kaatst hij terug omhoog.
       if (bal.y + bal.straal > canvas.height) {
         bal.y = canvas.height - bal.straal;
-        bal.snelheid = -bal.snelheid * stuiter;
+        bal.snelheidY = -bal.snelheidY * stuiter;
+      }
+
+      // Raakt de bal een zijkant? Dan kaatst hij terug de andere kant op.
+      if (bal.x - bal.straal < 0) {
+        bal.x = bal.straal;
+        bal.snelheidX = -bal.snelheidX * stuiter;
+      }
+      if (bal.x + bal.straal > canvas.width) {
+        bal.x = canvas.width - bal.straal;
+        bal.snelheidX = -bal.snelheidX * stuiter;
       }
     }
 
