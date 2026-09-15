@@ -27,6 +27,7 @@
     const bal = { x: canvas.width / 2, y: canvas.height / 2, straal: 30, snelheidX: 0, snelheidY: 0 };
     const zwaartekracht = 1500;
     const stuiter = 0.8; // hoeveel snelheid de bal overhoudt na een stuit (1 = alles, 0 = niets)
+    const wrijving = 0.98; // hoeveel zijwaartse snelheid de bal per frame overhoudt als hij over de bodem rolt
 
     // Klik op de pagina: de bal schiet omhoog en een beetje schuin, links of rechts.
     canvas.addEventListener('click', () => {
@@ -39,10 +40,12 @@
       bal.x += bal.snelheidX * dt;
       bal.y += bal.snelheidY * dt;
 
-      // Raakt de bal de bodem? Dan kaatst hij terug omhoog.
+      // Raakt de bal de bodem? Dan kaatst hij terug omhoog en remt hij af door de wrijving.
       if (bal.y + bal.straal > canvas.height) {
         bal.y = canvas.height - bal.straal;
         bal.snelheidY = -bal.snelheidY * stuiter;
+        bal.snelheidX *= wrijving;
+        if (Math.abs(bal.snelheidX) < 5) bal.snelheidX = 0;
       }
 
       // Raakt de bal een zijkant? Dan kaatst hij terug de andere kant op.
