@@ -26,6 +26,7 @@
     // De bal: waar hij is, hoe groot hij is en hoe snel hij valt.
     const bal = { x: canvas.width / 2, y: canvas.height / 2, straal: 30, snelheid: 0 };
     const zwaartekracht = 1500;
+    const stuiter = 0.8; // hoeveel snelheid de bal overhoudt na een stuit (1 = alles, 0 = niets)
 
     function update(dt) {
       bal.snelheid += zwaartekracht * dt;
@@ -34,7 +35,7 @@
       // Raakt de bal de bodem? Dan kaatst hij terug omhoog.
       if (bal.y + bal.straal > canvas.height) {
         bal.y = canvas.height - bal.straal;
-        bal.snelheid = -bal.snelheid;
+        bal.snelheid = -bal.snelheid * stuiter;
       }
     }
 
