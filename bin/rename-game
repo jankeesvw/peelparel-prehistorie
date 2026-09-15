@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Hernoem een game-map en werk het overzicht in index.html bij.
+# Gebruik: bin/rename-game <oude-naam> <nieuwe-naam>   (kleine letters, cijfers en koppeltekens)
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+OUD="${1:-}"; NIEUW="${2:-}"
+if [[ -z "$OUD" || -z "$NIEUW" ]]; then echo "Gebruik: bin/rename-game <oude-naam> <nieuwe-naam>" >&2; exit 1; fi
+if [[ ! "$NIEUW" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+  echo "Naam moet kebab-case zijn (bijv. dino-run), kreeg: $NIEUW" >&2; exit 1
+fi
+if [[ ! -d "$ROOT/$OUD" ]]; then echo "Map $OUD bestaat niet" >&2; exit 1; fi
+if [[ -e "$ROOT/$NIEUW" ]]; then echo "Map $NIEUW bestaat al" >&2; exit 1; fi
+
+git -C "$ROOT" mv "$OUD" "$NIEUW"
+sed -i "s|<title>$OUD</title>|<title>$NIEUW</title>|" "$ROOT/$NIEUW/index.html"
+"$ROOT/bin/update-index"
+echo "Hernoemd: $OUD -> $NIEUW"
+echo "Lokaal:   http://localhost:8000/$NIEUW/"
+echo "Online:   https://jankeesvw.github.io/peelparel-prehistorie/$NIEUW/"

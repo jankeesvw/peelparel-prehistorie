@@ -45,11 +45,40 @@ Werk daarna in `<naam>/index.html`. Regels:
 - Laat `<script src="../livereload.js"></script>` onderaan de body staan, anders werkt de auto-reload niet.
 - Houd de code leesbaar voor leerlingen: korte functies, Nederlandse variabelenamen mag, kleine stappen per wijziging zodat ze het effect direct in de browser zien.
 
-## Stap 5: Online zetten
+## Stap 4b: Na elke prompt committen
 
-Als de gebruiker de game wil delen: commit en push naar `main`. GitHub Pages publiceert binnen een minuut op https://jankeesvw.github.io/peelparel-prehistorie/<naam>/ en het overzicht op de root toont de nieuwe game.
+Commit na elke prompt van de gebruiker, zonder te vragen. De commits zijn een logboek van de les: later is terug te lezen welke vraag welke wijziging opleverde. Push alleen als de gebruiker daarom vraagt (stap 6).
+
+Het commitbericht bestaat uit een korte titel met de gamenaam, en daaronder de letterlijke prompt van de gebruiker:
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"
-git add -A && git commit -m "Voeg <naam> toe" && git push
+git add -A && git commit -F - <<'PROMPT'
+<naam>: <korte samenvatting van de wijziging>
+
+Prompt:
+<de prompt van de gebruiker, woordelijk, niet ingekort of herschreven>
+PROMPT
+```
+
+Bevat de prompt zelf een regel met alleen `PROMPT`, gebruik dan een ander eindwoord voor de heredoc.
+
+## Stap 5: Hernoemen
+
+De uiteindelijke naam weet je vaak pas aan het einde. Begin gerust met een werknaam en hernoem later:
+
+```bash
+cd "$(git rev-parse --show-toplevel)"
+bin/rename-game <oude-naam> <nieuwe-naam>
+```
+
+Dit verplaatst de map met `git mv`, past de `<title>` aan en werkt het overzicht bij. Open daarna http://localhost:8000/<nieuwe-naam>/ in de browser en commit de hernoeming volgens stap 4b.
+
+## Stap 6: Online zetten
+
+Als de gebruiker de game wil delen: push naar `main`. GitHub Pages publiceert binnen een minuut op https://jankeesvw.github.io/peelparel-prehistorie/<naam>/ en het overzicht op de root toont de nieuwe game.
+
+```bash
+cd "$(git rev-parse --show-toplevel)"
+git push
 ```
