@@ -15,15 +15,26 @@
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
 
+    // De bal: waar hij is, hoe groot hij is en hoe snel hij valt.
+    const bal = { x: canvas.width / 2, y: canvas.height / 2, straal: 30, snelheid: 0 };
+    const zwaartekracht = 1500;
+
     function update(dt) {
-      // spel-logica
+      bal.snelheid += zwaartekracht * dt;
+      bal.y += bal.snelheid * dt;
+
+      // Raakt de bal de bodem? Dan kaatst hij terug omhoog.
+      if (bal.y + bal.straal > canvas.height) {
+        bal.y = canvas.height - bal.straal;
+        bal.snelheid = -bal.snelheid;
+      }
     }
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = 'green';
       ctx.beginPath();
-      ctx.arc(canvas.width / 2, canvas.height / 2, 30, 0, Math.PI * 2);
+      ctx.arc(bal.x, bal.y, bal.straal, 0, Math.PI * 2);
       ctx.fill();
     }
 
