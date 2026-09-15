@@ -44,6 +44,8 @@
       if (bal.y + bal.straal > canvas.height) {
         bal.y = canvas.height - bal.straal;
         bal.snelheidY = -bal.snelheidY * stuiter;
+        // Een heel klein stuitertje slaan we over, anders blijft de bal op de bodem trillen.
+        if (Math.abs(bal.snelheidY) < 60) bal.snelheidY = 0;
         bal.snelheidX *= wrijving;
         if (Math.abs(bal.snelheidX) < 5) bal.snelheidX = 0;
       }
@@ -69,7 +71,9 @@
 
     let vorige = performance.now();
     function loop(nu) {
-      update((nu - vorige) / 1000);
+      // Nooit meer dan 1/30 seconde in één stap, anders springt de bal na een hapering ineens ver weg.
+      const dt = Math.min((nu - vorige) / 1000, 1 / 30);
+      update(dt);
       vorige = nu;
       draw();
       requestAnimationFrame(loop);
