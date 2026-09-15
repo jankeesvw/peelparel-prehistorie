@@ -29,7 +29,10 @@
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // hier komt het tekenen
+      ctx.font = '120px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🦖', canvas.width / 2, canvas.height / 2);
     }
 
     let vorige = performance.now();
