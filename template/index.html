@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GAME_NAAM</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #111; color: #eee; font-family: sans-serif; }
+    canvas { display: block; margin: 0 auto; background: #222; }
+  </style>
+</head>
+<body>
+  <canvas id="game" width="800" height="600"></canvas>
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    function update(dt) {
+      // spel-logica
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#eee';
+      ctx.font = '32px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('GAME_NAAM', canvas.width / 2, canvas.height / 2);
+    }
+
+    let vorige = performance.now();
+    function loop(nu) {
+      update((nu - vorige) / 1000);
+      vorige = nu;
+      draw();
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  </script>
+  <script src="../livereload.js"></script>
+</body>
+</html>

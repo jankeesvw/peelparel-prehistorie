@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Maak een nieuwe game-map aan vanuit template/ en werk het overzicht in index.html bij.
+# Gebruik: bin/new-game <naam>   (kleine letters, cijfers en koppeltekens)
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+NAAM="${1:-}"
+if [[ -z "$NAAM" ]]; then echo "Gebruik: bin/new-game <naam>" >&2; exit 1; fi
+if [[ ! "$NAAM" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+  echo "Naam moet kebab-case zijn (bijv. dino-run), kreeg: $NAAM" >&2; exit 1
+fi
+if [[ -e "$ROOT/$NAAM" ]]; then echo "Map $NAAM bestaat al" >&2; exit 1; fi
+
+mkdir -p "$ROOT/$NAAM"
+sed "s/GAME_NAAM/$NAAM/g" "$ROOT/template/index.html" > "$ROOT/$NAAM/index.html"
+"$ROOT/bin/update-index"
+echo "Aangemaakt: $NAAM/index.html"
+echo "Lokaal:     http://localhost:8000/$NAAM/"
+echo "Online:     https://jankeesvw.github.io/peelparel-prehistorie/$NAAM/"

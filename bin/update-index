@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Herbouwt index.html in de root met een link naar elke game-map.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+{
+  cat <<'HEAD'
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peelparel prehistorie</title>
+  <style>
+    body { font-family: sans-serif; max-width: 40em; margin: 3em auto; padding: 0 1em; }
+    li { margin: .5em 0; font-size: 1.2em; }
+  </style>
+</head>
+<body>
+  <h1>Peelparel prehistorie</h1>
+  <ul>
+HEAD
+  for dir in "$ROOT"/*/; do
+    naam="$(basename "$dir")"
+    [[ "$naam" == "template" || "$naam" == "bin" ]] && continue
+    [[ -f "$dir/index.html" ]] || continue
+    echo "    <li><a href=\"$naam/\">$naam</a></li>"
+  done
+  cat <<'TAIL'
+  </ul>
+</body>
+</html>
+TAIL
+} > "$ROOT/index.html"
