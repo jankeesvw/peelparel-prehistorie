@@ -36,6 +36,9 @@
   // De mammoet: waar hij staat, hoe snel hij loopt en welke kant hij op kijkt.
   const mammoet = { x: 100, y: 470, snelheid: 120, richting: 1 };
 
+  // De groene bal: waar hij ligt en hoe groot hij is.
+  const bal = { x: 400, y: 490, straal: 25 };
+
   function update(dt) {
     mammoet.x += mammoet.snelheid * mammoet.richting * dt;
     // Aan de rand van het scherm draait hij om.
@@ -75,6 +78,16 @@
     ctx.fillRect(0, 420, canvas.width, 6);
   }
 
+  function tekenBal() {
+    ctx.fillStyle = '#4caf50';
+    ctx.beginPath();
+    ctx.arc(bal.x, bal.y, bal.straal, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#2b1a12';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+
   function tekenMammoet() {
     ctx.save();
     ctx.translate(mammoet.x, mammoet.y);
@@ -92,6 +105,7 @@
     tekenLucht();
     tekenHeuvels();
     tekenGrond();
+    tekenBal();
     tekenMammoet();
   }
 
