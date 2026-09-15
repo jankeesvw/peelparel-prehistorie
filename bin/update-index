@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Herbouwt index.html in de root met een link naar elke game-map.
+# Herbouwt index.html in de root met een kaartje voor elke game-map.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ICONEN=(🦣 🦖 🔥 🏹 🪨 🦴 🐗 🌋 🪓 🐺 🌿 🦕)
 {
   cat <<'HEAD'
 <!doctype html>
@@ -11,22 +12,96 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Peelparel prehistorie</title>
   <style>
-    body { font-family: sans-serif; max-width: 40em; margin: 3em auto; padding: 0 1em; }
-    li { margin: .5em 0; font-size: 1.2em; }
+    :root {
+      --zand: #e8c99a;
+      --oker: #c8792e;
+      --roest: #8a3b1e;
+      --steen: #4a2f22;
+      --kool: #2b1a12;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--kool);
+      background:
+        radial-gradient(circle at 15% 20%, rgba(255,255,255,.25), transparent 35%),
+        radial-gradient(circle at 85% 80%, rgba(138,59,30,.25), transparent 40%),
+        linear-gradient(160deg, #f0d9b0, var(--zand) 50%, #d9a86c);
+      padding: 2rem 1rem 4rem;
+    }
+    main { max-width: 52rem; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 2.5rem; }
+    .grot { font-size: 4rem; line-height: 1; letter-spacing: .3rem; }
+    h1 {
+      font-size: clamp(2.2rem, 6vw, 3.5rem);
+      margin: .5rem 0 .3rem;
+      color: var(--roest);
+      text-shadow: 2px 2px 0 rgba(255,255,255,.4);
+      letter-spacing: .05em;
+    }
+    header p { margin: 0; font-size: 1.15rem; color: var(--steen); font-style: italic; }
+    .games {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+      gap: 1.25rem;
+    }
+    .games a {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.1rem 1.3rem;
+      text-decoration: none;
+      color: var(--kool);
+      background: rgba(255, 247, 232, .7);
+      border: 3px solid var(--steen);
+      border-radius: 1.2rem 1rem 1.3rem 0.9rem / 1rem 1.3rem 0.9rem 1.2rem;
+      box-shadow: 4px 4px 0 var(--roest);
+      transition: transform .15s, box-shadow .15s;
+    }
+    .games a:hover, .games a:focus-visible {
+      transform: translate(-2px, -2px) rotate(-1deg);
+      box-shadow: 7px 7px 0 var(--roest);
+      background: #fff7e8;
+    }
+    .games .icoon { font-size: 2.4rem; line-height: 1; }
+    .games .naam { font-size: 1.35rem; font-weight: bold; }
+    .games .speel { display: block; font-size: .9rem; color: var(--oker); font-family: sans-serif; }
+    .leeg { text-align: center; font-size: 1.2rem; color: var(--steen); }
+    footer { text-align: center; margin-top: 3rem; color: var(--steen); font-size: .95rem; }
   </style>
 </head>
 <body>
-  <h1>Peelparel prehistorie</h1>
-  <ul>
+  <main>
+    <header>
+      <div class="grot">🪨🔥🦣</div>
+      <h1>Peelparel prehistorie</h1>
+      <p>Games gemaakt in de klas. Kies een grot en speel!</p>
+    </header>
+    <ul class="games">
 HEAD
+  i=0
+  aantal=0
   for dir in "$ROOT"/*/; do
     naam="$(basename "$dir")"
     [[ "$naam" == "template" || "$naam" == "bin" ]] && continue
     [[ -f "$dir/index.html" ]] || continue
-    echo "    <li><a href=\"$naam/\">$naam</a></li>"
+    icoon="${ICONEN[$((i % ${#ICONEN[@]}))]}"
+    titel="${naam//-/ }"
+    echo "      <li><a href=\"$naam/\"><span class=\"icoon\">$icoon</span><span><span class=\"naam\">$titel</span><span class=\"speel\">speel &rarr;</span></span></a></li>"
+    i=$((i + 1)); aantal=$((aantal + 1))
   done
+  if [[ $aantal -eq 0 ]]; then
+    echo '      <li class="leeg">Nog geen games. De eerste holbewoner mag beginnen!</li>'
+  fi
   cat <<'TAIL'
-  </ul>
+    </ul>
+    <footer>Gemaakt door de leerlingen van de Peelparel 🏹</footer>
+  </main>
 </body>
 </html>
 TAIL
