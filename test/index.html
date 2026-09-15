@@ -61,12 +61,28 @@
       }
     }
 
+    // Frames per seconde: we tellen de frames en kijken elke seconde hoeveel het er waren.
+    let fps = 0, frames = 0, fpsTijd = performance.now();
+    function telFrame(nu) {
+      frames++;
+      if (nu - fpsTijd >= 1000) {
+        fps = frames;
+        frames = 0;
+        fpsTijd = nu;
+      }
+    }
+
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = 'green';
       ctx.beginPath();
       ctx.arc(bal.x, bal.y, bal.straal, 0, Math.PI * 2);
       ctx.fill();
+
+      ctx.fillStyle = '#111';
+      ctx.font = '16px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(fps + ' fps', 10, 24);
     }
 
     let vorige = performance.now();
@@ -74,6 +90,7 @@
       // Nooit meer dan 1/30 seconde in één stap, anders springt de bal na een hapering ineens ver weg.
       const dt = Math.min((nu - vorige) / 1000, 1 / 30);
       update(dt);
+      telFrame(nu);
       vorige = nu;
       draw();
       requestAnimationFrame(loop);
