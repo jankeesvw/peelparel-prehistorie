@@ -21,7 +21,10 @@
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // hier komt het tekenen
+      ctx.fillStyle = 'green';
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, canvas.height / 2, 30, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     let vorige = performance.now();
