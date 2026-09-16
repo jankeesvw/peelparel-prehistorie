@@ -115,6 +115,10 @@
         e.preventDefault();
         return;
       }
+      if (gameOver) {
+        if (e.key === 'Enter') location.reload();
+        return;
+      }
       toetsen[e.key] = true;
       // Spatie is de actietoets: slaan met je wapen, of vissen bij het meer.
       if (e.key === ' ' && !e.repeat) actie();
@@ -126,9 +130,62 @@
     const loopSnelheid = 250; // pixels per seconde, naar links en rechts
     const diepteSnelheid = 1.1; // hoeveel diepte per seconde, naar voren en achteren
 
+    // ---------- Levens ----------
+
+    const maxLevens = 3;
+    let levens = maxLevens;
+    let gameOver = false;
+    let onkwetsbaar = 0; // seconden waarin je net geraakt bent en niet opnieuw geraakt kunt worden
+
+    function raakSpeler(vanX) {
+      if (onkwetsbaar > 0 || gameOver) return;
+      levens--;
+      onkwetsbaar = 2;
+      // Een duw weg van de aanvaller
+      speler.duw = Math.sign(speler.x - vanX) || 1;
+      toonMelding('Au!', speler.x, spelerY() - 190, '#d96c6c');
+      if (levens <= 0) gameOver = true;
+    }
+
+    function tekenLevens() {
+      const b = canvas.width;
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(b - 236, 68, 220, 44);
+      for (let i = 0; i < maxLevens; i++) tekenHart(b - 200 + i * 40, 90, 14, i < levens);
+    }
+
+    function tekenHart(x, y, r, vol) {
+      ctx.fillStyle = vol ? '#e63946' : 'rgba(255,255,255,0.2)';
+      ctx.beginPath();
+      ctx.moveTo(x, y + r);
+      ctx.bezierCurveTo(x - r * 1.4, y - r * 0.2, x - r * 0.7, y - r * 1.1, x, y - r * 0.4);
+      ctx.bezierCurveTo(x + r * 0.7, y - r * 1.1, x + r * 1.4, y - r * 0.2, x, y + r);
+      ctx.fill();
+    }
+
+    function tekenGameOver() {
+      if (!gameOver) return;
+      const b = canvas.width, h = canvas.height;
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(0, 0, b, h);
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 56px sans-serif';
+      ctx.fillStyle = '#e63946';
+      ctx.fillText('Je bent gedood door een wolharige neushoorn', b / 2, h * 0.4);
+      ctx.font = '26px sans-serif';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(`Je overleefde tot nacht ${nacht}, ronde ${ronde}, met ${munten} munten.`, b / 2, h * 0.4 + 50);
+      ctx.fillStyle = '#ffd166';
+      ctx.fillText('Druk op Enter om opnieuw te beginnen', b / 2, h * 0.4 + 110);
+      ctx.textAlign = 'left';
+    }
+
     function update(dt) {
       tijd += dt;
+      if (gameOver) return;
       updateDagNacht(dt);
+      if (onkwetsbaar > 0) onkwetsbaar -= dt;
+      updateNeushoorns(dt);
       if (winkelOpen) for (const t of ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']) toetsen[t] = false;
       let dx = 0, dd = 0;
       const tempo = kleding().snelheid; // sommige kleren maken je sneller
@@ -138,6 +195,9 @@
       if (toetsen['ArrowDown']) dd += diepteSnelheid * tempo * dt; // naar voren
       speler.loopt = dx !== 0 || dd !== 0;
       if (speler.loopt) speler.stap += dt * 10;
+
+      // Net geraakt? Dan word je even weggeduwd.
+      if (onkwetsbaar > 1.6 && speler.duw) dx += speler.duw * 500 * dt;
 
       // Niet verder dan de horizon, niet van de wereld af, en niet in het water.
       const nieuwX = Math.max(30, Math.min(wereldBreedte - 30, speler.x + dx));
@@ -271,6 +331,13 @@
 
     // Een slag met een knots of bijl: raakt het dichtstbijzijnde dier vóór ons.
     function slaDier(bereik) {
+      // Eerst kijken of er een neushoorn vóór ons staat
+      for (const n of neushoorns) {
+        const afstand = n.x - speler.x;
+        if (Math.abs(afstand) < bereik + 40 && Math.sign(afstand) === speler.richting && Math.abs(diepteNaarY(n.d) - spelerY()) < 40) {
+          return raakNeushoorn(speler.x, speler.d, bereik + 40);
+        }
+      }
       for (let i = dieren.length - 1; i >= 0; i--) {
         const d = dieren[i];
         const afstand = d.x - speler.x;
@@ -324,6 +391,7 @@
             break;
           }
         }
+        if (!geraakt && raakNeushoorn(pr.x, pr.d, 60)) geraakt = true;
         if (geraakt || pr.afstand > pr.maxAfstand || inMeer(pr.x, pr.d, 0)) projectielen.splice(i, 1);
       }
     }
@@ -986,6 +1054,148 @@
       }
     }
 
+    // ---------- Wolharige neushoorn ----------
+
+    // De neushoorn rent op je af. Raakt hij je, dan verlies je een leven. Je kunt hem doden,
+    // maar daar zijn een paar rake klappen voor nodig.
+    const neushoorns = [];
+    let volgendeNeushoorn = 15; // seconden tot de eerste neushoorn
+    const neushoornLeven = 3;
+    const neushoornBeloning = 20; // munten voor een gedode neushoorn
+
+    function updateNeushoorns(dt) {
+      volgendeNeushoorn -= dt;
+      if (volgendeNeushoorn <= 0 && neushoorns.length === 0) {
+        // 's Nachts komen ze vaker, en in latere rondes ook
+        volgendeNeushoorn = (isNacht() ? 18 : 30) / (1 + (ronde - 1) * 0.3);
+        const vanLinks = speler.x > wereldBreedte / 2;
+        neushoorns.push({
+          x: vanLinks ? camera.x - 120 : camera.x + canvas.width + 120,
+          d: speler.d,
+          richting: vanLinks ? 1 : -1,
+          snelheid: 150 + (ronde - 1) * 30,
+          leven: neushoornLeven,
+          stap: 0,
+          doorrennen: 0, // na een aanval rent hij even door voordat hij omkeert
+          schud: 0,
+        });
+      }
+      for (let i = neushoorns.length - 1; i >= 0; i--) {
+        const n = neushoorns[i];
+        n.stap += dt * 10;
+        if (n.schud > 0) n.schud -= dt;
+        if (n.doorrennen > 0) {
+          n.doorrennen -= dt;
+          if (n.doorrennen <= 0) n.richting = Math.sign(speler.x - n.x) || 1;
+        } else {
+          // Achter de speler aan, ook in de diepte
+          n.richting = Math.sign(speler.x - n.x) || n.richting;
+          n.d += Math.sign(speler.d - n.d) * Math.min(Math.abs(speler.d - n.d), 0.5 * dt);
+        }
+        const nieuwX = n.x + n.richting * n.snelheid * dt;
+        // Hij rent om het meer heen
+        if (inMeer(nieuwX, n.d, 60)) n.d += (n.d < meer.d ? -1 : 1) * 0.6 * dt;
+        else n.x = nieuwX;
+        n.d = Math.max(0.08, Math.min(0.97, n.d));
+
+        // Raakt hij de speler?
+        if (n.doorrennen <= 0 && Math.abs(n.x - speler.x) < 50 && Math.abs(diepteNaarY(n.d) - spelerY()) < 30) {
+          raakSpeler(n.x);
+          n.doorrennen = 1.5;
+        }
+      }
+    }
+
+    // Een klap of schot op een neushoorn. Geeft true als er een geraakt is.
+    function raakNeushoorn(x, d, bereik) {
+      for (let i = neushoorns.length - 1; i >= 0; i--) {
+        const n = neushoorns[i];
+        if (Math.abs(n.x - x) < bereik && Math.abs(diepteNaarY(n.d) - diepteNaarY(d)) < 40) {
+          n.leven--;
+          n.schud = 0.3;
+          if (n.leven <= 0) {
+            neushoorns.splice(i, 1);
+            munten += neushoornBeloning;
+            toonMelding(`Neushoorn verslagen! +${neushoornBeloning} munten`, n.x, diepteNaarY(n.d) - 160, '#ffd166');
+          } else {
+            toonMelding(`Nog ${n.leven} klappen`, n.x, diepteNaarY(n.d) - 160, '#fff');
+          }
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function tekenNeushoorn(n) {
+      ctx.save();
+      ctx.scale(n.richting, 1);
+      if (n.schud > 0) ctx.translate(Math.sin(n.schud * 60) * 5, 0);
+      const zwaai = Math.sin(n.stap) * 10;
+
+      // Schaduw
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(0, 2, 70, 10, 0, 0, Math.PI * 2); ctx.fill();
+
+      // Poten, dik en kort
+      ctx.strokeStyle = '#5a4a3c';
+      ctx.lineWidth = 14;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-40 + zwaai, 0); ctx.lineTo(-38, -40);
+      ctx.moveTo(-20 - zwaai, 0); ctx.lineTo(-22, -40);
+      ctx.moveTo(25 + zwaai, 0); ctx.lineTo(24, -40);
+      ctx.moveTo(45 - zwaai, 0); ctx.lineTo(42, -40);
+      ctx.stroke();
+
+      // Lijf met dikke vacht
+      const vacht = ctx.createLinearGradient(0, -100, 0, -30);
+      vacht.addColorStop(0, '#8a6a4a');
+      vacht.addColorStop(1, '#4a3628');
+      ctx.fillStyle = vacht;
+      ctx.beginPath();
+      ctx.ellipse(0, -65, 70, 38, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Bult op de schouders
+      ctx.beginPath(); ctx.ellipse(25, -95, 30, 18, 0, 0, Math.PI * 2); ctx.fill();
+      // Hangende wolplukken langs de buik
+      ctx.fillStyle = '#6a503a';
+      for (let i = -55; i <= 50; i += 14) {
+        ctx.beginPath();
+        ctx.moveTo(i, -40); ctx.lineTo(i + 5, -22 + (i % 28 === 0 ? 4 : 0)); ctx.lineTo(i + 12, -40);
+        ctx.fill();
+      }
+      // Kop
+      ctx.fillStyle = '#6a503a';
+      ctx.beginPath();
+      ctx.ellipse(72, -60, 32, 24, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+      // Grote voorhoorn en kleine achterhoorn
+      ctx.fillStyle = '#e8dcc8';
+      ctx.beginPath(); ctx.moveTo(88, -70); ctx.quadraticCurveTo(100, -110, 118, -130); ctx.lineTo(104, -68); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(66, -82); ctx.lineTo(74, -104); ctx.lineTo(82, -80); ctx.closePath(); ctx.fill();
+      // Oor, oog, neusgat
+      ctx.fillStyle = '#4a3628';
+      ctx.beginPath(); ctx.ellipse(50, -88, 7, 11, 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.arc(70, -68, 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#e63946';
+      ctx.beginPath(); ctx.arc(70, -68, 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3a2a1e';
+      ctx.beginPath(); ctx.arc(98, -52, 3, 0, Math.PI * 2); ctx.fill();
+      // Staart
+      ctx.strokeStyle = '#4a3628';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(-66, -75); ctx.quadraticCurveTo(-82, -60 + Math.sin(n.stap) * 6, -76, -40); ctx.stroke();
+
+      ctx.restore();
+
+      // Levensbalkje boven de kop
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(-30, -150, 60, 8);
+      ctx.fillStyle = '#e63946';
+      ctx.fillRect(-30, -150, 60 * n.leven / neushoornLeven, 8);
+    }
+
     function tekenEverzwijn(x, y, richting, stap) {
       ctx.save();
       ctx.translate(x, y);
@@ -1536,6 +1746,8 @@
     // ---------- Poppetje ----------
 
     function tekenPoppetje(x, y, richting) {
+      // Net geraakt? Dan knippert het poppetje even.
+      if (onkwetsbaar > 0 && Math.floor(tijd * 10) % 2 === 0) ctx.globalAlpha = 0.4;
       // Schaduw op de grond
       ctx.fillStyle = 'rgba(0,0,0,0.35)';
       ctx.beginPath();
@@ -1727,6 +1939,7 @@
       }
 
       ctx.restore();
+      ctx.globalAlpha = 1;
     }
 
     // ---------- Alles tekenen ----------
@@ -1749,6 +1962,7 @@
       }
       dingen.push({ d: speler.d, teken: () => tekenOpWereld(speler.x, speler.d, () => tekenPoppetje(0, 0, speler.richting)) });
       for (const pr of projectielen) dingen.push({ d: pr.d + 0.001, teken: () => tekenOpWereld(pr.x, pr.d, () => tekenProjectiel(pr)) });
+      for (const n of neushoorns) dingen.push({ d: n.d, teken: () => tekenOpWereld(n.x, n.d, () => tekenNeushoorn(n)) });
       dingen.sort((a, b) => a.d - b.d);
       for (const ding of dingen) ding.teken();
 
@@ -1757,7 +1971,9 @@
       tekenMeldingen();
       tekenMissies();
       tekenDagTeller();
+      tekenLevens();
       tekenWinkel();
+      tekenGameOver();
     }
 
     // Het landschap donkerder maken in de nacht en warmer in de dag.
