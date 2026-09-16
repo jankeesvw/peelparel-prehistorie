@@ -86,12 +86,107 @@
       ctx.fill();
     }
 
+    // Het poppetje: een holbewoner. x en y zijn de plek van zijn voeten.
+    const speler = { x: 0, y: 0 };
+
+    function tekenPoppetje(x, y) {
+      // Benen
+      ctx.strokeStyle = '#e0ac69';
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x - 10, y);
+      ctx.lineTo(x - 6, y - 40);
+      ctx.moveTo(x + 10, y);
+      ctx.lineTo(x + 6, y - 40);
+      ctx.stroke();
+
+      // Dierenvel (lijf)
+      ctx.fillStyle = '#a0522d';
+      ctx.beginPath();
+      ctx.moveTo(x - 22, y - 40);
+      ctx.lineTo(x + 22, y - 40);
+      ctx.lineTo(x + 16, y - 95);
+      ctx.lineTo(x - 16, y - 95);
+      ctx.closePath();
+      ctx.fill();
+      // Vlekken op het vel
+      ctx.fillStyle = '#5a2d0c';
+      ctx.beginPath();
+      ctx.arc(x - 6, y - 60, 5, 0, Math.PI * 2);
+      ctx.arc(x + 8, y - 78, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Armen
+      ctx.strokeStyle = '#e0ac69';
+      ctx.beginPath();
+      ctx.moveTo(x - 14, y - 90);
+      ctx.lineTo(x - 30, y - 60);
+      ctx.moveTo(x + 14, y - 90);
+      ctx.lineTo(x + 34, y - 105);
+      ctx.stroke();
+
+      // Knots in de rechterhand
+      ctx.strokeStyle = '#6b4423';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(x + 34, y - 105);
+      ctx.lineTo(x + 50, y - 150);
+      ctx.stroke();
+      ctx.fillStyle = '#6b4423';
+      ctx.beginPath();
+      ctx.arc(x + 52, y - 156, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Hoofd
+      ctx.fillStyle = '#e0ac69';
+      ctx.beginPath();
+      ctx.arc(x, y - 115, 22, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Wild haar
+      ctx.fillStyle = '#3b2314';
+      ctx.beginPath();
+      ctx.arc(x, y - 125, 24, Math.PI, 0);
+      ctx.fill();
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(x + i * 10 - 5, y - 125);
+        ctx.lineTo(x + i * 10, y - 152);
+        ctx.lineTo(x + i * 10 + 5, y - 125);
+        ctx.fill();
+      }
+
+      // Ogen
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(x - 8, y - 115, 5, 0, Math.PI * 2);
+      ctx.arc(x + 8, y - 115, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.arc(x - 7, y - 115, 2, 0, Math.PI * 2);
+      ctx.arc(x + 9, y - 115, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Mond
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y - 105, 8, 0.2, Math.PI - 0.2);
+      ctx.stroke();
+    }
+
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       tekenLucht();
       tekenHeuvels();
       tekenGrond();
       tekenGrot();
+      // Het poppetje staat op de grond, rechts van de grot.
+      speler.x = canvas.width * 0.4;
+      speler.y = canvas.height * 0.85;
+      tekenPoppetje(speler.x, speler.y);
     }
 
     let vorige = performance.now();
