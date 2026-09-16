@@ -79,9 +79,17 @@
     // Welke toetsen zijn nu ingedrukt?
     const toetsen = {};
     window.addEventListener('keydown', (e) => {
+      // Als de winkel open is, gaan alle toetsen naar het winkelmenu.
+      if (winkelOpen) {
+        winkelToets(e.key);
+        e.preventDefault();
+        return;
+      }
       toetsen[e.key] = true;
-      // Spatie is de actietoets: slaan met de knots, of vissen bij het meer.
+      // Spatie is de actietoets: slaan met je wapen, of vissen bij het meer.
       if (e.key === ' ' && !e.repeat) actie();
+      // E opent de winkel als je bij de handelaar staat.
+      if ((e.key === 'e' || e.key === 'E') && bijHandelaar()) openWinkel();
     });
     window.addEventListener('keyup', (e) => { toetsen[e.key] = false; });
 
@@ -91,6 +99,7 @@
       tijd += dt;
       updateDagNacht(dt);
       speler.loopt = false;
+      if (winkelOpen) { toetsen['ArrowLeft'] = false; toetsen['ArrowRight'] = false; }
       if (toetsen['ArrowLeft']) {
         speler.x -= loopSnelheid * dt;
         speler.richting = -1;
@@ -110,6 +119,7 @@
       updateDieren(dt);
       raapStenenOp();
       updateMeldingen(dt);
+      updateRonde(dt);
     }
 
     // ---------- Missies ----------
@@ -121,16 +131,41 @@
       { naam: 'Verzamel 5 stenen', soort: 'stenen', doel: 5, voortgang: 0 },
     ];
 
+    // Munten verdien je met missies: 2 per stap en 10 extra als een missie klaar is.
+    let munten = 0;
+    const muntenPerStap = 2;
+    const muntenPerMissie = 10;
+
     function missieVoortgang(soort, x, y) {
       const missie = missies.find(m => m.soort === soort);
       if (!missie || missie.voortgang >= missie.doel) return;
       missie.voortgang++;
-      toonMelding('+1', x, y);
-      if (missie.voortgang === missie.doel) toonMelding('Missie voltooid!', x, y - 40, '#ffd166');
+      munten += muntenPerStap;
+      toonMelding(`+${muntenPerStap} munten`, x, y, '#ffd166');
+      if (missie.voortgang === missie.doel) {
+        munten += muntenPerMissie;
+        toonMelding(`Missie voltooid! +${muntenPerMissie} munten`, x, y - 40, '#ffd166');
+      }
+      if (alleMissiesKlaar()) nieuweRondeOver = 5;
     }
 
     function alleMissiesKlaar() {
       return missies.every(m => m.voortgang >= m.doel);
+    }
+
+    // Als alle missies klaar zijn, begint na een paar seconden een nieuwe ronde met grotere doelen.
+    let ronde = 1;
+    let nieuweRondeOver = 0;
+    function updateRonde(dt) {
+      if (nieuweRondeOver <= 0) return;
+      nieuweRondeOver -= dt;
+      if (nieuweRondeOver <= 0) {
+        ronde++;
+        for (const m of missies) { m.doel += 1; m.voortgang = 0; }
+        // Nieuwe stenen op de grond
+        while (stenen.length < 12) stenen.push({ x: Math.random(), y: Math.random(), r: 3 + Math.random() * 6 });
+        toonMelding(`Ronde ${ronde}!`, canvas.width / 2, canvas.height * 0.3, '#ffd166');
+      }
     }
 
     // Korte tekstjes die omhoog zweven en vervagen, zoals "+1".
@@ -156,7 +191,7 @@
     // De actietoets: eerst kijken of er een dier binnen bereik is, anders of we bij het meer staan.
     function actie() {
       speler.slaat = 0.35;
-      const bereik = 80;
+      const bereik = wapens[huidigWapen].bereik;
       for (let i = dieren.length - 1; i >= 0; i--) {
         const d = dieren[i];
         const afstand = d.x - speler.x;
@@ -193,17 +228,328 @@
         const vinkje = klaar ? '\u2713 ' : (actief ? '\u25B6 ' : '\u25CB ');
         ctx.fillText(`${vinkje}${m.naam}  ${m.voortgang}/${m.doel}`, 30, 76 + i * 30);
       });
+      // Munten en huidig wapen, onder het missiepaneel
+      const py = 16 + 40 + missies.length * 30 + 10;
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(16, py, 330, 40);
+      tekenMunt(38, py + 20, 11);
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillStyle = '#ffd166';
+      ctx.fillText(`${munten} munten`, 56, py + 27);
+      ctx.font = '16px sans-serif';
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'right';
+      ctx.fillText(`Wapen: ${wapens[huidigWapen].naam}`, 336, py + 26);
+      ctx.textAlign = 'left';
+
       // Uitleg van de besturing
       ctx.font = '15px sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fillText('Pijltjes = lopen, spatie = slaan / vissen', 30, 66 + missies.length * 30 + 20);
+      ctx.fillText('Pijltjes = lopen, spatie = slaan / vissen, E = handelen', 20, py + 62);
 
       if (alleMissiesKlaar()) {
         ctx.textAlign = 'center';
         ctx.font = 'bold 48px sans-serif';
         ctx.fillStyle = '#ffd166';
         ctx.fillText('Alle missies voltooid!', canvas.width / 2, canvas.height * 0.35);
+        ctx.font = '22px sans-serif';
+        ctx.fillStyle = '#fff';
+        ctx.fillText(`Ronde ${ronde + 1} begint zo...`, canvas.width / 2, canvas.height * 0.35 + 36);
       }
+    }
+
+    function tekenMunt(x, y, r) {
+      ctx.fillStyle = '#d4a017';
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f5cf4a';
+      ctx.beginPath(); ctx.arc(x, y, r * 0.75, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#b8860b';
+      ctx.font = `bold ${Math.round(r * 1.2)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('M', x, y + r * 0.42);
+      ctx.textAlign = 'left';
+    }
+
+    // ---------- Handelaar en winkel ----------
+
+    // De wapens die je kunt kopen. Een groter bereik betekent dat je dieren van verder weg raakt.
+    const wapens = [
+      { naam: 'Knots', prijs: 0, bereik: 80, gekocht: true, uitleg: 'Je oude vertrouwde knots.' },
+      { naam: 'Stenen bijl', prijs: 10, bereik: 110, gekocht: false, uitleg: 'Scherpe steen op een stok.' },
+      { naam: 'Speer', prijs: 20, bereik: 170, gekocht: false, uitleg: 'Lang en puntig, raakt van ver.' },
+      { naam: 'Boog', prijs: 35, bereik: 380, gekocht: false, uitleg: 'Schiet over het halve veld.' },
+    ];
+    let huidigWapen = 0;
+
+    // De handelaar staat met zijn kraampje op een vaste plek op de grond.
+    const handelaar = { x: 0.55 };
+    let winkelOpen = false;
+    let winkelKeuze = 0;
+    let winkelBericht = '';
+
+    function handelaarX() { return handelaar.x * canvas.width; }
+    function bijHandelaar() { return Math.abs(speler.x - handelaarX()) < 110; }
+
+    function openWinkel() {
+      winkelOpen = true;
+      winkelKeuze = huidigWapen;
+      winkelBericht = 'Welkom! Wat wil je kopen?';
+    }
+
+    function winkelToets(toets) {
+      if (toets === 'ArrowUp') winkelKeuze = (winkelKeuze + wapens.length - 1) % wapens.length;
+      if (toets === 'ArrowDown') winkelKeuze = (winkelKeuze + 1) % wapens.length;
+      if (toets === 'Enter' || toets === ' ') koopOfKies(wapens[winkelKeuze], winkelKeuze);
+      if (toets === 'e' || toets === 'E' || toets === 'Escape') winkelOpen = false;
+    }
+
+    function koopOfKies(wapen, index) {
+      if (wapen.gekocht) {
+        huidigWapen = index;
+        winkelBericht = `Je hebt nu de ${wapen.naam.toLowerCase()} in je hand.`;
+      } else if (munten >= wapen.prijs) {
+        munten -= wapen.prijs;
+        wapen.gekocht = true;
+        huidigWapen = index;
+        winkelBericht = `Gekocht! Veel jachtplezier met je ${wapen.naam.toLowerCase()}.`;
+      } else {
+        winkelBericht = `Te weinig munten. Je hebt er nog ${wapen.prijs - munten} nodig.`;
+      }
+    }
+
+    function tekenHandelaar() {
+      const x = handelaarX(), y = speler.y;
+
+      // Kraampje: twee palen met een dierenvel als afdak
+      ctx.strokeStyle = '#5a3a1c';
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x - 70, y); ctx.lineTo(x - 70, y - 150);
+      ctx.moveTo(x + 70, y); ctx.lineTo(x + 70, y - 150);
+      ctx.stroke();
+      ctx.fillStyle = '#a0522d';
+      ctx.beginPath();
+      ctx.moveTo(x - 85, y - 150);
+      ctx.lineTo(x + 85, y - 150);
+      ctx.lineTo(x + 80, y - 125);
+      for (let i = 80; i >= -80; i -= 16) ctx.lineTo(x + i - 8, y - (i % 32 === 0 ? 118 : 128));
+      ctx.lineTo(x - 80, y - 125);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#4a2410';
+      ctx.beginPath();
+      ctx.arc(x - 30, y - 138, 6, 0, Math.PI * 2);
+      ctx.arc(x + 25, y - 135, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // De handelaar zelf, achter de tafel: grijs haar, kettinkje van tanden
+      const hx = x, hy = y - 20;
+      const huid = '#c8905a';
+      ctx.fillStyle = '#6b8e5a';
+      ctx.beginPath();
+      ctx.moveTo(hx - 20, hy - 40); ctx.lineTo(hx + 20, hy - 40);
+      ctx.lineTo(hx + 26, hy + 10); ctx.lineTo(hx - 26, hy + 10);
+      ctx.closePath();
+      ctx.fill();
+      // Zwaaiende arm
+      const zwaai = Math.sin(tijd * 4) * 0.5;
+      ctx.strokeStyle = huid;
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(hx + 18, hy - 36);
+      ctx.lineTo(hx + 34, hy - 60 + zwaai * 15);
+      ctx.lineTo(hx + 30 + zwaai * 10, hy - 85);
+      ctx.stroke();
+      // Hoofd
+      ctx.fillStyle = huid;
+      ctx.beginPath(); ctx.arc(hx, hy - 60, 20, 0, Math.PI * 2); ctx.fill();
+      // Grijze baard en haar
+      ctx.fillStyle = '#c9c4b8';
+      ctx.beginPath();
+      ctx.moveTo(hx - 17, hy - 56);
+      ctx.quadraticCurveTo(hx, hy - 10, hx + 17, hy - 56);
+      ctx.fill();
+      ctx.beginPath(); ctx.arc(hx, hy - 66, 21, Math.PI, 0); ctx.fill();
+      // Ketting van tanden
+      ctx.fillStyle = '#f0e6d0';
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(hx + i * 6 - 2, hy - 40); ctx.lineTo(hx + i * 6, hy - 32); ctx.lineTo(hx + i * 6 + 2, hy - 40);
+        ctx.fill();
+      }
+      // Ogen
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.arc(hx - 7, hy - 62, 2.2, 0, Math.PI * 2);
+      ctx.arc(hx + 7, hy - 62, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Stenen tafel
+      ctx.fillStyle = '#6e6257';
+      ctx.fillRect(x - 60, y - 60, 120, 14);
+      ctx.fillStyle = '#4d453c';
+      ctx.fillRect(x - 50, y - 46, 18, 46);
+      ctx.fillRect(x + 32, y - 46, 18, 46);
+
+      // Wapens uitgestald op de tafel: een bijl en een speer
+      ctx.save();
+      ctx.translate(x - 35, y - 62);
+      ctx.rotate(-0.3);
+      tekenWapenVorm(1, 0, 0, 0.6);
+      ctx.restore();
+      ctx.save();
+      ctx.translate(x + 10, y - 62);
+      ctx.rotate(-1.1);
+      tekenWapenVorm(2, 0, 0, 0.55);
+      ctx.restore();
+      // Stapel munten op de tafel
+      tekenMunt(x + 40, y - 66, 6);
+      tekenMunt(x + 46, y - 64, 6);
+
+      // Hint als de speler dichtbij staat
+      if (bijHandelaar() && !winkelOpen) {
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(x - 110, y - 200, 220, 30);
+        ctx.fillStyle = '#ffd166';
+        ctx.fillText('Druk op E om te handelen', x, y - 178);
+        ctx.textAlign = 'left';
+      }
+    }
+
+    function tekenWinkel() {
+      if (!winkelOpen) return;
+      const b = canvas.width, h = canvas.height;
+      const pw = 460, ph = 90 + wapens.length * 56 + 70;
+      const px = b / 2 - pw / 2, py = h / 2 - ph / 2;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, b, h);
+      ctx.fillStyle = '#3b2a1a';
+      ctx.fillRect(px, py, pw, ph);
+      ctx.strokeStyle = '#a0522d';
+      ctx.lineWidth = 6;
+      ctx.strokeRect(px, py, pw, ph);
+
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 26px sans-serif';
+      ctx.fillStyle = '#ffd166';
+      ctx.fillText('Handelaar Oeg', px + 24, py + 40);
+      ctx.textAlign = 'right';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillText(`${munten} munten`, px + pw - 24, py + 40);
+      tekenMunt(px + pw - 24 - ctx.measureText(`${munten} munten`).width - 18, py + 32, 10);
+
+      wapens.forEach((w, i) => {
+        const ry = py + 66 + i * 56;
+        const gekozen = i === winkelKeuze;
+        ctx.fillStyle = gekozen ? 'rgba(255,209,102,0.2)' : 'rgba(255,255,255,0.04)';
+        ctx.fillRect(px + 16, ry, pw - 32, 50);
+        if (gekozen) {
+          ctx.strokeStyle = '#ffd166';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(px + 16, ry, pw - 32, 50);
+        }
+        // Plaatje van het wapen
+        ctx.save();
+        ctx.translate(px + 50, ry + 38);
+        ctx.rotate(-0.9);
+        tekenWapenVorm(i, 0, 0, 0.5);
+        ctx.restore();
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 19px sans-serif';
+        ctx.fillStyle = '#fff';
+        ctx.fillText(w.naam, px + 90, ry + 22);
+        ctx.font = '14px sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.fillText(`${w.uitleg}  Bereik ${w.bereik}`, px + 90, ry + 41);
+
+        ctx.textAlign = 'right';
+        ctx.font = 'bold 18px sans-serif';
+        if (i === huidigWapen) {
+          ctx.fillStyle = '#8fd18f';
+          ctx.fillText('In de hand', px + pw - 30, ry + 31);
+        } else if (w.gekocht) {
+          ctx.fillStyle = '#8fd18f';
+          ctx.fillText('Gekocht', px + pw - 30, ry + 31);
+        } else {
+          ctx.fillStyle = munten >= w.prijs ? '#ffd166' : '#d96c6c';
+          ctx.fillText(`${w.prijs} munten`, px + pw - 30, ry + 31);
+        }
+      });
+
+      ctx.textAlign = 'center';
+      ctx.font = '17px sans-serif';
+      ctx.fillStyle = '#ffd166';
+      ctx.fillText(winkelBericht, b / 2, py + ph - 40);
+      ctx.font = '14px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.fillText('Pijltjes omhoog/omlaag = kiezen, Enter = kopen of in de hand nemen, E = sluiten', b / 2, py + ph - 16);
+      ctx.textAlign = 'left';
+    }
+
+    // Tekent de vorm van een wapen met het handvat op (x, y), rechtop naar boven. Wordt gebruikt
+    // in de hand van het poppetje, op de tafel van de handelaar en in het winkelmenu.
+    function tekenWapenVorm(index, x, y, schaal = 1) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(schaal, schaal);
+      ctx.lineCap = 'round';
+      if (index === 0) {
+        // Knots: knoestig stuk hout met een dikke kop
+        ctx.strokeStyle = '#5a3a1c';
+        ctx.lineWidth = 7;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(16, -50); ctx.stroke();
+        const knots = ctx.createRadialGradient(14, -60, 2, 18, -56, 14);
+        knots.addColorStop(0, '#8a5a30');
+        knots.addColorStop(1, '#4a2e14');
+        ctx.fillStyle = knots;
+        ctx.beginPath(); ctx.ellipse(18, -56, 13, 16, 0.4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#2e1a0a';
+        ctx.beginPath();
+        ctx.arc(24, -62, 2.5, 0, Math.PI * 2);
+        ctx.arc(12, -50, 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (index === 1) {
+        // Stenen bijl: stok met een scherpe steen, vastgebonden met touw
+        ctx.strokeStyle = '#6b4a2a';
+        ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(10, -60); ctx.stroke();
+        ctx.fillStyle = '#8a8a86';
+        ctx.beginPath();
+        ctx.moveTo(4, -50); ctx.lineTo(30, -70); ctx.lineTo(26, -44); ctx.lineTo(8, -40);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#c9a66b';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(4, -48); ctx.lineTo(14, -54); ctx.moveTo(6, -44); ctx.lineTo(16, -50); ctx.stroke();
+      } else if (index === 2) {
+        // Speer: lange stok met een stenen punt en veertjes
+        ctx.strokeStyle = '#7a5a30';
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(0, -95); ctx.stroke();
+        ctx.fillStyle = '#9a9a96';
+        ctx.beginPath(); ctx.moveTo(-6, -92); ctx.lineTo(0, -115); ctx.lineTo(6, -92); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#d9534f';
+        ctx.beginPath(); ctx.moveTo(-1, -85); ctx.lineTo(-9, -78); ctx.lineTo(-1, -70); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(1, -85); ctx.lineTo(9, -78); ctx.lineTo(1, -70); ctx.closePath(); ctx.fill();
+      } else {
+        // Boog: gebogen tak met een pees, en een pijl
+        ctx.strokeStyle = '#7a5a30';
+        ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(0, 30); ctx.quadraticCurveTo(28, -30, 0, -90); ctx.stroke();
+        ctx.strokeStyle = '#e8e0c8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(0, 30); ctx.lineTo(0, -90); ctx.stroke();
+        ctx.strokeStyle = '#c9a66b';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(-6, -30); ctx.lineTo(40, -30); ctx.stroke();
+        ctx.fillStyle = '#9a9a96';
+        ctx.beginPath(); ctx.moveTo(38, -36); ctx.lineTo(52, -30); ctx.lineTo(38, -24); ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
     }
 
     // ---------- Dieren ----------
@@ -826,31 +1172,12 @@
       ctx.lineTo(x + 34, y - 105);
       ctx.stroke();
 
-      // Knots: knoestig stuk hout met een dikke kop. Bij een slag draait hij om de hand.
+      // Het wapen in de hand. Bij een slag draait het om de hand naar voren.
       const slag = speler.slaat > 0 ? Math.sin((0.35 - speler.slaat) / 0.35 * Math.PI) : 0;
       ctx.save();
       ctx.translate(x + 34, y - 100);
       ctx.rotate(slag * 1.8);
-      ctx.translate(-(x + 34), -(y - 100));
-      ctx.strokeStyle = '#5a3a1c';
-      ctx.lineWidth = 7;
-      ctx.beginPath();
-      ctx.moveTo(x + 34, y - 100);
-      ctx.lineTo(x + 50, y - 150);
-      ctx.stroke();
-      const knots = ctx.createRadialGradient(x + 48, y - 160, 2, x + 52, y - 156, 14);
-      knots.addColorStop(0, '#8a5a30');
-      knots.addColorStop(1, '#4a2e14');
-      ctx.fillStyle = knots;
-      ctx.beginPath();
-      ctx.ellipse(x + 52, y - 156, 13, 16, 0.4, 0, Math.PI * 2);
-      ctx.fill();
-      // Knoesten
-      ctx.fillStyle = '#2e1a0a';
-      ctx.beginPath();
-      ctx.arc(x + 58, y - 162, 2.5, 0, Math.PI * 2);
-      ctx.arc(x + 46, y - 150, 2, 0, Math.PI * 2);
-      ctx.fill();
+      tekenWapenVorm(huidigWapen, 0, 0);
       ctx.restore();
 
       // Hals
@@ -927,12 +1254,14 @@
       tekenGrot();
       // Het poppetje staat altijd op de grond.
       speler.y = canvas.height * 0.85;
+      tekenHandelaar();
       tekenDieren();
       tekenPoppetje(speler.x, speler.y, speler.richting);
       tekenDagNachtLicht();
       tekenMeldingen();
       tekenMissies();
       tekenDagTeller();
+      tekenWinkel();
     }
 
     // Het landschap donkerder maken in de nacht en warmer in de dag.
