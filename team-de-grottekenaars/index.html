@@ -1010,19 +1010,40 @@
       ctx.restore();
     }
 
-    // Een dood beest ligt op zijn rug met de poten omhoog, midden in zijn bereik
+    // Waar een beest doodging staat een grafsteen met R.I.P. erop, midden in zijn bereik
     function tekenDoodBeest(ob) {
       const x = (ob.x + ob.bereik / 2) * levelBreedte();
       const y = bodemHoogte();
-      ctx.fillStyle = '#555';
-      ctx.beginPath(); ctx.ellipse(x, y - 15, 30, 14, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#555'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+
+      // Grafheuveltje
+      ctx.fillStyle = '#4a3a2a';
+      ctx.beginPath(); ctx.ellipse(x, y, 45, 10, 0, Math.PI, 0); ctx.fill();
+
+      // De steen: rechthoek met een ronde bovenkant
+      ctx.fillStyle = '#8a8a8a';
       ctx.beginPath();
-      for (const px of [-15, -5, 5, 15]) { ctx.moveTo(x + px, y - 25); ctx.lineTo(x + px, y - 50); }
+      ctx.moveTo(x - 25, y);
+      ctx.lineTo(x - 25, y - 45);
+      ctx.arc(x, y - 45, 25, Math.PI, 0);
+      ctx.lineTo(x + 25, y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 3;
       ctx.stroke();
-      ctx.strokeStyle = '#111'; ctx.lineWidth = 2; // kruisjes als ogen
+
+      // R.I.P.
+      ctx.fillStyle = '#222';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('R.I.P.', x, y - 35);
+
+      // Een klein kruisje eronder
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(x + 18, y - 22); ctx.lineTo(x + 26, y - 14); ctx.moveTo(x + 26, y - 22); ctx.lineTo(x + 18, y - 14);
+      ctx.moveTo(x, y - 28); ctx.lineTo(x, y - 8);
+      ctx.moveTo(x - 7, y - 22); ctx.lineTo(x + 7, y - 22);
       ctx.stroke();
     }
 
