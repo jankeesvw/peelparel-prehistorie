@@ -40,11 +40,13 @@
     const maxLevens = 3;
     const slagDuur = 0.3; // seconden
 
-    // Het cheatscherm (X): kies een tafel, los 10 sommen goed op en kies dan zelf een level.
+    // Het cheatscherm (X): los 10 sommen uit willekeurige tafels goed op en kies dan zelf een level.
+    // De lastige tafels (6, 7, 8, 9 en 12) staan vaker in de lijst en komen dus vaker voor.
+    const cheatTafels = [2, 3, 4, 5, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9, 11, 12, 12, 12];
     const cheat = {
       open: false,
-      stap: 'tafel',   // 'tafel' -> 'sommen' -> 'level'
-      tafel: 1,
+      stap: 'sommen',  // 'sommen' -> 'level'
+      tafel: 7,
       a: 1,            // de som is a x tafel
       antwoord: '',    // wat je tot nu toe getypt hebt
       goed: 0,         // aantal goede sommen tot nu toe
@@ -53,25 +55,18 @@
     };
 
     function nieuweSom() {
-      let a = cheat.a;
-      while (a === cheat.a) a = 1 + Math.floor(Math.random() * 10);
-      cheat.a = a;
+      const vorige = cheat.a * cheat.tafel;
+      do {
+        cheat.tafel = cheatTafels[Math.floor(Math.random() * cheatTafels.length)];
+        cheat.a = 2 + Math.floor(Math.random() * 9); // 2 t/m 10, want x1 is te makkelijk
+      } while (cheat.a * cheat.tafel === vorige);
       cheat.antwoord = '';
     }
 
     function cheatToets(key) {
       if (key === 'x' || key === 'Escape') { cheat.open = false; return; }
 
-      if (cheat.stap === 'tafel') {
-        if (key === 'ArrowLeft' || key === 'ArrowDown') cheat.tafel = Math.max(1, cheat.tafel - 1);
-        if (key === 'ArrowRight' || key === 'ArrowUp') cheat.tafel = Math.min(12, cheat.tafel + 1);
-        if (key === 'Enter') {
-          cheat.stap = 'sommen';
-          cheat.goed = 0;
-          cheat.feedback = '';
-          nieuweSom();
-        }
-      } else if (cheat.stap === 'sommen') {
+      if (cheat.stap === 'sommen') {
         if (key >= '0' && key <= '9' && cheat.antwoord.length < 3) cheat.antwoord += key;
         if (key === 'Backspace') cheat.antwoord = cheat.antwoord.slice(0, -1);
         if (key === 'Enter' && cheat.antwoord !== '') {
@@ -104,7 +99,10 @@
 
     function openCheat() {
       cheat.open = true;
-      cheat.stap = 'tafel';
+      cheat.stap = 'sommen';
+      cheat.goed = 0;
+      cheat.feedback = '';
+      nieuweSom();
     }
 
     // Muntjes en de kledingkast. Wat je koopt en draagt wordt in de browser bewaard.
@@ -2304,22 +2302,10 @@
       ctx.font = 'bold 34px monospace';
       ctx.fillText('CHEAT', b / 2, py + 50);
 
-      if (cheat.stap === 'tafel') {
-        ctx.fillStyle = '#fff';
-        ctx.font = '22px sans-serif';
-        ctx.fillText('Welke tafel wil je oefenen?', b / 2, py + 120);
-        ctx.font = 'bold 90px sans-serif';
-        ctx.fillStyle = '#ffe22d';
-        ctx.fillText('< ' + cheat.tafel + ' >', b / 2, py + 230);
-        ctx.fillStyle = '#ddd';
-        ctx.font = '18px sans-serif';
-        ctx.fillText('pijltjes = kiezen (1 t/m 12)   Enter = start   X = sluiten', b / 2, py + 360);
-      }
-
       if (cheat.stap === 'sommen') {
         ctx.fillStyle = '#fff';
         ctx.font = '22px sans-serif';
-        ctx.fillText('Tafel van ' + cheat.tafel + '   -   ' + cheat.goed + ' van de 10 goed', b / 2, py + 110);
+        ctx.fillText('Los 10 sommen goed op   -   ' + cheat.goed + ' van de 10 goed', b / 2, py + 110);
         ctx.font = 'bold 70px sans-serif';
         ctx.fillStyle = '#ffe22d';
         ctx.fillText(cheat.a + ' x ' + cheat.tafel + ' = ' + cheat.antwoord + '_', b / 2, py + 220);
