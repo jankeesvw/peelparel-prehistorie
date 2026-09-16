@@ -23,6 +23,13 @@
     pasGrootteAan();
     window.addEventListener('resize', pasGrootteAan);
 
+    // De oermens: positie en aantal levens
+    const mens = {
+      x: 200,
+      y: 0, // wordt in draw op de bodem gezet
+      levens: 3,
+    };
+
     function update(dt) {
       // spel-logica
     }
@@ -79,9 +86,88 @@
       }
     }
 
+    function tekenMens() {
+      const x = mens.x;
+      const voeten = canvas.height * 0.8; // de mens staat op de rotsbodem
+
+      // Benen
+      ctx.strokeStyle = '#c68642';
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x, voeten - 60);
+      ctx.lineTo(x - 15, voeten);
+      ctx.moveTo(x, voeten - 60);
+      ctx.lineTo(x + 15, voeten);
+      ctx.stroke();
+
+      // Lijf met dierenvel
+      ctx.fillStyle = '#8b5a2b';
+      ctx.beginPath();
+      ctx.moveTo(x - 22, voeten - 60);
+      ctx.lineTo(x + 22, voeten - 60);
+      ctx.lineTo(x + 16, voeten - 120);
+      ctx.lineTo(x - 16, voeten - 120);
+      ctx.closePath();
+      ctx.fill();
+
+      // Armen
+      ctx.beginPath();
+      ctx.moveTo(x - 14, voeten - 110);
+      ctx.lineTo(x - 35, voeten - 70);
+      ctx.moveTo(x + 14, voeten - 110);
+      ctx.lineTo(x + 35, voeten - 70);
+      ctx.stroke();
+
+      // Knots in de rechterhand
+      ctx.strokeStyle = '#5c3a1a';
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.moveTo(x + 35, voeten - 70);
+      ctx.lineTo(x + 60, voeten - 130);
+      ctx.stroke();
+
+      // Hoofd
+      ctx.fillStyle = '#c68642';
+      ctx.beginPath();
+      ctx.arc(x, voeten - 145, 25, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Wilde haren
+      ctx.fillStyle = '#3b2412';
+      ctx.beginPath();
+      ctx.arc(x, voeten - 155, 27, Math.PI, Math.PI * 2);
+      ctx.fill();
+
+      // Ogen
+      ctx.fillStyle = '#111';
+      ctx.beginPath();
+      ctx.arc(x - 8, voeten - 148, 3, 0, Math.PI * 2);
+      ctx.arc(x + 8, voeten - 148, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function tekenHart(x, y, grootte) {
+      ctx.beginPath();
+      ctx.moveTo(x, y + grootte);
+      ctx.bezierCurveTo(x - grootte * 1.5, y - grootte * 0.2, x - grootte * 0.6, y - grootte * 1.2, x, y - grootte * 0.3);
+      ctx.bezierCurveTo(x + grootte * 0.6, y - grootte * 1.2, x + grootte * 1.5, y - grootte * 0.2, x, y + grootte);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function tekenLevens() {
+      for (let i = 0; i < mens.levens; i++) {
+        ctx.fillStyle = '#e63946';
+        tekenHart(40 + i * 50, 40, 18);
+      }
+    }
+
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       tekenGrot();
+      tekenMens();
+      tekenLevens();
     }
 
     let vorige = performance.now();
