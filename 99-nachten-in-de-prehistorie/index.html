@@ -461,7 +461,7 @@
       // Uitleg van de besturing
       ctx.font = '15px sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fillText('Pijltjes = lopen (ook naar voren en achteren), spatie = slaan / vissen, E = handelen', 20, py + 62);
+      ctx.fillText('Pijltjes = lopen, spatie = slaan / vissen, E = handelen, in de grot ben je veilig', 20, py + 62);
 
       if (alleMissiesKlaar()) {
         ctx.textAlign = 'center';
@@ -1318,9 +1318,16 @@
         const n = roofdieren[i];
         n.stap += dt * (n.snelheid / 15);
         if (n.schud > 0) n.schud -= dt;
+        // Zit de speler veilig in de grot? Dan blijft het roofdier op afstand heen en weer lopen.
+        const wachtAfstand = 220;
+        const spelerVeilig = inGrot();
         if (n.doorrennen > 0) {
           n.doorrennen -= dt;
           if (n.doorrennen <= 0) n.richting = Math.sign(speler.x - n.x) || 1;
+        } else if (spelerVeilig && Math.abs(n.x - speler.x) < wachtAfstand) {
+          // Te dichtbij de grot: omkeren en even doorrennen
+          n.richting = Math.sign(n.x - speler.x) || 1;
+          n.doorrennen = 0.8;
         } else {
           // Achter de speler aan, ook in de diepte
           n.richting = Math.sign(speler.x - n.x) || n.richting;
@@ -1332,8 +1339,8 @@
         else n.x = nieuwX;
         n.d = Math.max(0.08, Math.min(0.97, n.d));
 
-        // Raakt hij de speler?
-        if (n.doorrennen <= 0 && Math.abs(n.x - speler.x) < 50 && Math.abs(diepteNaarY(n.d) - spelerY()) < 30) {
+        // Raakt hij de speler? (niet als die veilig in de grot staat)
+        if (!spelerVeilig && n.doorrennen <= 0 && Math.abs(n.x - speler.x) < 50 && Math.abs(diepteNaarY(n.d) - spelerY()) < 30) {
           doodDoor = 'een ' + n.soort.naam;
           raakSpeler(n.x);
           n.doorrennen = 1.5;
@@ -2048,6 +2055,23 @@
 
     const grot = { x: 400 }; // de grot staat achterin, tegen de horizon
 
+    // In de grotingang ben je veilig: roofdieren durven niet naar binnen.
+    function inGrot() {
+      return Math.abs(speler.x - grot.x) < 60 && speler.d < 0.22;
+    }
+
+    function tekenGrotHint() {
+      if (!inGrot()) return;
+      const x = schermX(grot.x), y = grondTop() - 135;
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(x - 90, y - 22, 180, 30);
+      ctx.fillStyle = '#8fd18f';
+      ctx.fillText('Veilig in de grot', x, y);
+      ctx.textAlign = 'left';
+    }
+
     function tekenGrot() {
       const x = schermX(grot.x), y = grondTop();
       if (x < -150 || x > canvas.width + 150) return;
@@ -2096,8 +2120,9 @@
     // ---------- Poppetje ----------
 
     function tekenPoppetje(x, y, richting) {
-      // Net geraakt? Dan knippert het poppetje even.
+      // Net geraakt? Dan knippert het poppetje even. In de grot sta je in de schaduw.
       if (onkwetsbaar > 0 && Math.floor(tijd * 10) % 2 === 0) ctx.globalAlpha = 0.4;
+      else if (inGrot()) ctx.globalAlpha = 0.7;
       // Schaduw op de grond
       ctx.fillStyle = 'rgba(0,0,0,0.35)';
       ctx.beginPath();
@@ -2332,6 +2357,7 @@
 
       tekenDagNachtLicht();
       tekenHandelaarHint();
+      tekenGrotHint();
       tekenMeldingen();
       tekenMissies();
       tekenDagTeller();
