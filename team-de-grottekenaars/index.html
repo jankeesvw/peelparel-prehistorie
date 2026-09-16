@@ -241,7 +241,7 @@
           { id: 'discobord', naam: 'Discobord', prijs: 45 },
         ],
         'make-up': [
-          { id: 'makeup', naam: 'Make-up', prijs: 10 }, // rood haar en een snor
+          { id: 'makeup', naam: 'Make-up', prijs: 10 }, // rood haar en een gewone snor
         ],
         portaal: [
           { id: 'portaal', naam: 'Bonusportaal', prijs: 100, eenmalig: true }, // brengt je naar het bonuslevel
@@ -2163,9 +2163,9 @@
       ctx.arc(x, voeten - 155, 27, Math.PI, Math.PI * 2);
       ctx.fill();
 
-      // Snor bij make-up: twee krullen onder de neus
+      // Snor bij make-up: twee donkerbruine krullen onder de neus
       if (makeup) {
-        ctx.strokeStyle = '#d62828';
+        ctx.strokeStyle = '#3b2412';
         ctx.lineWidth = 4;
         ctx.lineCap = 'round';
         ctx.beginPath();
