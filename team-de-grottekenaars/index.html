@@ -44,7 +44,7 @@
     let munten = 0;
     let kastOpen = false;
     const kast = {
-      categorieen: ['hoedjes', 'zonnebrillen', 'shirtjes', 'kleren', 'skateboards'],
+      categorieen: ['hoedjes', 'zonnebrillen', 'shirtjes', 'kleren', 'skateboards', 'portaal'],
       spullen: {
         hoedjes: [
           { id: 'feesthoedje', naam: 'Feesthoedje', prijs: 5 },
@@ -72,6 +72,9 @@
           { id: 'steenbord', naam: 'Steenbord', prijs: 15 },
           { id: 'vuurbord', naam: 'Vuurbord', prijs: 30 },
           { id: 'discobord', naam: 'Discobord', prijs: 45 },
+        ],
+        portaal: [
+          { id: 'portaal', naam: 'Bonusportaal', prijs: 100, eenmalig: true }, // brengt je naar het bonuslevel
         ],
       },
       bezit: {},     // { feesthoedje: true, ... }
@@ -112,6 +115,15 @@
     function kiesSpul() {
       const cat = kast.categorieen[kast.rij];
       const spul = gekozenSpul();
+      if (spul.eenmalig) {
+        // Het portaal koop je elke keer opnieuw
+        if (munten >= spul.prijs && !inBonus) {
+          munten -= spul.prijs;
+          bewaarSpullen();
+          gaNaarBonus();
+        }
+        return;
+      }
       if (!kast.bezit[spul.id]) {
         if (munten >= spul.prijs) {
           munten -= spul.prijs;
@@ -805,8 +817,41 @@
       },
     ];
 
+    // Het bonuslevel: 300 muntjes, geen gevaren. Je komt er via het portaal in de kast.
+    let inBonus = false;
+    const bonusLevel = {
+      naam: 'Bonuslevel: pak alle 300 muntjes!',
+      schermen: 5,
+      decoratie: 'bonus',
+      lucht: ['#ffb300', '#ffe680'], bodem: '#c89a2a', platform: '#ffd700', rand: '#fff5b0', gatKleur: '#000',
+      gaten: [],
+      obstakels: [],
+      platforms: [],
+      munten: [],
+    };
+    // Een rij platforms over de hele lengte, en de vlag helemaal rechts
+    for (let x = 0.10; x < 0.90; x += 0.05) bonusLevel.platforms.push({ x, y: 0.58, breedte: 0.025 });
+    bonusLevel.platforms.push({ x: 0.93, y: 0.58, breedte: 0.03 });
+
+    function maakBonusMunten() {
+      bonusLevel.munten = [];
+      // 4 rijen van 75 muntjes: twee vanaf de grond te pakken, twee vanaf de platforms
+      for (const y of [0.72, 0.63, 0.47, 0.38]) {
+        for (let k = 0; k < 75; k++) {
+          bonusLevel.munten.push({ x: 0.10 + k * 0.01, y, gepakt: false });
+        }
+      }
+    }
+
+    function gaNaarBonus() {
+      inBonus = true;
+      maakBonusMunten();
+      kastOpen = false;
+      startOpnieuw();
+    }
+
     function level() {
-      return levels[huidigLevel];
+      return inBonus ? bonusLevel : levels[huidigLevel];
     }
 
     function bodemHoogte() {
@@ -937,8 +982,11 @@
         }
       }
 
-      // Bij de vlag: volgend level
-      if (staatOp === vlagPlatform()) {
+      // Bij de vlag: volgend level (of terug uit het bonuslevel)
+      if (staatOp === vlagPlatform() && inBonus) {
+        inBonus = false;
+        startOpnieuw();
+      } else if (staatOp === vlagPlatform()) {
         huidigLevel += 1;
         if (huidigLevel >= levels.length) {
           huidigLevel = levels.length - 1;
@@ -1351,6 +1399,23 @@
         ctx.font = 'bold 80px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('ALL-TIME DISCO!', b / 2, h * 0.35);
+      }
+
+      if (soort === 'bonus') {
+        const tijd = performance.now() / 1000;
+        ctx.fillStyle = '#fff';
+        for (let i = 0; i < 80; i++) { // fonkelende sterretjes
+          const fonkel = 0.5 + 0.5 * Math.sin(tijd * 5 + i);
+          const x = (i * 157) % b, y = (i * 89) % (h * 0.75);
+          ctx.globalAlpha = fonkel;
+          ctx.beginPath();
+          ctx.moveTo(x, y - 8); ctx.lineTo(x + 3, y - 3); ctx.lineTo(x + 8, y); ctx.lineTo(x + 3, y + 3);
+          ctx.lineTo(x, y + 8); ctx.lineTo(x - 3, y + 3); ctx.lineTo(x - 8, y); ctx.lineTo(x - 3, y - 3);
+          ctx.closePath(); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#ffd700'; // grote gouden zon
+        ctx.beginPath(); ctx.arc(b * 0.5, h * 0.15, 90, 0, Math.PI * 2); ctx.fill();
       }
 
       if (soort === 'tijgerhol') {
@@ -2081,11 +2146,11 @@
       ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
       ctx.fillRect(0, 0, b, h);
       const px = Math.max(20, b / 2 - 420);
-      const py = Math.max(20, h / 2 - 260);
+      const py = Math.max(20, h / 2 - 300);
       const pb = Math.min(840, b - 40);
       ctx.fillStyle = '#5a3a1a';
-      ctx.fillRect(px, py, pb, 520);
-      ctx.strokeStyle = '#8b5a2b'; ctx.lineWidth = 6; ctx.strokeRect(px, py, pb, 520);
+      ctx.fillRect(px, py, pb, 600);
+      ctx.strokeStyle = '#8b5a2b'; ctx.lineWidth = 6; ctx.strokeRect(px, py, pb, 600);
 
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 32px sans-serif';
@@ -2112,15 +2177,36 @@
           ctx.font = 'bold 15px sans-serif';
           ctx.fillText(spul.naam, x + 10, y + 16);
           ctx.font = '14px sans-serif';
-          ctx.fillStyle = aan ? '#2dff8a' : kast.bezit[spul.id] ? '#aaa' : munten >= spul.prijs ? '#ffd700' : '#ff7a7a';
-          ctx.fillText(aan ? 'aan' : kast.bezit[spul.id] ? 'gekocht' : spul.prijs + ' muntjes', x + 10, y + 40);
+          if (spul.eenmalig) {
+            ctx.fillStyle = munten >= spul.prijs ? '#ffd700' : '#ff7a7a';
+            ctx.fillText(spul.prijs + ' muntjes', x + 10, y + 40);
+            tekenPortaal(x + 120, y + 24, 18); // een klein draaiend portaal ernaast
+            ctx.fillStyle = '#ddd';
+            ctx.font = '14px sans-serif';
+            ctx.fillText('naar een bonuslevel met 300 muntjes', x + 160, y + 30);
+          } else {
+            ctx.fillStyle = aan ? '#2dff8a' : kast.bezit[spul.id] ? '#aaa' : munten >= spul.prijs ? '#ffd700' : '#ff7a7a';
+            ctx.fillText(aan ? 'aan' : kast.bezit[spul.id] ? 'gekocht' : spul.prijs + ' muntjes', x + 10, y + 40);
+          }
         });
       });
 
       ctx.fillStyle = '#ddd';
       ctx.font = '16px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('pijltjes = kiezen   Enter = kopen / aantrekken / uittrekken   C = sluiten', px + pb / 2, py + 500);
+      ctx.fillText('pijltjes = kiezen   Enter = kopen / aantrekken / uittrekken   C = sluiten', px + pb / 2, py + 580);
+    }
+
+    // Een draaiende paarse werveling
+    function tekenPortaal(x, y, r) {
+      const tijd = performance.now() / 1000;
+      for (let i = 3; i > 0; i--) {
+        ctx.strokeStyle = i % 2 === 0 ? '#b060ff' : '#ff60e0';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(x, y, r * i / 3, tijd * 3 + i, tijd * 3 + i + Math.PI * 1.5);
+        ctx.stroke();
+      }
     }
 
     function tekenHart(x, y, grootte) {
@@ -2223,6 +2309,7 @@
         gameOver = false;
         gewonnen = false;
         huidigLevel = 0;
+        inBonus = false;
         mens.levens = maxLevens;
         beestenTerug();
         startOpnieuw();
