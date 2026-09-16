@@ -2446,7 +2446,17 @@
       ctx.font = '20px sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.8)';
       ctx.fillText('Pijltje links of rechts om te kiezen, Enter om te beginnen', b / 2, h * 0.9);
+      tekenMakers();
       ctx.textAlign = 'left';
+    }
+
+    // De makers van het spel, klein onderaan het keuzescherm.
+    const makers = ['Thomas', 'Aysa', 'Morris', 'Stef', 'Suus'];
+    function tekenMakers() {
+      ctx.textAlign = 'center';
+      ctx.font = '14px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillText('Gemaakt door ' + makers.join(', '), canvas.width / 2, canvas.height - 16);
     }
 
     // Het landschap donkerder maken in de nacht en warmer in de dag.
