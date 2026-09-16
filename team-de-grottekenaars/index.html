@@ -28,7 +28,16 @@
       x: 200,
       y: 0, // wordt in draw op de bodem gezet
       levens: 3,
+      snelheid: 300, // pixels per seconde
+      richting: 1,   // 1 = naar rechts kijken, -1 = naar links
+      loopt: false,
+      stap: 0,       // telt op tijdens het lopen, voor de beenbeweging
     };
+
+    // Welke toetsen zijn ingedrukt?
+    const toetsen = {};
+    window.addEventListener('keydown', (e) => { toetsen[e.key] = true; });
+    window.addEventListener('keyup', (e) => { toetsen[e.key] = false; });
 
     // Het parcours: rotsplatforms op verschillende hoogtes.
     // x en breedte als deel van de schermbreedte, y als deel van de schermhoogte.
@@ -42,7 +51,21 @@
     ];
 
     function update(dt) {
-      // spel-logica
+      mens.loopt = false;
+      if (toetsen['ArrowLeft'] || toetsen['a']) {
+        mens.x -= mens.snelheid * dt;
+        mens.richting = -1;
+        mens.loopt = true;
+      }
+      if (toetsen['ArrowRight'] || toetsen['d']) {
+        mens.x += mens.snelheid * dt;
+        mens.richting = 1;
+        mens.loopt = true;
+      }
+      if (mens.loopt) mens.stap += dt * 12;
+
+      // Niet van het scherm af lopen
+      mens.x = Math.max(40, Math.min(canvas.width - 40, mens.x));
     }
 
     function tekenGrot() {
@@ -252,18 +275,24 @@
     }
 
     function tekenMens() {
-      const x = mens.x;
       const voeten = canvas.height * 0.8; // de mens staat op de rotsbodem
 
-      // Benen
+      // Alles tekenen we rond x = 0 en spiegelen we als de mens naar links kijkt
+      ctx.save();
+      ctx.translate(mens.x, 0);
+      ctx.scale(mens.richting, 1);
+      const x = 0;
+
+      // Benen: zwaaien heen en weer tijdens het lopen
+      const zwaai = mens.loopt ? Math.sin(mens.stap) * 15 : 0;
       ctx.strokeStyle = '#c68642';
       ctx.lineWidth = 8;
       ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(x, voeten - 60);
-      ctx.lineTo(x - 15, voeten);
+      ctx.lineTo(x - 15 + zwaai, voeten);
       ctx.moveTo(x, voeten - 60);
-      ctx.lineTo(x + 15, voeten);
+      ctx.lineTo(x + 15 - zwaai, voeten);
       ctx.stroke();
 
       // Lijf met dierenvel
@@ -310,6 +339,8 @@
       ctx.arc(x - 8, voeten - 148, 3, 0, Math.PI * 2);
       ctx.arc(x + 8, voeten - 148, 3, 0, Math.PI * 2);
       ctx.fill();
+
+      ctx.restore();
     }
 
     function tekenHart(x, y, grootte) {
