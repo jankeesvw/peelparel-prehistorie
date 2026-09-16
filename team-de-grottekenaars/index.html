@@ -27,9 +27,61 @@
       // spel-logica
     }
 
+    function tekenGrot() {
+      const b = canvas.width;
+      const h = canvas.height;
+
+      // Donkere achtergrond: diep in de grot
+      ctx.fillStyle = '#1a1210';
+      ctx.fillRect(0, 0, b, h);
+
+      // Zachte gloed in het midden, alsof er licht van buiten naar binnen valt
+      const gloed = ctx.createRadialGradient(b / 2, h / 2, 50, b / 2, h / 2, b * 0.6);
+      gloed.addColorStop(0, '#5a3d2b');
+      gloed.addColorStop(1, '#1a1210');
+      ctx.fillStyle = gloed;
+      ctx.fillRect(0, 0, b, h);
+
+      // Rotsbodem
+      ctx.fillStyle = '#3d2b1f';
+      ctx.beginPath();
+      ctx.moveTo(0, h);
+      ctx.lineTo(0, h * 0.8);
+      for (let x = 0; x <= b; x += 80) {
+        ctx.lineTo(x + 40, h * 0.8 + 15);
+        ctx.lineTo(x + 80, h * 0.8);
+      }
+      ctx.lineTo(b, h);
+      ctx.closePath();
+      ctx.fill();
+
+      // Stalactieten aan het plafond
+      ctx.fillStyle = '#2b1d15';
+      for (let x = 30; x < b; x += 90) {
+        const lengte = 60 + (x * 7) % 80;
+        ctx.beginPath();
+        ctx.moveTo(x - 25, 0);
+        ctx.lineTo(x + 25, 0);
+        ctx.lineTo(x, lengte);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Stalagmieten op de bodem
+      for (let x = 70; x < b; x += 130) {
+        const hoogte = 40 + (x * 3) % 50;
+        ctx.beginPath();
+        ctx.moveTo(x - 20, h * 0.8);
+        ctx.lineTo(x + 20, h * 0.8);
+        ctx.lineTo(x, h * 0.8 - hoogte);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // hier komt het tekenen
+      tekenGrot();
     }
 
     let vorige = performance.now();
