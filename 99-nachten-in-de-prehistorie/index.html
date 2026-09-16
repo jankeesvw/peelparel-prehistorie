@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>99-nachten-in-de-prehistorie</title>
   <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; color: #111; font-family: sans-serif; }
-    canvas { display: block; background: #fff; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1030; color: #eee; font-family: sans-serif; }
+    canvas { display: block; background: #0b1030; }
   </style>
 </head>
 <body>
@@ -27,9 +27,71 @@
       // spel-logica
     }
 
+    // Vaste sterren, zodat ze niet elke frame verspringen.
+    const sterren = [];
+    for (let i = 0; i < 120; i++) {
+      sterren.push({ x: Math.random(), y: Math.random() * 0.6, grootte: 1 + Math.random() * 2 });
+    }
+
+    function tekenLucht() {
+      const b = canvas.width, h = canvas.height;
+      const lucht = ctx.createLinearGradient(0, 0, 0, h);
+      lucht.addColorStop(0, '#05071a');
+      lucht.addColorStop(1, '#2b2a5e');
+      ctx.fillStyle = lucht;
+      ctx.fillRect(0, 0, b, h);
+
+      ctx.fillStyle = '#fff';
+      for (const s of sterren) {
+        ctx.fillRect(s.x * b, s.y * h, s.grootte, s.grootte);
+      }
+
+      // Maan
+      ctx.fillStyle = '#f4f1c1';
+      ctx.beginPath();
+      ctx.arc(b * 0.8, h * 0.15, 40, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function tekenHeuvels() {
+      const b = canvas.width, h = canvas.height;
+      ctx.fillStyle = '#1c2e1c';
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.7);
+      ctx.quadraticCurveTo(b * 0.25, h * 0.5, b * 0.5, h * 0.68);
+      ctx.quadraticCurveTo(b * 0.75, h * 0.45, b, h * 0.65);
+      ctx.lineTo(b, h);
+      ctx.lineTo(0, h);
+      ctx.fill();
+    }
+
+    function tekenGrond() {
+      const b = canvas.width, h = canvas.height;
+      ctx.fillStyle = '#3a5a2a';
+      ctx.fillRect(0, h * 0.8, b, h * 0.2);
+    }
+
+    function tekenGrot() {
+      const b = canvas.width, h = canvas.height;
+      const x = b * 0.15, y = h * 0.8;
+      // Rots
+      ctx.fillStyle = '#5a5045';
+      ctx.beginPath();
+      ctx.arc(x, y, 110, Math.PI, 0);
+      ctx.fill();
+      // Donkere ingang
+      ctx.fillStyle = '#0a0806';
+      ctx.beginPath();
+      ctx.arc(x, y, 55, Math.PI, 0);
+      ctx.fill();
+    }
+
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // hier komt het tekenen
+      tekenLucht();
+      tekenHeuvels();
+      tekenGrond();
+      tekenGrot();
     }
 
     let vorige = performance.now();
