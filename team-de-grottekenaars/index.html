@@ -111,7 +111,7 @@
     let munten = 0;
     let kastOpen = false;
     const kast = {
-      categorieen: ['hoedjes', 'zonnebrillen', 'shirtjes', 'kleren', 'skateboards', 'portaal'],
+      categorieen: ['hoedjes', 'zonnebrillen', 'shirtjes', 'kleren', 'skateboards', 'make-up', 'portaal'],
       spullen: {
         hoedjes: [
           { id: 'feesthoedje', naam: 'Feesthoedje', prijs: 5 },
@@ -139,6 +139,9 @@
           { id: 'steenbord', naam: 'Steenbord', prijs: 15 },
           { id: 'vuurbord', naam: 'Vuurbord', prijs: 30 },
           { id: 'discobord', naam: 'Discobord', prijs: 45 },
+        ],
+        'make-up': [
+          { id: 'makeup', naam: 'Make-up', prijs: 10 }, // rood haar en een snor
         ],
         portaal: [
           { id: 'portaal', naam: 'Bonusportaal', prijs: 100, eenmalig: true }, // brengt je naar het bonuslevel
@@ -2042,11 +2045,25 @@
       ctx.arc(x, voeten - 145, 25, 0, Math.PI * 2);
       ctx.fill();
 
-      // Wilde haren
-      ctx.fillStyle = '#3b2412';
+      // Wilde haren (rood met make-up)
+      const makeup = draagt('make-up') === 'makeup';
+      ctx.fillStyle = makeup ? '#d62828' : '#3b2412';
       ctx.beginPath();
       ctx.arc(x, voeten - 155, 27, Math.PI, Math.PI * 2);
       ctx.fill();
+
+      // Snor bij make-up: twee krullen onder de neus
+      if (makeup) {
+        ctx.strokeStyle = '#d62828';
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x, voeten - 135);
+        ctx.quadraticCurveTo(x - 10, voeten - 142, x - 18, voeten - 132);
+        ctx.moveTo(x, voeten - 135);
+        ctx.quadraticCurveTo(x + 10, voeten - 142, x + 18, voeten - 132);
+        ctx.stroke();
+      }
 
       // Ogen
       ctx.fillStyle = '#111';
@@ -2232,7 +2249,7 @@
       ctx.textAlign = 'right';
       ctx.fillText(munten + ' muntjes', px + pb - 24, py + 44);
 
-      const rijHoogte = 80;
+      const rijHoogte = 68;
       kast.categorieen.forEach((cat, r) => {
         const y = py + 80 + r * rijHoogte;
         ctx.textAlign = 'left';
