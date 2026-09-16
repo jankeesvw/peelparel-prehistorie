@@ -51,9 +51,11 @@
     // De 10 levels. Elk level heeft een thema uit de prehistorie, eigen kleuren,
     // een parcours van platforms en gaten in de bodem.
     // x, y en breedte zijn een deel van het scherm (0 = links/boven, 1 = rechts/onder).
+    // Levels met lava: true hebben borrelende lava in de gaten, die is meteen dodelijk.
     const levels = [
       {
         naam: 'Level 1: De grot',
+        lava: true,
         decoratie: 'grot',
         lucht: ['#1a1210', '#5a3d2b'], bodem: '#3d2b1f', platform: '#4a3527', rand: '#6b4f3a', gatKleur: '#1a1210',
         gaten: [{ x: 0.48, breedte: 0.18 }],
@@ -87,6 +89,7 @@
       },
       {
         naam: 'Level 4: Het vulkaanland',
+        lava: true,
         decoratie: 'vulkaan',
         lucht: ['#2b0a0a', '#8a2a0a'], bodem: '#3a2a2a', platform: '#4d3b3b', rand: '#7a5a5a', gatKleur: '#ff6a00',
         gaten: [{ x: 0.18, breedte: 0.12 }, { x: 0.42, breedte: 0.12 }, { x: 0.68, breedte: 0.14 }],
@@ -109,6 +112,7 @@
       },
       {
         naam: 'Level 6: Het oerwoud',
+        lava: true,
         decoratie: 'oerwoud',
         lucht: ['#0f2a14', '#3f7a3a'], bodem: '#3b5a22', platform: '#6b4a2a', rand: '#8fbf4a', gatKleur: '#0a1a0a',
         gaten: [{ x: 0.15, breedte: 0.10 }, { x: 0.40, breedte: 0.14 }, { x: 0.70, breedte: 0.12 }],
@@ -132,6 +136,7 @@
       },
       {
         naam: 'Level 8: Het kampvuurdorp',
+        lava: true,
         decoratie: 'kampvuur',
         lucht: ['#050a1f', '#1f2a5a'], bodem: '#2f3a2a', platform: '#5a4a3a', rand: '#8a7a5a', gatKleur: '#000000',
         gaten: [{ x: 0.20, breedte: 0.12 }, { x: 0.45, breedte: 0.12 }, { x: 0.72, breedte: 0.12 }],
@@ -155,6 +160,7 @@
       },
       {
         naam: 'Level 10: Het sabeltandtijgerhol',
+        lava: true,
         decoratie: 'tijgerhol',
         lucht: ['#0a0210', '#3a1a4a'], bodem: '#2a1a2a', platform: '#4a2a4a', rand: '#7a4a7a', gatKleur: '#000000',
         gaten: [{ x: 0.14, breedte: 0.12 }, { x: 0.34, breedte: 0.12 }, { x: 0.54, breedte: 0.14 }, { x: 0.76, breedte: 0.12 }],
@@ -255,8 +261,9 @@
         startOpnieuw();
       }
 
-      // In een gat gevallen: een leven kwijt
-      if (mens.y > canvas.height + 50) {
+      // In een gat gevallen, of de lava aangeraakt: een leven kwijt
+      const inLava = level().lava && bovenGat() && mens.y > bodemHoogte() + 10;
+      if (mens.y > canvas.height + 50 || inLava) {
         mens.levens -= 1;
         if (mens.levens <= 0) {
           gameOver = true;
@@ -543,15 +550,60 @@
       }
     }
 
+    // Borrelende lava in een gat, van x tot x + breedte
+    function tekenLava(x, breedte) {
+      const h = canvas.height;
+      const tijd = performance.now() / 1000;
+      const boven = h * 0.8 + 10;
+
+      // Donkerrode diepte
+      ctx.fillStyle = '#7a1a00';
+      ctx.fillRect(x, boven, breedte, h - boven);
+
+      // Golvend oranje oppervlak
+      ctx.fillStyle = '#ff6a00';
+      ctx.beginPath();
+      ctx.moveTo(x, h);
+      for (let px = x; px <= x + breedte; px += 8) {
+        ctx.lineTo(px, boven + Math.sin(px / 25 + tijd * 4) * 5);
+      }
+      ctx.lineTo(x + breedte, h);
+      ctx.closePath();
+      ctx.fill();
+
+      // Gele gloed bovenop
+      ctx.fillStyle = '#ffd23f';
+      for (let px = x + 10; px < x + breedte - 10; px += 30) {
+        ctx.beginPath();
+        ctx.arc(px, boven + Math.sin(px / 25 + tijd * 4) * 5 + 8, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Bellen die omhoog komen en knappen
+      ctx.fillStyle = '#ffb347';
+      for (let i = 0; i < 5; i++) {
+        const fase = (tijd * 0.8 + i * 0.37) % 1;
+        const bx = x + 15 + ((i * 53) % Math.max(1, breedte - 30));
+        const by = boven + 40 - fase * 40;
+        ctx.beginPath();
+        ctx.arc(bx, by, 4 + fase * 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
     function tekenParcours() {
       const b = canvas.width;
       const h = canvas.height;
       const lv = level();
 
       // Gaten in de bodem: lava, water of gewoon diepte
-      ctx.fillStyle = lv.gatKleur;
       for (const g of lv.gaten) {
-        ctx.fillRect(g.x * b, h * 0.8 - 20, g.breedte * b, h * 0.2 + 20);
+        if (lv.lava) {
+          tekenLava(g.x * b, g.breedte * b);
+        } else {
+          ctx.fillStyle = lv.gatKleur;
+          ctx.fillRect(g.x * b, h * 0.8 - 20, g.breedte * b, h * 0.2 + 20);
+        }
       }
 
       // Platforms
