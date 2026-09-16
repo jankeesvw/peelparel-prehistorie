@@ -194,7 +194,7 @@
       if (toetsen['ArrowUp']) dd -= diepteSnelheid * tempo * dt;   // naar achteren, richting de horizon
       if (toetsen['ArrowDown']) dd += diepteSnelheid * tempo * dt; // naar voren
       speler.loopt = dx !== 0 || dd !== 0;
-      if (speler.loopt) speler.stap += dt * 10;
+      if (speler.loopt) { speler.stap += dt * 10; vist = 0; }
 
       // Net geraakt? Dan word je even weggeduwd.
       if (onkwetsbaar > 1.6 && speler.duw) dx += speler.duw * 500 * dt;
@@ -213,6 +213,7 @@
       updateCamera();
 
       updateVissen(dt);
+      updateVisserij(dt);
       updateDieren(dt);
       updateProjectielen(dt);
       raapStenenOp();
@@ -316,12 +317,14 @@
           return;
         }
       }
-      // Aan de oever vissen we.
-      if (bijMeer() && vissen.length > 0) {
-        const vis = vissen.pop();
-        missieVoortgang('vissen', speler.x, spelerY() - 170);
-        // Na een paar seconden zwemt er een nieuwe vis het meer in.
-        setTimeout(() => vissen.push({ x: 0.5, y: Math.random(), snelheid: vis.snelheid, kleur: vis.kleur }), 4000);
+      // Aan de oever vissen we, maar alleen met een hengel.
+      if (bijMeer()) {
+        if (!spullen[0].gekocht) {
+          toonMelding('Je hebt een vishengel nodig. Koop hem bij Oeg!', speler.x, spelerY() - 190, '#d96c6c');
+        } else if (vist <= 0 && vissen.length > 0) {
+          vist = visTijd; // uitgooien, even wachten op beet
+          speler.richting = Math.sign(meer.x - speler.x) || speler.richting; // naar het water kijken
+        }
         return;
       }
       // Een schietwapen vuurt iets af; de rest slaat direct.
@@ -658,6 +661,29 @@
     ];
     let huidigeKleren = 0;
     function kleding() { return kleren[huidigeKleren]; }
+
+    // Spullen die geen wapen en geen kleding zijn.
+    const spullen = [
+      { naam: 'Vishengel', prijs: 15, gekocht: false, uitleg: 'Stok met een pees en een botje als haak. Nodig om te vissen.' },
+    ];
+
+    // Vissen duurt even: je gooit uit en wacht op beet.
+    const visTijd = 1.4;
+    let vist = 0; // seconden tot je beet hebt (0 = niet aan het vissen)
+
+    function updateVisserij(dt) {
+      if (vist <= 0) return;
+      vist -= dt;
+      if (vist <= 0) {
+        if (vissen.length > 0) {
+          vissen.splice(Math.floor(Math.random() * vissen.length), 1);
+          missieVoortgang('vissen', speler.x, spelerY() - 170);
+          toonMelding('Beet!', speler.x, spelerY() - 200, '#4ecdc4');
+          // Na een paar seconden zwemt er een nieuwe vis het meer in.
+          setTimeout(() => { if (vissen.length < aantalVissen) vissen.push(maakVis()); }, 4000);
+        }
+      }
+    }
     let huidigWapen = 0;
 
     // De handelaar staat met zijn kraampje op een vaste plek op de grond.
@@ -669,6 +695,7 @@
     const winkelTabs = [
       { naam: 'Wapens', lijst: () => wapens, huidig: () => huidigWapen },
       { naam: 'Kleren', lijst: () => kleren, huidig: () => huidigeKleren },
+      { naam: 'Spullen', lijst: () => spullen, huidig: () => -1 },
     ];
 
     function bijHandelaar() {
@@ -686,25 +713,24 @@
       const lijst = winkelTabs[winkelTab].lijst();
       if (toets === 'ArrowUp') winkelKeuze = (winkelKeuze + lijst.length - 1) % lijst.length;
       if (toets === 'ArrowDown') winkelKeuze = (winkelKeuze + 1) % lijst.length;
-      if (toets === 'ArrowLeft' || toets === 'ArrowRight') {
-        winkelTab = 1 - winkelTab;
-        winkelKeuze = winkelTabs[winkelTab].huidig();
-      }
+      if (toets === 'ArrowLeft') winkelTab = (winkelTab + winkelTabs.length - 1) % winkelTabs.length;
+      if (toets === 'ArrowRight') winkelTab = (winkelTab + 1) % winkelTabs.length;
+      if (toets === 'ArrowLeft' || toets === 'ArrowRight') winkelKeuze = Math.max(0, winkelTabs[winkelTab].huidig());
       if (toets === 'Enter' || toets === ' ') koopOfKies(lijst[winkelKeuze], winkelKeuze);
       if (toets === 'e' || toets === 'E' || toets === 'Escape') winkelOpen = false;
     }
 
     function koopOfKies(ding, index) {
-      const isWapen = winkelTab === 0;
+      const isWapen = winkelTab === 0, isKleding = winkelTab === 1;
       const naam = ding.naam.toLowerCase();
       if (ding.gekocht) {
-        if (isWapen) huidigWapen = index; else huidigeKleren = index;
-        winkelBericht = isWapen ? `Je hebt nu de ${naam} in je hand.` : `Je draagt nu de ${naam}.`;
+        if (isWapen) huidigWapen = index; else if (isKleding) huidigeKleren = index;
+        winkelBericht = isWapen ? `Je hebt nu de ${naam} in je hand.` : isKleding ? `Je draagt nu de ${naam}.` : `Je hebt de ${naam} al.`;
       } else if (munten >= ding.prijs) {
         munten -= ding.prijs;
         ding.gekocht = true;
-        if (isWapen) huidigWapen = index; else huidigeKleren = index;
-        winkelBericht = isWapen ? `Gekocht! Veel jachtplezier met je ${naam}.` : `Gekocht! De ${naam} staat je goed.`;
+        if (isWapen) huidigWapen = index; else if (isKleding) huidigeKleren = index;
+        winkelBericht = isWapen ? `Gekocht! Veel jachtplezier met je ${naam}.` : isKleding ? `Gekocht! De ${naam} staat je goed.` : `Gekocht! Ga naar het meer en druk op spatie.`;
       } else {
         winkelBericht = `Te weinig munten. Je hebt er nog ${ding.prijs - munten} nodig.`;
       }
@@ -845,14 +871,14 @@
 
       // Tabbladen
       winkelTabs.forEach((tab, i) => {
-        const tx = px + 24 + i * 150, ty = py + 58;
+        const tx = px + 24 + i * 130, ty = py + 58;
         const actief = i === winkelTab;
         ctx.fillStyle = actief ? '#a0522d' : 'rgba(255,255,255,0.08)';
-        ctx.fillRect(tx, ty, 140, 34);
+        ctx.fillRect(tx, ty, 120, 34);
         ctx.textAlign = 'center';
         ctx.font = 'bold 18px sans-serif';
         ctx.fillStyle = actief ? '#fff' : 'rgba(255,255,255,0.6)';
-        ctx.fillText(tab.naam, tx + 70, ty + 24);
+        ctx.fillText(tab.naam, tx + 60, ty + 24);
       });
       ctx.textAlign = 'right';
       ctx.font = '14px sans-serif';
@@ -873,7 +899,8 @@
         ctx.save();
         ctx.translate(px + 50, ry + 40);
         if (winkelTab === 0) { ctx.rotate(-0.9); tekenWapenVorm(i, 0, 0, 0.45); }
-        else tekenKledingIcoon(ding, 0, 0);
+        else if (winkelTab === 1) tekenKledingIcoon(ding, 0, 0);
+        else { ctx.rotate(-0.7); tekenHengel(0, 0, 0.45); }
         ctx.restore();
 
         ctx.textAlign = 'left';
@@ -889,7 +916,7 @@
         ctx.font = 'bold 17px sans-serif';
         if (i === huidig) {
           ctx.fillStyle = '#8fd18f';
-          ctx.fillText(winkelTab === 0 ? 'In de hand' : 'Aan', px + pw - 30, ry + 30);
+          ctx.fillText(winkelTab === 0 ? 'In de hand' : winkelTab === 1 ? 'Aan' : 'Gekocht', px + pw - 30, ry + 30);
         } else if (ding.gekocht) {
           ctx.fillStyle = '#8fd18f';
           ctx.fillText('Gekocht', px + pw - 30, ry + 30);
@@ -907,6 +934,23 @@
       ctx.fillStyle = 'rgba(255,255,255,0.7)';
       ctx.fillText('Omhoog/omlaag = kiezen, Enter = kopen of gebruiken, E = sluiten', b / 2, py + ph - 16);
       ctx.textAlign = 'left';
+    }
+
+    // Vishengel: een lange stok met een pees en een botje als haak.
+    function tekenHengel(x, y, schaal = 1) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(schaal, schaal);
+      ctx.strokeStyle = '#8a6a3a';
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(6, -70, 20, -130); ctx.stroke();
+      ctx.strokeStyle = '#e8e0c8';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(20, -130); ctx.lineTo(44, -60); ctx.stroke();
+      ctx.fillStyle = '#f5f0e0';
+      ctx.beginPath(); ctx.arc(46, -56, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
     }
 
     // Klein plaatje van een kledingstuk voor in de winkel: een velletje in de juiste kleur.
@@ -1557,11 +1601,20 @@
     while (stenen.length < aantalStenen) stenen.push(maakSteen());
 
     // Vissen zwemmen heen en weer binnen het meer. x is een fractie (0 = linkerkant, 1 = rechterkant).
-    const vissen = [
-      { x: 0.2, y: 0.4, snelheid: 0.25, kleur: '#ff8c42' },
-      { x: 0.6, y: 0.6, snelheid: -0.18, kleur: '#4ecdc4' },
-      { x: 0.8, y: 0.3, snelheid: 0.3, kleur: '#ffd166' },
-    ];
+    const visKleuren = ['#ff8c42', '#4ecdc4', '#ffd166', '#c084fc', '#7bd389', '#f47fa4', '#5dade2', '#f0e68c'];
+    const aantalVissen = 8;
+    const vissen = [];
+
+    function maakVis() {
+      return {
+        x: 0.15 + Math.random() * 0.7,
+        y: Math.random(),
+        snelheid: (Math.random() < 0.5 ? 1 : -1) * (0.12 + Math.random() * 0.22),
+        kleur: visKleuren[Math.floor(Math.random() * visKleuren.length)],
+        grootte: 0.7 + Math.random() * 0.6,
+      };
+    }
+    while (vissen.length < aantalVissen) vissen.push(maakVis());
 
     function updateVissen(dt) {
       for (const vis of vissen) {
@@ -1609,7 +1662,7 @@
         // Vis-positie omrekenen naar het scherm; y blijft binnen de ellips.
         const vx = mx - rx + vis.x * rx * 2;
         const vy = my - ry * 0.6 + vis.y * ry * 1.2;
-        tekenVis(vx, vy, vis.snelheid > 0 ? 1 : -1, vis.kleur);
+        tekenVis(vx, vy, vis.snelheid > 0 ? 1 : -1, vis.kleur, vis.grootte);
       }
 
       // Rimpels op het oppervlak, bewegend
@@ -1644,10 +1697,10 @@
       }
     }
 
-    function tekenVis(x, y, richting, kleur) {
+    function tekenVis(x, y, richting, kleur, grootte = 1) {
       ctx.save();
       ctx.translate(x, y);
-      ctx.scale(richting, 1);
+      ctx.scale(richting * grootte, grootte);
 
       // Staart zwaait heen en weer tijdens het zwemmen
       const zwaai = Math.sin(tijd * 10 + x) * 4;
@@ -1841,7 +1894,21 @@
       // Een gegooide speer is even weg; een schietwapen schokt alleen kort terug.
       const wapen = wapens[huidigWapen];
       const speerWeg = wapen.schiet === 'speer' && speerOnderweg > 0;
-      if (!speerWeg) {
+      if (vist > 0) {
+        // Hengel uitgegooid: de stok wijst naar voren, met de lijn in het water
+        ctx.save();
+        ctx.translate(x + 34, y - 100);
+        ctx.rotate(1.1);
+        tekenHengel(0, 0, 1.2);
+        ctx.restore();
+        // Dobber die op en neer gaat
+        const dobberX = x + 34 + 150, dobberY = y - 100 + 40 + Math.sin(tijd * 6) * 3;
+        ctx.strokeStyle = '#e8e0c8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(x + 34 + 150 * Math.cos(-0.05), y - 100 - 150 * Math.sin(0.35)); ctx.lineTo(dobberX, dobberY); ctx.stroke();
+        ctx.fillStyle = '#e63946';
+        ctx.beginPath(); ctx.arc(dobberX, dobberY, 5, 0, Math.PI * 2); ctx.fill();
+      } else if (!speerWeg) {
         const slag = speler.slaat > 0 ? Math.sin((0.35 - speler.slaat) / 0.35 * Math.PI) : 0;
         ctx.save();
         ctx.translate(x + 34, y - 100);
