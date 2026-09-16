@@ -29,11 +29,16 @@
     // Het poppetje: een holbewoner. x en y zijn de plek van zijn voeten.
     // richting is 1 (naar rechts kijken) of -1 (naar links kijken).
     // stap loopt op tijdens het lopen en zorgt voor de beenbeweging.
-    const speler = { x: window.innerWidth * 0.4, y: 0, richting: 1, stap: 0, loopt: false };
+    // slaat telt af tijdens een slag met de knots.
+    const speler = { x: window.innerWidth * 0.4, y: 0, richting: 1, stap: 0, loopt: false, slaat: 0 };
 
     // Welke toetsen zijn nu ingedrukt?
     const toetsen = {};
-    window.addEventListener('keydown', (e) => { toetsen[e.key] = true; });
+    window.addEventListener('keydown', (e) => {
+      toetsen[e.key] = true;
+      // Spatie is de actietoets: slaan met de knots, of vissen bij het meer.
+      if (e.key === ' ' && !e.repeat) actie();
+    });
     window.addEventListener('keyup', (e) => { toetsen[e.key] = false; });
 
     const loopSnelheid = 250; // pixels per seconde
@@ -54,8 +59,223 @@
       if (speler.loopt) speler.stap += dt * 10;
       // Niet buiten het scherm lopen.
       speler.x = Math.max(30, Math.min(canvas.width - 30, speler.x));
+      if (speler.slaat > 0) speler.slaat -= dt;
 
       updateVissen(dt);
+      updateDieren(dt);
+      raapStenenOp();
+      updateMeldingen(dt);
+    }
+
+    // ---------- Missies ----------
+
+    // Elke missie heeft een doel en een voortgang. Als voortgang het doel haalt, is de missie klaar.
+    const missies = [
+      { naam: 'Jaag op 3 everzwijnen', soort: 'jagen', doel: 3, voortgang: 0 },
+      { naam: 'Vang 2 vissen uit het meer', soort: 'vissen', doel: 2, voortgang: 0 },
+      { naam: 'Verzamel 5 stenen', soort: 'stenen', doel: 5, voortgang: 0 },
+    ];
+
+    function missieVoortgang(soort, x, y) {
+      const missie = missies.find(m => m.soort === soort);
+      if (!missie || missie.voortgang >= missie.doel) return;
+      missie.voortgang++;
+      toonMelding('+1', x, y);
+      if (missie.voortgang === missie.doel) toonMelding('Missie voltooid!', x, y - 40, '#ffd166');
+    }
+
+    function alleMissiesKlaar() {
+      return missies.every(m => m.voortgang >= m.doel);
+    }
+
+    // Korte tekstjes die omhoog zweven en vervagen, zoals "+1".
+    const meldingen = [];
+    function toonMelding(tekst, x, y, kleur = '#fff') {
+      meldingen.push({ tekst, x, y, kleur, tijd: 1.2 });
+    }
+    function updateMeldingen(dt) {
+      for (const m of meldingen) { m.tijd -= dt; m.y -= 40 * dt; }
+      for (let i = meldingen.length - 1; i >= 0; i--) if (meldingen[i].tijd <= 0) meldingen.splice(i, 1);
+    }
+    function tekenMeldingen() {
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 22px sans-serif';
+      for (const m of meldingen) {
+        ctx.globalAlpha = Math.min(1, m.tijd);
+        ctx.fillStyle = m.kleur;
+        ctx.fillText(m.tekst, m.x, m.y);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // De actietoets: eerst kijken of er een dier binnen bereik is, anders of we bij het meer staan.
+    function actie() {
+      speler.slaat = 0.35;
+      const bereik = 80;
+      for (let i = dieren.length - 1; i >= 0; i--) {
+        const d = dieren[i];
+        const afstand = d.x - speler.x;
+        // Alleen dieren vóór het poppetje en dichtbij genoeg
+        if (Math.abs(afstand) < bereik && Math.sign(afstand) === speler.richting) {
+          dieren.splice(i, 1);
+          missieVoortgang('jagen', d.x, speler.y - 120);
+          return;
+        }
+      }
+      const mx = meer.x * canvas.width, rx = meer.breedte * canvas.width;
+      if (Math.abs(speler.x - mx) < rx + 40 && vissen.length > 0) {
+        const vis = vissen.pop();
+        missieVoortgang('vissen', speler.x, speler.y - 170);
+        // Na een paar seconden zwemt er een nieuwe vis het meer in.
+        setTimeout(() => vissen.push({ x: 0.5, y: Math.random(), snelheid: vis.snelheid, kleur: vis.kleur }), 4000);
+      }
+    }
+
+    function tekenMissies() {
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(16, 16, 330, 40 + missies.length * 30);
+      ctx.fillStyle = '#ffd166';
+      ctx.fillText('Missies', 30, 44);
+      ctx.font = '18px sans-serif';
+      let actiefGevonden = false;
+      missies.forEach((m, i) => {
+        const klaar = m.voortgang >= m.doel;
+        const actief = !klaar && !actiefGevonden;
+        if (actief) actiefGevonden = true;
+        ctx.fillStyle = klaar ? '#8fd18f' : actief ? '#fff' : 'rgba(255,255,255,0.5)';
+        const vinkje = klaar ? '\u2713 ' : (actief ? '\u25B6 ' : '\u25CB ');
+        ctx.fillText(`${vinkje}${m.naam}  ${m.voortgang}/${m.doel}`, 30, 76 + i * 30);
+      });
+      // Uitleg van de besturing
+      ctx.font = '15px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.fillText('Pijltjes = lopen, spatie = slaan / vissen', 30, 66 + missies.length * 30 + 20);
+
+      if (alleMissiesKlaar()) {
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 48px sans-serif';
+        ctx.fillStyle = '#ffd166';
+        ctx.fillText('Alle missies voltooid!', canvas.width / 2, canvas.height * 0.35);
+      }
+    }
+
+    // ---------- Dieren ----------
+
+    // Everzwijnen lopen van de ene kant van het scherm naar de andere.
+    const dieren = [];
+    let volgendDier = 2; // seconden tot het volgende dier verschijnt
+
+    function updateDieren(dt) {
+      volgendDier -= dt;
+      const jagenKlaar = missies[0].voortgang >= missies[0].doel;
+      if (volgendDier <= 0 && dieren.length < 2 && !jagenKlaar) {
+        volgendDier = 3 + Math.random() * 3;
+        const vanLinks = Math.random() < 0.5;
+        dieren.push({
+          x: vanLinks ? -60 : canvas.width + 60,
+          snelheid: (vanLinks ? 1 : -1) * (70 + Math.random() * 60),
+          stap: 0,
+        });
+      }
+      for (let i = dieren.length - 1; i >= 0; i--) {
+        const d = dieren[i];
+        d.x += d.snelheid * dt;
+        d.stap += dt * 12;
+        if (d.x < -100 || d.x > canvas.width + 100) dieren.splice(i, 1);
+      }
+    }
+
+    function tekenDieren() {
+      for (const d of dieren) tekenEverzwijn(d.x, speler.y, Math.sign(d.snelheid), d.stap);
+    }
+
+    function tekenEverzwijn(x, y, richting, stap) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(richting, 1);
+
+      // Schaduw
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(0, 2, 34, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Pootjes die bewegen
+      const zwaai = Math.sin(stap) * 8;
+      ctx.strokeStyle = '#3a2a1e';
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-18 + zwaai, 0); ctx.lineTo(-18, -22);
+      ctx.moveTo(-8 - zwaai, 0); ctx.lineTo(-10, -22);
+      ctx.moveTo(12 + zwaai, 0); ctx.lineTo(12, -22);
+      ctx.moveTo(22 - zwaai, 0); ctx.lineTo(20, -22);
+      ctx.stroke();
+
+      // Lijf
+      const vacht = ctx.createLinearGradient(0, -45, 0, -15);
+      vacht.addColorStop(0, '#5a4030');
+      vacht.addColorStop(1, '#2e2018');
+      ctx.fillStyle = vacht;
+      ctx.beginPath();
+      ctx.ellipse(0, -32, 32, 18, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Borstelige rug
+      ctx.fillStyle = '#241810';
+      for (let i = -24; i <= 16; i += 8) {
+        ctx.beginPath();
+        ctx.moveTo(i, -46); ctx.lineTo(i + 3, -56); ctx.lineTo(i + 7, -46);
+        ctx.fill();
+      }
+      // Kop met snuit
+      ctx.fillStyle = '#4a3324';
+      ctx.beginPath();
+      ctx.ellipse(32, -30, 16, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#7a5a48';
+      ctx.beginPath();
+      ctx.ellipse(46, -26, 7, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Slagtanden
+      ctx.strokeStyle = '#f0e6d0';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(42, -22); ctx.lineTo(48, -32);
+      ctx.stroke();
+      // Oor en oog
+      ctx.fillStyle = '#3a2a1e';
+      ctx.beginPath();
+      ctx.moveTo(26, -40); ctx.lineTo(30, -52); ctx.lineTo(36, -40);
+      ctx.fill();
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.arc(36, -33, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      // Staartje
+      ctx.strokeStyle = '#3a2a1e';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-30, -38);
+      ctx.quadraticCurveTo(-42, -44 + Math.sin(stap) * 4, -40, -30);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // ---------- Stenen oprapen ----------
+
+    function raapStenenOp() {
+      const b = canvas.width;
+      const stenenKlaar = missies[2].voortgang >= missies[2].doel;
+      if (stenenKlaar) return;
+      for (let i = stenen.length - 1; i >= 0; i--) {
+        if (Math.abs(stenen[i].x * b - speler.x) < 18) {
+          stenen.splice(i, 1);
+          missieVoortgang('stenen', speler.x, speler.y - 170);
+        }
+      }
     }
 
     // ---------- Lucht ----------
@@ -510,7 +730,12 @@
       ctx.lineTo(x + 34, y - 105);
       ctx.stroke();
 
-      // Knots: knoestig stuk hout met een dikke kop
+      // Knots: knoestig stuk hout met een dikke kop. Bij een slag draait hij om de hand.
+      const slag = speler.slaat > 0 ? Math.sin((0.35 - speler.slaat) / 0.35 * Math.PI) : 0;
+      ctx.save();
+      ctx.translate(x + 34, y - 100);
+      ctx.rotate(slag * 1.8);
+      ctx.translate(-(x + 34), -(y - 100));
       ctx.strokeStyle = '#5a3a1c';
       ctx.lineWidth = 7;
       ctx.beginPath();
@@ -530,6 +755,7 @@
       ctx.arc(x + 58, y - 162, 2.5, 0, Math.PI * 2);
       ctx.arc(x + 46, y - 150, 2, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
 
       // Hals
       ctx.fillStyle = huidDonker;
@@ -605,7 +831,10 @@
       tekenGrot();
       // Het poppetje staat altijd op de grond.
       speler.y = canvas.height * 0.85;
+      tekenDieren();
       tekenPoppetje(speler.x, speler.y, speler.richting);
+      tekenMeldingen();
+      tekenMissies();
     }
 
     let vorige = performance.now();
