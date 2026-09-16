@@ -301,6 +301,34 @@
           { x: 0.903, y: 0.52, breedte: 0.022 }, { x: 0.930, y: 0.42, breedte: 0.022 },
         ],
       },
+      {
+        naam: 'Level 11: De disco',
+        schermen: 4,
+        decoratie: 'disco',
+        lucht: ['#12002a', '#3a0a5a'], bodem: '#222', platform: '#ff2d95', rand: '#fff', gatKleur: '#000000',
+        gaten: [{ x: 0.119, breedte: 0.022 }, { x: 0.181, breedte: 0.025 }, { x: 0.439, breedte: 0.022 }, { x: 0.765, breedte: 0.025 }],
+        obstakels: [
+          { soort: 'beest', naam: 'discodier', x: 0.272, bereik: 0.030, snelheid: 1.30 },
+          { soort: 'beest', naam: 'discodier', x: 0.361, bereik: 0.030, snelheid: 1.30 },
+          { soort: 'beest', naam: 'discodier', x: 0.507, bereik: 0.030, snelheid: 1.30 },
+          { soort: 'beest', naam: 'discodier', x: 0.603, bereik: 0.030, snelheid: 1.30 },
+          { soort: 'beest', naam: 'discodier', x: 0.682, bereik: 0.030, snelheid: 1.30 },
+        ],
+        platforms: [
+          { x: 0.100, y: 0.70, breedte: 0.020 }, { x: 0.137, y: 0.70, breedte: 0.020 },
+          { x: 0.174, y: 0.70, breedte: 0.020 }, { x: 0.212, y: 0.70, breedte: 0.020 },
+          { x: 0.249, y: 0.70, breedte: 0.020 }, { x: 0.286, y: 0.70, breedte: 0.020 },
+          { x: 0.323, y: 0.70, breedte: 0.020 }, { x: 0.361, y: 0.70, breedte: 0.020 },
+          { x: 0.398, y: 0.61, breedte: 0.020 }, { x: 0.435, y: 0.55, breedte: 0.020 },
+          { x: 0.472, y: 0.61, breedte: 0.020 }, { x: 0.510, y: 0.61, breedte: 0.020 },
+          { x: 0.547, y: 0.61, breedte: 0.020 }, { x: 0.584, y: 0.52, breedte: 0.020 },
+          { x: 0.621, y: 0.52, breedte: 0.020 }, { x: 0.659, y: 0.58, breedte: 0.020 },
+          { x: 0.696, y: 0.67, breedte: 0.020 }, { x: 0.733, y: 0.70, breedte: 0.020 },
+          { x: 0.770, y: 0.70, breedte: 0.020 }, { x: 0.807, y: 0.70, breedte: 0.020 },
+          { x: 0.848, y: 0.70, breedte: 0.022 }, { x: 0.875, y: 0.61, breedte: 0.022 },
+          { x: 0.903, y: 0.52, breedte: 0.022 }, { x: 0.930, y: 0.42, breedte: 0.022 },
+        ],
+      },
     ];
 
     function level() {
@@ -646,6 +674,53 @@
         }
       }
 
+      if (soort === 'disco') {
+        const tijd = performance.now() / 1000;
+        const kleuren = ['#ff2d95', '#2dff8a', '#2d9bff', '#ffe22d', '#ff7a2d'];
+
+        // Lichtbundels die heen en weer zwaaien vanaf het plafond
+        for (let i = 0; i < 12; i++) {
+          const x = b * (i + 0.5) / 12;
+          const zwaai = Math.sin(tijd * 2 + i) * 150;
+          ctx.fillStyle = kleuren[i % kleuren.length] + '55'; // doorzichtig
+          ctx.beginPath();
+          ctx.moveTo(x, 0); ctx.lineTo(x + zwaai - 60, h * 0.8); ctx.lineTo(x + zwaai + 60, h * 0.8);
+          ctx.closePath(); ctx.fill();
+        }
+
+        // Discoballen
+        for (let i = 0; i < 4; i++) {
+          const x = b * (0.15 + i * 0.23);
+          ctx.strokeStyle = '#aaa'; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h * 0.12); ctx.stroke();
+          ctx.fillStyle = '#ddd';
+          ctx.beginPath(); ctx.arc(x, h * 0.12 + 40, 40, 0, Math.PI * 2); ctx.fill();
+          for (let r = 0; r < 8; r++) { // glinsterende vakjes
+            const hoek = tijd * 2 + r * Math.PI / 4;
+            ctx.fillStyle = (Math.floor(tijd * 6 + r) % 2 === 0) ? '#fff' : '#888';
+            ctx.beginPath(); ctx.arc(x + Math.cos(hoek) * 25, h * 0.12 + 40 + Math.sin(hoek) * 25, 6, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+
+        // Confetti dat naar beneden dwarrelt
+        for (let i = 0; i < 150; i++) {
+          const x = (i * 97) % b + Math.sin(tijd * 3 + i) * 20;
+          const y = ((i * 61) + tijd * (60 + (i % 5) * 20)) % (h * 0.8);
+          ctx.fillStyle = kleuren[i % kleuren.length];
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(tijd * 4 + i);
+          ctx.fillRect(-5, -3, 10, 6);
+          ctx.restore();
+        }
+
+        // Knipperende dansvloer-tegels net boven de bodem
+        for (let x = 0; x < b; x += 60) {
+          ctx.fillStyle = kleuren[(Math.floor(x / 60) + Math.floor(tijd * 4)) % kleuren.length];
+          ctx.fillRect(x, h * 0.8 - 8, 58, 8);
+        }
+      }
+
       if (soort === 'tijgerhol') {
         ctx.fillStyle = '#1a0a1a';
         for (let x = 30; x < b; x += 70) { // stalactieten
@@ -847,6 +922,7 @@
       const kleuren = {
         vleermuis: '#3a2a4a', sneeuwbal: '#ffffff', mammoet: '#6b4a2a', dino: '#3f8a3a',
         slang: '#4a8a2a', schorpioen: '#3a2a1a', wolf: '#7a7a7a', sabeltandtijger: '#e08a2a',
+        discodier: '#ff2d95',
       };
       const kleur = kleuren[ob.naam];
       const y = pos.y;
@@ -854,6 +930,7 @@
       ctx.translate(pos.x, 0);
       ctx.scale(pos.richting, 1);
       const pootZwaai = Math.sin(tijd * 10) * 8;
+      if (ob.naam === 'discodier') ctx.translate(0, -Math.abs(Math.sin(tijd * 6)) * 15); // huppen op de maat
 
       if (ob.naam === 'sneeuwbal') {
         ctx.fillStyle = kleur;
@@ -911,6 +988,18 @@
           ctx.fillStyle = kleur;
           ctx.beginPath(); ctx.moveTo(-30, y - 40); ctx.lineTo(-60, y - 30); ctx.lineTo(-30, y - 25); ctx.fill();
           for (const sx of [-15, 0, 15]) { ctx.beginPath(); ctx.moveTo(sx - 6, y - 52); ctx.lineTo(sx, y - 66); ctx.lineTo(sx + 6, y - 52); ctx.fill(); }
+        }
+        if (ob.naam === 'discodier') {
+          // Springt op de maat en draagt een zonnebril
+          const dans = Math.abs(Math.sin(tijd * 6)) * 15;
+          ctx.fillStyle = '#111';
+          ctx.fillRect(24, y - 52 - dans, 10, 7);
+          ctx.fillRect(37, y - 52 - dans, 10, 7);
+          ctx.fillRect(34, y - 50 - dans, 3, 2);
+          ctx.strokeStyle = '#111'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(24, y - 49 - dans); ctx.lineTo(18, y - 52 - dans); ctx.stroke();
+          ctx.fillStyle = '#2dff8a'; // feesthoedje
+          ctx.beginPath(); ctx.moveTo(24, y - 58); ctx.lineTo(32, y - 85); ctx.lineTo(40, y - 58); ctx.fill();
         }
         if (ob.naam === 'wolf') {
           ctx.fillStyle = kleur;
@@ -1146,7 +1235,7 @@
       ctx.fillText('GEWONNEN!', canvas.width / 2, canvas.height / 2);
       ctx.fillStyle = '#fff';
       ctx.font = '32px sans-serif';
-      ctx.fillText('Je hebt alle 10 levels gehaald. Druk op R om opnieuw te beginnen', canvas.width / 2, canvas.height / 2 + 70);
+      ctx.fillText('Je hebt alle ' + levels.length + ' levels gehaald. Druk op R om opnieuw te beginnen', canvas.width / 2, canvas.height / 2 + 70);
     }
 
     function draw() {
