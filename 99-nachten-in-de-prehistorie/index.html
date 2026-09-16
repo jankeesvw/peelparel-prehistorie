@@ -154,6 +154,7 @@
 
       updateVissen(dt);
       updateDieren(dt);
+      updateProjectielen(dt);
       raapStenenOp();
       updateMeldingen(dt);
       updateRonde(dt);
@@ -243,20 +244,10 @@
 
     // De actietoets: eerst kijken of er een dier binnen bereik is, anders of we bij het meer staan.
     function actie() {
+      const wapen = wapens[huidigWapen];
       speler.slaat = 0.35;
-      const bereik = wapens[huidigWapen].bereik;
-      for (let i = dieren.length - 1; i >= 0; i--) {
-        const d = dieren[i];
-        const afstand = d.x - speler.x;
-        const diepteVerschil = Math.abs(diepteNaarY(d.d) - spelerY());
-        // Alleen dieren vóór het poppetje, dichtbij genoeg en op ongeveer dezelfde diepte
-        if (Math.abs(afstand) < bereik && Math.sign(afstand) === speler.richting && diepteVerschil < 40) {
-          dieren.splice(i, 1);
-          missieVoortgang('jagen', d.x, spelerY() - 120);
-          return;
-        }
-      }
-      // Staat er een boom vlak voor ons? Dan hakken we.
+
+      // Staat er een boom vlak voor ons? Dan hakken we (als het wapen dat kan).
       for (const boom of bomen) {
         const afstand = boom.x - speler.x;
         const diepteVerschil = Math.abs(diepteNaarY(boom.d) - spelerY());
@@ -265,12 +256,107 @@
           return;
         }
       }
+      // Aan de oever vissen we.
       if (bijMeer() && vissen.length > 0) {
         const vis = vissen.pop();
         missieVoortgang('vissen', speler.x, spelerY() - 170);
         // Na een paar seconden zwemt er een nieuwe vis het meer in.
         setTimeout(() => vissen.push({ x: 0.5, y: Math.random(), snelheid: vis.snelheid, kleur: vis.kleur }), 4000);
+        return;
       }
+      // Een schietwapen vuurt iets af; de rest slaat direct.
+      if (wapen.schiet) schiet(wapen);
+      else slaDier(wapen.bereik);
+    }
+
+    // Een slag met een knots of bijl: raakt het dichtstbijzijnde dier vóór ons.
+    function slaDier(bereik) {
+      for (let i = dieren.length - 1; i >= 0; i--) {
+        const d = dieren[i];
+        const afstand = d.x - speler.x;
+        const diepteVerschil = Math.abs(diepteNaarY(d.d) - spelerY());
+        // Alleen dieren vóór het poppetje, dichtbij genoeg en op ongeveer dezelfde diepte
+        if (Math.abs(afstand) < bereik && Math.sign(afstand) === speler.richting && diepteVerschil < 40) {
+          dieren.splice(i, 1);
+          missieVoortgang('jagen', d.x, spelerY() - 120);
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // ---------- Pijlen, speren en stenen die door de lucht vliegen ----------
+
+    const projectielen = [];
+    let speerOnderweg = 0; // seconden tot de gegooide speer weer in je hand is
+
+    function schiet(wapen) {
+      if (wapen.schiet === 'speer') {
+        if (speerOnderweg > 0) return; // de speer is nog niet terug
+        speerOnderweg = 1.2;
+      }
+      projectielen.push({
+        soort: wapen.schiet,
+        x: speler.x + speler.richting * 30,
+        d: speler.d,
+        richting: speler.richting,
+        snelheid: wapen.schiet === 'pijl' ? 900 : 650,
+        afstand: 0,
+        maxAfstand: wapen.bereik,
+      });
+    }
+
+    function updateProjectielen(dt) {
+      if (speerOnderweg > 0) speerOnderweg -= dt;
+      for (let i = projectielen.length - 1; i >= 0; i--) {
+        const pr = projectielen[i];
+        const stap = pr.snelheid * dt;
+        pr.x += pr.richting * stap;
+        pr.afstand += stap;
+        // Raakt het een dier op dezelfde diepte?
+        let geraakt = false;
+        for (let j = dieren.length - 1; j >= 0; j--) {
+          const dier = dieren[j];
+          if (Math.abs(dier.x - pr.x) < 36 && Math.abs(diepteNaarY(dier.d) - diepteNaarY(pr.d)) < 30) {
+            dieren.splice(j, 1);
+            missieVoortgang('jagen', dier.x, diepteNaarY(dier.d) - 120);
+            geraakt = true;
+            break;
+          }
+        }
+        if (geraakt || pr.afstand > pr.maxAfstand || inMeer(pr.x, pr.d, 0)) projectielen.splice(i, 1);
+      }
+    }
+
+    // Tekent een projectiel met zijn hoogte in de lucht: het vliegt in een boogje.
+    function tekenProjectiel(pr) {
+      const voortgang = pr.afstand / pr.maxAfstand;
+      const hoogte = 95 + Math.sin(voortgang * Math.PI) * (pr.soort === 'pijl' ? 20 : 50);
+      // Aan het eind van de boog wijst de punt iets omlaag
+      const kanteling = (voortgang - 0.5) * 0.8;
+      ctx.save();
+      ctx.translate(0, -hoogte);
+      ctx.scale(pr.richting, 1);
+      ctx.rotate(kanteling);
+      if (pr.soort === 'pijl') {
+        ctx.strokeStyle = '#c9a66b';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(-24, 0); ctx.lineTo(20, 0); ctx.stroke();
+        ctx.fillStyle = '#9a9a96';
+        ctx.beginPath(); ctx.moveTo(18, -5); ctx.lineTo(32, 0); ctx.lineTo(18, 5); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#d9534f';
+        ctx.beginPath(); ctx.moveTo(-24, 0); ctx.lineTo(-32, -7); ctx.lineTo(-18, 0); ctx.lineTo(-32, 7); ctx.closePath(); ctx.fill();
+      } else if (pr.soort === 'speer') {
+        // De speervorm staat rechtop; we leggen hem plat met de punt naar voren
+        ctx.rotate(Math.PI / 2);
+        tekenWapenVorm(2, 0, 50, 0.9);
+      } else {
+        ctx.fillStyle = '#8a8a86';
+        ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#5a5a56';
+        ctx.beginPath(); ctx.arc(-2, -2, 2.5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
     }
 
     function tekenMissies() {
@@ -480,9 +566,10 @@
       // hak is hoeveel schade een slag aan een boom doet. Een boom heeft 4 leven.
       { naam: 'Knots', prijs: 0, bereik: 80, hak: 1, gekocht: true, uitleg: 'Je oude vertrouwde knots.' },
       { naam: 'Stenen bijl', prijs: 25, bereik: 110, hak: 2, gekocht: false, uitleg: 'Scherpe steen, hakt bomen snel om.' },
-      { naam: 'Speer', prijs: 60, bereik: 170, hak: 1, gekocht: false, uitleg: 'Lang en puntig, raakt van ver.' },
-      { naam: 'Slinger', prijs: 90, bereik: 260, hak: 0, gekocht: false, uitleg: 'Leren riem die stenen wegslingert.' },
-      { naam: 'Boog', prijs: 120, bereik: 380, hak: 0, gekocht: false, uitleg: 'Schiet ver, maar hakt niet.' },
+      // schiet betekent dat het wapen iets afvuurt dat door de wereld vliegt tot het een dier raakt.
+      { naam: 'Speer', prijs: 60, bereik: 280, hak: 1, gekocht: false, schiet: 'speer', uitleg: 'Gooi hem, hij komt vanzelf terug.' },
+      { naam: 'Slinger', prijs: 90, bereik: 340, hak: 0, gekocht: false, schiet: 'steen', uitleg: 'Leren riem die stenen wegslingert.' },
+      { naam: 'Boog', prijs: 120, bereik: 480, hak: 0, gekocht: false, schiet: 'pijl', uitleg: 'Schiet pijlen over het halve veld.' },
       { naam: 'Sabeltandknuppel', prijs: 200, bereik: 200, hak: 4, gekocht: false, uitleg: 'Knuppel met tijgertanden: hakt een boom in één klap.' },
     ];
 
@@ -1539,12 +1626,17 @@
       ctx.stroke();
 
       // Het wapen in de hand. Bij een slag draait het om de hand naar voren.
-      const slag = speler.slaat > 0 ? Math.sin((0.35 - speler.slaat) / 0.35 * Math.PI) : 0;
-      ctx.save();
-      ctx.translate(x + 34, y - 100);
-      ctx.rotate(slag * 1.8);
-      tekenWapenVorm(huidigWapen, 0, 0);
-      ctx.restore();
+      // Een gegooide speer is even weg; een schietwapen schokt alleen kort terug.
+      const wapen = wapens[huidigWapen];
+      const speerWeg = wapen.schiet === 'speer' && speerOnderweg > 0;
+      if (!speerWeg) {
+        const slag = speler.slaat > 0 ? Math.sin((0.35 - speler.slaat) / 0.35 * Math.PI) : 0;
+        ctx.save();
+        ctx.translate(x + 34, y - 100);
+        ctx.rotate(wapen.schiet ? -slag * 0.4 : slag * 1.8);
+        tekenWapenVorm(huidigWapen, 0, 0);
+        ctx.restore();
+      }
 
       // Hals
       ctx.fillStyle = huidDonker;
@@ -1656,6 +1748,7 @@
         dingen.push({ d: dier.d, teken: () => tekenOpWereld(dier.x, dier.d, () => tekenEverzwijn(0, 0, Math.sign(dier.snelheid), dier.stap)) });
       }
       dingen.push({ d: speler.d, teken: () => tekenOpWereld(speler.x, speler.d, () => tekenPoppetje(0, 0, speler.richting)) });
+      for (const pr of projectielen) dingen.push({ d: pr.d + 0.001, teken: () => tekenOpWereld(pr.x, pr.d, () => tekenProjectiel(pr)) });
       dingen.sort((a, b) => a.d - b.d);
       for (const ding of dingen) ding.teken();
 
