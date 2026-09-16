@@ -26,6 +26,34 @@
     // Hoeveel seconden het spel al loopt. Handig voor animaties die vanzelf bewegen.
     let tijd = 0;
 
+    // ---------- Wereld, camera en diepte ----------
+
+    // De wereld is breder dan het scherm. De camera volgt de speler en schuift mee.
+    const wereldBreedte = 4000;
+    const camera = { x: 0 };
+
+    // De grond loopt van de horizon (bovenaan, d = 0) tot de onderkant van het scherm (d = 1).
+    // d is de diepte: hoe kleiner, hoe verder weg. Dingen verder weg tekenen we kleiner.
+    function grondTop() { return canvas.height * 0.8; }
+    function diepteNaarY(d) { return canvas.height * (0.8 + 0.2 * d); }
+    function schaalOpDiepte(d) { return 0.55 + 0.45 * d; }
+    function schermX(wereldX) { return wereldX - camera.x; }
+
+    function updateCamera() {
+      camera.x = Math.max(0, Math.min(wereldBreedte - canvas.width, speler.x - canvas.width / 2));
+    }
+
+    // Iets tekenen op een plek in de wereld: verschoven met de camera en geschaald op diepte.
+    // De tekenfunctie tekent zichzelf rond (0, 0), met de voeten op y = 0.
+    function tekenOpWereld(x, d, teken) {
+      ctx.save();
+      ctx.translate(schermX(x), diepteNaarY(d));
+      const schaal = schaalOpDiepte(d);
+      ctx.scale(schaal, schaal);
+      teken();
+      ctx.restore();
+    }
+
     // ---------- Dag en nacht ----------
 
     // dagTijd loopt van 0 tot 1: 0 is middernacht, 0.25 zonsopkomst, 0.5 middag, 0.75 zonsondergang.
@@ -74,7 +102,9 @@
     // richting is 1 (naar rechts kijken) of -1 (naar links kijken).
     // stap loopt op tijdens het lopen en zorgt voor de beenbeweging.
     // slaat telt af tijdens een slag met de knots.
-    const speler = { x: window.innerWidth * 0.4, y: 0, richting: 1, stap: 0, loopt: false, slaat: 0 };
+    // d is de diepte op de grond (0 = bij de horizon, 1 = helemaal vooraan).
+    const speler = { x: 700, d: 0.6, richting: 1, stap: 0, loopt: false, slaat: 0 };
+    function spelerY() { return diepteNaarY(speler.d); }
 
     // Welke toetsen zijn nu ingedrukt?
     const toetsen = {};
@@ -93,27 +123,33 @@
     });
     window.addEventListener('keyup', (e) => { toetsen[e.key] = false; });
 
-    const loopSnelheid = 250; // pixels per seconde
+    const loopSnelheid = 250; // pixels per seconde, naar links en rechts
+    const diepteSnelheid = 1.1; // hoeveel diepte per seconde, naar voren en achteren
 
     function update(dt) {
       tijd += dt;
       updateDagNacht(dt);
-      speler.loopt = false;
-      if (winkelOpen) { toetsen['ArrowLeft'] = false; toetsen['ArrowRight'] = false; }
-      if (toetsen['ArrowLeft']) {
-        speler.x -= loopSnelheid * dt;
-        speler.richting = -1;
-        speler.loopt = true;
-      }
-      if (toetsen['ArrowRight']) {
-        speler.x += loopSnelheid * dt;
-        speler.richting = 1;
-        speler.loopt = true;
-      }
+      if (winkelOpen) for (const t of ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']) toetsen[t] = false;
+      let dx = 0, dd = 0;
+      if (toetsen['ArrowLeft']) { dx -= loopSnelheid * dt; speler.richting = -1; }
+      if (toetsen['ArrowRight']) { dx += loopSnelheid * dt; speler.richting = 1; }
+      if (toetsen['ArrowUp']) dd -= diepteSnelheid * dt;   // naar achteren, richting de horizon
+      if (toetsen['ArrowDown']) dd += diepteSnelheid * dt; // naar voren
+      speler.loopt = dx !== 0 || dd !== 0;
       if (speler.loopt) speler.stap += dt * 10;
-      // Niet buiten het scherm lopen.
-      speler.x = Math.max(30, Math.min(canvas.width - 30, speler.x));
+
+      // Niet verder dan de horizon, niet van de wereld af, en niet in het water.
+      const nieuwX = Math.max(30, Math.min(wereldBreedte - 30, speler.x + dx));
+      const nieuwD = Math.max(0.08, Math.min(0.97, speler.d + dd));
+      if (!inMeer(nieuwX, nieuwD, 10)) {
+        speler.x = nieuwX; speler.d = nieuwD;
+      } else if (!inMeer(nieuwX, speler.d, 10)) {
+        speler.x = nieuwX; // langs de oever schuiven
+      } else if (!inMeer(speler.x, nieuwD, 10)) {
+        speler.d = nieuwD;
+      }
       if (speler.slaat > 0) speler.slaat -= dt;
+      updateCamera();
 
       updateVissen(dt);
       updateDieren(dt);
@@ -155,26 +191,38 @@
       return missies.every(m => m.voortgang >= m.doel);
     }
 
-    // Als alle missies klaar zijn, begint na een paar seconden een nieuwe ronde met grotere doelen.
+    // Als alle missies klaar zijn, begint na een paar seconden een nieuwe, moeilijkere ronde:
+    // de doelen worden groter, de everzwijnen sneller en schuwer.
     let ronde = 1;
     let nieuweRondeOver = 0;
+    for (const m of missies) m.basisDoel = m.doel;
+
     function updateRonde(dt) {
       if (nieuweRondeOver <= 0) return;
       nieuweRondeOver -= dt;
       if (nieuweRondeOver <= 0) {
         ronde++;
-        for (const m of missies) { m.doel += 1; m.voortgang = 0; }
-        // Nieuwe stenen op de grond
-        while (stenen.length < 12) stenen.push({ x: Math.random(), y: Math.random(), r: 3 + Math.random() * 6 });
+        for (const m of missies) {
+          m.doel = m.basisDoel + (ronde - 1) * 2;
+          m.voortgang = 0;
+        }
+        // Nieuwe stenen op de grond en de omgehakte bomen groeien meteen terug
+        while (stenen.length < aantalStenen) stenen.push(maakSteen());
         for (const boom of bomen) if (boom.hergroei > 0) boom.hergroei = 0.01;
-        toonMelding(`Ronde ${ronde}!`, canvas.width / 2, canvas.height * 0.3, '#ffd166');
+        toonMelding(`Ronde ${ronde}: de missies zijn moeilijker!`, camera.x + canvas.width / 2, canvas.height * 0.3, '#ffd166');
       }
+    }
+
+    // Hoe snel de everzwijnen lopen hangt af van de ronde.
+    function dierSnelheid() {
+      return (70 + Math.random() * 60) * (1 + (ronde - 1) * 0.25);
     }
 
     // Korte tekstjes die omhoog zweven en vervagen, zoals "+1".
     const meldingen = [];
+    // x is een plek in de wereld; we slaan meteen de schermpositie op.
     function toonMelding(tekst, x, y, kleur = '#fff') {
-      meldingen.push({ tekst, x, y, kleur, tijd: 1.2 });
+      meldingen.push({ tekst, x: schermX(x), y, kleur, tijd: 1.5 });
     }
     function updateMeldingen(dt) {
       for (const m of meldingen) { m.tijd -= dt; m.y -= 40 * dt; }
@@ -198,25 +246,26 @@
       for (let i = dieren.length - 1; i >= 0; i--) {
         const d = dieren[i];
         const afstand = d.x - speler.x;
-        // Alleen dieren vóór het poppetje en dichtbij genoeg
-        if (Math.abs(afstand) < bereik && Math.sign(afstand) === speler.richting) {
+        const diepteVerschil = Math.abs(diepteNaarY(d.d) - spelerY());
+        // Alleen dieren vóór het poppetje, dichtbij genoeg en op ongeveer dezelfde diepte
+        if (Math.abs(afstand) < bereik && Math.sign(afstand) === speler.richting && diepteVerschil < 40) {
           dieren.splice(i, 1);
-          missieVoortgang('jagen', d.x, speler.y - 120);
+          missieVoortgang('jagen', d.x, spelerY() - 120);
           return;
         }
       }
       // Staat er een boom vlak voor ons? Dan hakken we.
       for (const boom of bomen) {
-        const afstand = boom.x * canvas.width - speler.x;
-        if (boom.leven > 0 && boom.valt < 0 && Math.abs(afstand) < 90 && Math.sign(afstand) === speler.richting) {
+        const afstand = boom.x - speler.x;
+        const diepteVerschil = Math.abs(diepteNaarY(boom.d) - spelerY());
+        if (boom.leven > 0 && boom.valt < 0 && Math.abs(afstand) < 90 && Math.sign(afstand) === speler.richting && diepteVerschil < 50) {
           hakBoom(boom);
           return;
         }
       }
-      const mx = meer.x * canvas.width, rx = meer.breedte * canvas.width;
-      if (Math.abs(speler.x - mx) < rx + 40 && vissen.length > 0) {
+      if (bijMeer() && vissen.length > 0) {
         const vis = vissen.pop();
-        missieVoortgang('vissen', speler.x, speler.y - 170);
+        missieVoortgang('vissen', speler.x, spelerY() - 170);
         // Na een paar seconden zwemt er een nieuwe vis het meer in.
         setTimeout(() => vissen.push({ x: 0.5, y: Math.random(), snelheid: vis.snelheid, kleur: vis.kleur }), 4000);
       }
@@ -228,7 +277,7 @@
       ctx.fillStyle = 'rgba(0,0,0,0.45)';
       ctx.fillRect(16, 16, 360, 40 + missies.length * 30);
       ctx.fillStyle = '#ffd166';
-      ctx.fillText('Missies', 30, 44);
+      ctx.fillText(`Missies (ronde ${ronde})`, 30, 44);
       ctx.font = '18px sans-serif';
       let actiefGevonden = false;
       missies.forEach((m, i) => {
@@ -259,7 +308,7 @@
       // Uitleg van de besturing
       ctx.font = '15px sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fillText('Pijltjes = lopen, spatie = slaan / vissen, E = handelen', 20, py + 62);
+      ctx.fillText('Pijltjes = lopen (ook naar voren en achteren), spatie = slaan / vissen, E = handelen', 20, py + 62);
 
       if (alleMissiesKlaar()) {
         ctx.textAlign = 'center';
@@ -304,16 +353,21 @@
     // leven telt af bij elke slag; valt loopt van 0 naar 1 tijdens het omvallen (-1 = staat nog);
     // hergroei telt af tot er een nieuwe boom groeit; groei loopt van 0 naar 1 als een boom opkomt.
     const bomen = [
-      { x: 0.30, hoogte: 190, leven: 4, valt: -1, valRichting: 1, schud: 0, hergroei: 0, groei: 1 },
-      { x: 0.96, hoogte: 170, leven: 4, valt: -1, valRichting: -1, schud: 0, hergroei: 0, groei: 1 },
+      { x: 950, d: 0.8, hoogte: 190 },
+      { x: 1250, d: 0.2, hoogte: 170 },
+      { x: 2050, d: 0.9, hoogte: 200 },
+      { x: 2950, d: 0.15, hoogte: 160 },
+      { x: 3450, d: 0.6, hoogte: 180 },
+      { x: 3800, d: 0.35, hoogte: 190 },
     ];
+    for (const boom of bomen) Object.assign(boom, { leven: 4, valt: -1, valRichting: 1, schud: 0, hergroei: 0, groei: 1 });
     const boomLeven = 4;
     const hergroeiTijd = 20; // seconden voordat een omgehakte boom weer aangroeit
 
     function hakBoom(boom) {
       const kracht = wapens[huidigWapen].hak;
       if (kracht === 0) {
-        toonMelding('Met een boog kun je niet hakken!', speler.x, speler.y - 180, '#d96c6c');
+        toonMelding('Met een boog kun je niet hakken!', speler.x, spelerY() - 180, '#d96c6c');
         return;
       }
       boom.leven -= kracht;
@@ -321,7 +375,7 @@
       if (boom.leven <= 0) {
         boom.valt = 0;
         // De boom valt van de speler af
-        boom.valRichting = Math.sign(boom.x * canvas.width - speler.x) || 1;
+        boom.valRichting = Math.sign(boom.x - speler.x) || 1;
       }
     }
 
@@ -335,8 +389,8 @@
             boom.valt = -1;
             boom.hergroei = hergroeiTijd;
             hout += houtPerBoom;
-            toonMelding(`+${houtPerBoom} hout`, boom.x * canvas.width, speler.y - 120, '#d9a066');
-            missieVoortgang('hout', boom.x * canvas.width, speler.y - 160);
+            toonMelding(`+${houtPerBoom} hout`, boom.x, diepteNaarY(boom.d) - 120, '#d9a066');
+            missieVoortgang('hout', boom.x, diepteNaarY(boom.d) - 160);
           }
         } else if (boom.hergroei > 0) {
           boom.hergroei -= dt;
@@ -347,12 +401,9 @@
       }
     }
 
-    function tekenBomen() {
-      for (const boom of bomen) tekenBoom(boom);
-    }
-
+    // Tekent een boom met de voet op (0, 0). Wordt via tekenOpWereld op de juiste plek gezet.
     function tekenBoom(boom) {
-      const x = boom.x * canvas.width, y = speler.y;
+      const x = 0, y = 0;
 
       // Stronk is er altijd (als de boom staat zit hij eronder)
       ctx.fillStyle = '#5a3a1c';
@@ -433,13 +484,14 @@
     let huidigWapen = 0;
 
     // De handelaar staat met zijn kraampje op een vaste plek op de grond.
-    const handelaar = { x: 0.55 };
+    const handelaar = { x: 1600, d: 0.4 };
     let winkelOpen = false;
     let winkelKeuze = 0;
     let winkelBericht = '';
 
-    function handelaarX() { return handelaar.x * canvas.width; }
-    function bijHandelaar() { return Math.abs(speler.x - handelaarX()) < 110; }
+    function bijHandelaar() {
+      return Math.abs(speler.x - handelaar.x) < 110 && Math.abs(spelerY() - diepteNaarY(handelaar.d)) < 60;
+    }
 
     function openWinkel() {
       winkelOpen = true;
@@ -468,8 +520,9 @@
       }
     }
 
+    // Tekent het kraampje met de handelaar, met de grond op (0, 0).
     function tekenHandelaar() {
-      const x = handelaarX(), y = speler.y;
+      const x = 0, y = 0;
 
       // Kraampje: twee palen met een dierenvel als afdak
       ctx.strokeStyle = '#5a3a1c';
@@ -558,16 +611,20 @@
       tekenMunt(x + 40, y - 66, 6);
       tekenMunt(x + 46, y - 64, 6);
 
-      // Hint als de speler dichtbij staat
-      if (bijHandelaar() && !winkelOpen) {
-        ctx.textAlign = 'center';
-        ctx.font = 'bold 18px sans-serif';
-        ctx.fillStyle = 'rgba(0,0,0,0.55)';
-        ctx.fillRect(x - 110, y - 200, 220, 30);
-        ctx.fillStyle = '#ffd166';
-        ctx.fillText('Druk op E om te handelen', x, y - 178);
-        ctx.textAlign = 'left';
-      }
+    }
+
+    // Hint boven het kraampje als de speler dichtbij staat (in schermcoördinaten, dus niet geschaald).
+    function tekenHandelaarHint() {
+      if (!bijHandelaar() || winkelOpen) return;
+      const x = schermX(handelaar.x);
+      const y = diepteNaarY(handelaar.d) - 170 * schaalOpDiepte(handelaar.d);
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(x - 110, y - 22, 220, 30);
+      ctx.fillStyle = '#ffd166';
+      ctx.fillText('Druk op E om te handelen', x, y);
+      ctx.textAlign = 'left';
     }
 
     function tekenWinkel() {
@@ -714,23 +771,25 @@
       const jagenKlaar = missies[0].voortgang >= missies[0].doel;
       if (volgendDier <= 0 && dieren.length < 2 && !jagenKlaar) {
         volgendDier = 3 + Math.random() * 3;
+        // Het dier komt net buiten beeld de wereld in, links of rechts van de camera
         const vanLinks = Math.random() < 0.5;
         dieren.push({
-          x: vanLinks ? -60 : canvas.width + 60,
-          snelheid: (vanLinks ? 1 : -1) * (70 + Math.random() * 60),
+          x: vanLinks ? camera.x - 60 : camera.x + canvas.width + 60,
+          d: 0.1 + Math.random() * 0.85,
+          snelheid: (vanLinks ? 1 : -1) * dierSnelheid(),
           stap: 0,
         });
       }
       for (let i = dieren.length - 1; i >= 0; i--) {
         const d = dieren[i];
-        d.x += d.snelheid * dt;
+        const nieuwX = d.x + d.snelheid * dt;
+        // Everzwijnen lopen om het meer heen: bij het water keren ze om
+        if (inMeer(nieuwX, d.d, 40)) d.snelheid = -d.snelheid;
+        else d.x = nieuwX;
         d.stap += dt * 12;
-        if (d.x < -100 || d.x > canvas.width + 100) dieren.splice(i, 1);
+        // Ver buiten beeld verdwijnt het dier weer
+        if (d.x < camera.x - 300 || d.x > camera.x + canvas.width + 300) dieren.splice(i, 1);
       }
-    }
-
-    function tekenDieren() {
-      for (const d of dieren) tekenEverzwijn(d.x, speler.y, Math.sign(d.snelheid), d.stap);
     }
 
     function tekenEverzwijn(x, y, richting, stap) {
@@ -809,13 +868,13 @@
     // ---------- Stenen oprapen ----------
 
     function raapStenenOp() {
-      const b = canvas.width;
       const stenenKlaar = missies[2].voortgang >= missies[2].doel;
       if (stenenKlaar) return;
       for (let i = stenen.length - 1; i >= 0; i--) {
-        if (Math.abs(stenen[i].x * b - speler.x) < 18) {
+        const st = stenen[i];
+        if (Math.abs(st.x - speler.x) < 22 && Math.abs(diepteNaarY(st.d) - spelerY()) < 16) {
           stenen.splice(i, 1);
-          missieVoortgang('stenen', speler.x, speler.y - 170);
+          missieVoortgang('stenen', speler.x, spelerY() - 170);
         }
       }
     }
@@ -948,12 +1007,13 @@
     // ---------- Landschap ----------
 
     // Een golvende heuvellijn tekenen. De vorm hangt af van een "zaad" zodat elke laag anders is.
-    function heuvelPad(basisY, hoogte, zaad) {
+    // factor bepaalt hoe hard de laag meeschuift met de camera: verre lagen bewegen langzamer.
+    function heuvelPad(basisY, hoogte, zaad, factor) {
       const b = canvas.width, h = canvas.height;
       ctx.beginPath();
       ctx.moveTo(0, h);
       for (let x = 0; x <= b; x += 10) {
-        const t = x / b;
+        const t = (x + camera.x * factor) / b;
         const y = basisY
           + Math.sin(t * 5 + zaad) * hoogte
           + Math.sin(t * 13 + zaad * 2) * hoogte * 0.3;
@@ -967,30 +1027,31 @@
       const h = canvas.height;
       // Verre bergen in blauwgrijs (mist), daarna steeds dichterbij en donkerder.
       ctx.fillStyle = '#2a2f55';
-      heuvelPad(h * 0.55, h * 0.08, 1.0);
+      heuvelPad(h * 0.55, h * 0.08, 1.0, 0.1);
       ctx.fill();
       ctx.fillStyle = '#1b2a3a';
-      heuvelPad(h * 0.64, h * 0.05, 2.7);
+      heuvelPad(h * 0.64, h * 0.05, 2.7, 0.25);
       ctx.fill();
-      tekenPalmen(h * 0.66, 2.7, 0.55);
+      tekenPalmen(h * 0.66, 2.7, 0.55, 0.25);
       ctx.fillStyle = '#12261a';
-      heuvelPad(h * 0.74, h * 0.035, 4.1);
+      heuvelPad(h * 0.74, h * 0.035, 4.1, 0.5);
       ctx.fill();
-      tekenPalmen(h * 0.77, 4.1, 0.9);
+      tekenPalmen(h * 0.77, 4.1, 0.9, 0.5);
     }
 
     // Prehistorische bomen: kale stammen met een bosje palmbladeren erop.
-    function tekenPalmen(basisY, zaad, schaal) {
+    // Ze staan verspreid over de hele wereld en schuiven mee met hun heuvellaag.
+    function tekenPalmen(basisY, zaad, schaal, factor) {
       const b = canvas.width;
-      for (let i = 0; i < 9; i++) {
-        const t = (i / 9 + zaad * 0.1) % 1;
-        const x = t * b;
-        const hoogte = (60 + ((i * 37 + zaad * 100) % 40)) * schaal;
-        tekenPalm(x, basisY, hoogte, schaal);
+      for (let px = 40; px < wereldBreedte * factor + b; px += 160) {
+        const x = px - camera.x * factor;
+        if (x < -80 || x > b + 80) continue;
+        const hoogte = (60 + ((px * 0.37 + zaad * 100) % 40)) * schaal;
+        tekenPalm(x, basisY, hoogte, schaal, px);
       }
     }
 
-    function tekenPalm(x, y, hoogte, schaal) {
+    function tekenPalm(x, y, hoogte, schaal, fase) {
       ctx.strokeStyle = '#0d1a10';
       ctx.lineWidth = 5 * schaal;
       ctx.lineCap = 'round';
@@ -999,7 +1060,7 @@
       ctx.quadraticCurveTo(x + 10 * schaal, y - hoogte * 0.6, x, y - hoogte);
       ctx.stroke();
       // Bladeren die zachtjes wiegen in de wind
-      const wind = Math.sin(tijd * 1.5 + x) * 0.08;
+      const wind = Math.sin(tijd * 1.5 + fase) * 0.08;
       ctx.fillStyle = '#0d1a10';
       for (let i = 0; i < 6; i++) {
         const hoek = (i / 6) * Math.PI * 2 + wind;
@@ -1010,11 +1071,20 @@
       }
     }
 
-    // Vaste plekken voor grassprietjes en stenen, zodat ze niet flikkeren.
+    // Vaste plekken voor grassprietjes en stenen over de hele wereld, zodat ze niet flikkeren.
     const sprietjes = [];
-    for (let i = 0; i < 160; i++) sprietjes.push({ x: Math.random(), y: Math.random(), l: 6 + Math.random() * 10 });
+    for (let i = 0; i < 700; i++) sprietjes.push({ x: Math.random() * wereldBreedte, d: Math.random(), l: 6 + Math.random() * 10 });
     const stenen = [];
-    for (let i = 0; i < 12; i++) stenen.push({ x: Math.random(), y: Math.random(), r: 3 + Math.random() * 6 });
+    const aantalStenen = 30;
+
+    // Een steen op een willekeurige plek op de grond, maar niet in het meer.
+    function maakSteen() {
+      let steen;
+      do {
+        steen = { x: 60 + Math.random() * (wereldBreedte - 120), d: 0.05 + Math.random() * 0.9, r: 3 + Math.random() * 6 };
+      } while (inMeer(steen.x, steen.d, 30));
+      return steen;
+    }
 
     function tekenGrond() {
       const b = canvas.width, h = canvas.height;
@@ -1030,11 +1100,14 @@
       ctx.fillStyle = 'rgba(160,200,120,0.25)';
       ctx.fillRect(0, top, b, 3);
 
-      // Stenen
+      // Stenen (verder weg kleiner)
       ctx.fillStyle = '#4a4a44';
       for (const st of stenen) {
+        const x = schermX(st.x);
+        if (x < -20 || x > b + 20) continue;
+        const r = st.r * schaalOpDiepte(st.d);
         ctx.beginPath();
-        ctx.ellipse(st.x * b, top + 10 + st.y * (h - top - 20), st.r * 1.4, st.r, 0, 0, Math.PI * 2);
+        ctx.ellipse(x, diepteNaarY(st.d), r * 1.4, r, 0, 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -1043,8 +1116,9 @@
       ctx.lineWidth = 2;
       ctx.lineCap = 'round';
       for (const sp of sprietjes) {
-        const x = sp.x * b, y = top + sp.y * (h - top);
-        const buig = Math.sin(tijd * 2 + x * 0.05) * 3;
+        const x = schermX(sp.x), y = diepteNaarY(sp.d);
+        if (x < -20 || x > b + 20) continue;
+        const buig = Math.sin(tijd * 2 + sp.x * 0.05) * 3;
         ctx.beginPath();
         ctx.moveTo(x, y);
         ctx.quadraticCurveTo(x + buig, y - sp.l * 0.6, x + buig * 2, y - sp.l);
@@ -1054,8 +1128,29 @@
 
     // ---------- Meer en vissen ----------
 
-    // Het meer ligt rechts op de grond. Posities zijn fracties van de schermbreedte/-hoogte.
-    const meer = { x: 0.75, y: 0.9, breedte: 0.18, hoogte: 0.06 };
+    // Het meer ligt midden in de wereld. x en rx zijn in pixels, d en rd in diepte (0 tot 1).
+    const meer = { x: 2500, d: 0.5, rx: 280, rd: 0.34 };
+
+    // Waar het meer op het scherm staat: middelpunt en stralen van de ellips.
+    function meerScherm() {
+      return { mx: schermX(meer.x), my: diepteNaarY(meer.d), rx: meer.rx, ry: meer.rd * 0.2 * canvas.height };
+    }
+
+    // Ligt een plek in de wereld in het water? Met marge kijken we ook een stukje rond de oever.
+    function inMeer(x, d, marge) {
+      const ry = meer.rd * 0.2 * canvas.height;
+      const nx = (x - meer.x) / (meer.rx + marge);
+      const ny = (diepteNaarY(d) - diepteNaarY(meer.d)) / (ry + marge);
+      return nx * nx + ny * ny < 1;
+    }
+
+    // Staat de speler aan de oever?
+    function bijMeer() {
+      return inMeer(speler.x, speler.d, 70);
+    }
+
+    // De stenen kunnen nu pas gemaakt worden, want ze mogen niet in het meer liggen.
+    while (stenen.length < aantalStenen) stenen.push(maakSteen());
 
     // Vissen zwemmen heen en weer binnen het meer. x is een fractie (0 = linkerkant, 1 = rechterkant).
     const vissen = [
@@ -1073,9 +1168,8 @@
     }
 
     function tekenMeer() {
-      const b = canvas.width, h = canvas.height;
-      const mx = meer.x * b, my = meer.y * h;
-      const rx = meer.breedte * b, ry = meer.hoogte * h;
+      const { mx, my, rx, ry } = meerScherm();
+      if (mx + rx + 40 < 0 || mx - rx - 40 > canvas.width) return;
 
       // Modderige oever rond het water
       ctx.fillStyle = '#4a3d2a';
@@ -1198,9 +1292,11 @@
 
     // ---------- Grot ----------
 
+    const grot = { x: 400 }; // de grot staat achterin, tegen de horizon
+
     function tekenGrot() {
-      const b = canvas.width, h = canvas.height;
-      const x = b * 0.15, y = h * 0.8;
+      const x = schermX(grot.x), y = grondTop();
+      if (x < -150 || x > canvas.width + 150) return;
 
       // Rots met wat diepte: lichter bovenaan waar de maan op schijnt
       const rots = ctx.createRadialGradient(x - 30, y - 90, 10, x, y, 120);
@@ -1401,15 +1497,23 @@
       tekenLucht();
       tekenHeuvels();
       tekenGrond();
-      tekenMeer();
       tekenGrot();
-      // Het poppetje staat altijd op de grond.
-      speler.y = canvas.height * 0.85;
-      tekenBomen();
-      tekenHandelaar();
-      tekenDieren();
-      tekenPoppetje(speler.x, speler.y, speler.richting);
+      tekenMeer();
+
+      // Alles wat op de grond staat, tekenen we van achter naar voren (op diepte gesorteerd),
+      // zodat wat dichterbij is vóór de rest komt.
+      const dingen = [];
+      for (const boom of bomen) dingen.push({ d: boom.d, teken: () => tekenOpWereld(boom.x, boom.d, () => tekenBoom(boom)) });
+      dingen.push({ d: handelaar.d, teken: () => tekenOpWereld(handelaar.x, handelaar.d, tekenHandelaar) });
+      for (const dier of dieren) {
+        dingen.push({ d: dier.d, teken: () => tekenOpWereld(dier.x, dier.d, () => tekenEverzwijn(0, 0, Math.sign(dier.snelheid), dier.stap)) });
+      }
+      dingen.push({ d: speler.d, teken: () => tekenOpWereld(speler.x, speler.d, () => tekenPoppetje(0, 0, speler.richting)) });
+      dingen.sort((a, b) => a.d - b.d);
+      for (const ding of dingen) ding.teken();
+
       tekenDagNachtLicht();
+      tekenHandelaarHint();
       tekenMeldingen();
       tekenMissies();
       tekenDagTeller();
