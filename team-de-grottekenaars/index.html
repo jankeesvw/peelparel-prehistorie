@@ -35,13 +35,18 @@
       loopt: false,
       stap: 0,       // telt op tijdens het lopen, voor de beenbeweging
       lading: 0,     // de jump-meter: 0 = leeg, 1 = vol (spatie inhouden laadt op)
+      slaat: 0,      // hoeveel seconden de knotsslag nog duurt (0 = niet aan het slaan)
     };
+    const maxLevens = 3;
+    const slagDuur = 0.3; // seconden
 
     // Welke toetsen zijn ingedrukt?
     const toetsen = {};
     let spatieNetIngedrukt = false; // wordt true op het moment dat spatie ingedrukt wordt
+    let kNetIngedrukt = false;      // idem voor de K van knots
     window.addEventListener('keydown', (e) => {
       if (e.key === ' ' && !toetsen[' ']) spatieNetIngedrukt = true;
+      if (e.key === 'k' && !toetsen['k']) kNetIngedrukt = true;
       toetsen[e.key] = true;
     });
     window.addEventListener('keyup', (e) => { toetsen[e.key] = false; });
@@ -323,6 +328,11 @@
       mens.vy = 0;
     }
 
+    // Alle beesten in het level weer tot leven wekken
+    function beestenTerug() {
+      for (const ob of level().obstakels) ob.dood = false;
+    }
+
     // Staat de mens boven een gat?
     function bovenGat() {
       const b = levelBreedte();
@@ -358,6 +368,24 @@
         mens.opDeGrond = false;
       }
       spatieNetIngedrukt = false;
+
+      // Slaan met de knots op K. Een beest dat je raakt gaat dood en geeft een leven erbij.
+      if (kNetIngedrukt && mens.slaat <= 0) {
+        mens.slaat = slagDuur;
+      }
+      kNetIngedrukt = false;
+      if (mens.slaat > 0) {
+        mens.slaat -= dt;
+        for (const ob of level().obstakels) {
+          if (ob.soort !== 'beest' || ob.dood) continue;
+          const pos = obstakelPositie(ob);
+          const voor = (pos.x - mens.x) * mens.richting; // afstand vóór de mens
+          if (voor > -10 && voor < 100 && Math.abs(pos.y - mens.y) < 80) {
+            ob.dood = true;
+            mens.levens = Math.min(maxLevens, mens.levens + 1);
+          }
+        }
+      }
 
       // Power-jump: spatie ingedrukt houden terwijl je op de grond staat laadt de meter op.
       // Laat je los als de meter vol is, dan spring je extra hoog.
@@ -411,6 +439,7 @@
           huidigLevel = levels.length - 1;
           gewonnen = true;
         }
+        beestenTerug();
         startOpnieuw();
       }
 
@@ -457,6 +486,7 @@
 
     function raaktObstakel() {
       for (const ob of level().obstakels) {
+        if (ob.dood) continue;
         const pos = obstakelPositie(ob);
         // De mens is ongeveer 40 breed en 170 hoog, gemeten vanaf de voeten
         const overlapX = Math.abs(mens.x - pos.x) < pos.halfBreed + 15;
@@ -792,7 +822,8 @@
       for (const ob of level().obstakels) {
         const pos = obstakelPositie(ob);
         if (ob.soort === 'stekels') tekenStekels(ob, pos, tijd);
-        if (ob.soort === 'beest') tekenBeest(ob, pos, tijd);
+        if (ob.soort === 'beest' && ob.dood) tekenDoodBeest(ob);
+        if (ob.soort === 'beest' && !ob.dood) tekenBeest(ob, pos, tijd);
         if (ob.soort === 'vallend') tekenVallend(ob, pos);
       }
     }
@@ -888,6 +919,22 @@
         }
       }
       ctx.restore();
+    }
+
+    // Een dood beest ligt op zijn rug met de poten omhoog, midden in zijn bereik
+    function tekenDoodBeest(ob) {
+      const x = (ob.x + ob.bereik / 2) * levelBreedte();
+      const y = bodemHoogte();
+      ctx.fillStyle = '#555';
+      ctx.beginPath(); ctx.ellipse(x, y - 15, 30, 14, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#555'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (const px of [-15, -5, 5, 15]) { ctx.moveTo(x + px, y - 25); ctx.lineTo(x + px, y - 50); }
+      ctx.stroke();
+      ctx.strokeStyle = '#111'; ctx.lineWidth = 2; // kruisjes als ogen
+      ctx.beginPath();
+      ctx.moveTo(x + 18, y - 22); ctx.lineTo(x + 26, y - 14); ctx.moveTo(x + 26, y - 22); ctx.lineTo(x + 18, y - 14);
+      ctx.stroke();
     }
 
     function tekenVallend(ob, pos) {
@@ -997,13 +1044,20 @@
       ctx.lineTo(x + 35, voeten - 70);
       ctx.stroke();
 
-      // Knots in de rechterhand
+      // Knots in de rechterhand: zwaait naar voren tijdens een slag
+      const zwaaiHoek = mens.slaat > 0 ? (1 - mens.slaat / slagDuur) * Math.PI * 0.8 : 0;
+      ctx.save();
+      ctx.translate(x + 35, voeten - 70);
+      ctx.rotate(zwaaiHoek);
       ctx.strokeStyle = '#5c3a1a';
       ctx.lineWidth = 10;
       ctx.beginPath();
-      ctx.moveTo(x + 35, voeten - 70);
-      ctx.lineTo(x + 60, voeten - 130);
+      ctx.moveTo(0, 0);
+      ctx.lineTo(25, -60);
       ctx.stroke();
+      ctx.fillStyle = '#5c3a1a'; // dikke kop van de knots
+      ctx.beginPath(); ctx.arc(25, -60, 10, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
 
       // Hoofd
       ctx.fillStyle = '#c68642';
@@ -1037,8 +1091,9 @@
     }
 
     function tekenLevens() {
-      for (let i = 0; i < mens.levens; i++) {
-        ctx.fillStyle = '#e63946';
+      for (let i = 0; i < maxLevens; i++) {
+        // Volle hartjes voor de levens die je hebt, donkere voor de lege plekken
+        ctx.fillStyle = i < mens.levens ? '#e63946' : 'rgba(0, 0, 0, 0.35)';
         tekenHart(40 + i * 50, 40, 18);
       }
     }
@@ -1122,7 +1177,8 @@
         gameOver = false;
         gewonnen = false;
         huidigLevel = 0;
-        mens.levens = 3;
+        mens.levens = maxLevens;
+        beestenTerug();
         startOpnieuw();
       }
       if (!gameOver && !gewonnen) update(Math.min((nu - vorige) / 1000, 0.05));
