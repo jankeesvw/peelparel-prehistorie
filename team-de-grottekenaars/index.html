@@ -53,6 +53,8 @@
     // Een level is 'schermen' keer zo breed als het scherm; de camera schuift mee met de mens.
     // x en breedte zijn een deel van de hele levelbreedte, y een deel van de schermhoogte.
     // Levels met lava: true hebben borrelende lava in de gaten, die is meteen dodelijk.
+    // Obstakels: 'stekels' staan stil op de grond, een 'beest' loopt heen en weer
+    // over een stuk van 'bereik' breed, en iets 'vallends' valt steeds opnieuw van boven.
     const levels = [
       {
         naam: 'Level 1: De grot',
@@ -61,6 +63,10 @@
         decoratie: 'grot',
         lucht: ['#1a1210', '#5a3d2b'], bodem: '#3d2b1f', platform: '#4a3527', rand: '#6b4f3a', gatKleur: '#1a1210',
         gaten: [{ x: 0.134, breedte: 0.050 }, { x: 0.437, breedte: 0.070 }, { x: 0.779, breedte: 0.070 }],
+        obstakels: [
+          { soort: 'vallend', naam: 'stalactiet', x: 0.401, periode: 2.3 },
+          { soort: 'stekels', naam: 'botten', x: 0.584, breedte: 0.030 },
+        ],
         platforms: [
           { x: 0.100, y: 0.68, breedte: 0.040 }, { x: 0.250, y: 0.68, breedte: 0.040 },
           { x: 0.400, y: 0.62, breedte: 0.040 }, { x: 0.550, y: 0.68, breedte: 0.040 },
@@ -74,6 +80,10 @@
         decoratie: 'ijs',
         lucht: ['#0b1a33', '#4a7fb5'], bodem: '#dfe9f3', platform: '#b7d3ea', rand: '#ffffff', gatKleur: '#0b2d4d',
         gaten: [{ x: 0.132, breedte: 0.070 }, { x: 0.345, breedte: 0.070 }, { x: 0.579, breedte: 0.060 }, { x: 0.786, breedte: 0.070 }],
+        obstakels: [
+          { soort: 'stekels', naam: 'ijspegel', x: 0.224, breedte: 0.030 },
+          { soort: 'beest', naam: 'sneeuwbal', x: 0.445, bereik: 0.090, snelheid: 1.35 },
+        ],
         platforms: [
           { x: 0.100, y: 0.68, breedte: 0.040 }, { x: 0.207, y: 0.58, breedte: 0.040 },
           { x: 0.314, y: 0.48, breedte: 0.040 }, { x: 0.421, y: 0.58, breedte: 0.040 },
@@ -88,6 +98,11 @@
         decoratie: 'steppe',
         lucht: ['#7ec8e3', '#f4e3b2'], bodem: '#a9a24a', platform: '#8b7a3a', rand: '#c9b85a', gatKleur: '#4a3a1a',
         gaten: [{ x: 0.124, breedte: 0.040 }, { x: 0.278, breedte: 0.047 }, { x: 0.464, breedte: 0.047 }, { x: 0.604, breedte: 0.040 }, { x: 0.780, breedte: 0.047 }],
+        obstakels: [
+          { soort: 'beest', naam: 'mammoet', x: 0.524, bereik: 0.060, snelheid: 1.50 },
+          { soort: 'beest', naam: 'mammoet', x: 0.530, bereik: 0.060, snelheid: 1.50 },
+          { soort: 'beest', naam: 'mammoet', x: 0.189, bereik: 0.060, snelheid: 1.50 },
+        ],
         platforms: [
           { x: 0.100, y: 0.68, breedte: 0.027 }, { x: 0.183, y: 0.58, breedte: 0.027 },
           { x: 0.267, y: 0.52, breedte: 0.027 }, { x: 0.350, y: 0.42, breedte: 0.027 },
@@ -104,6 +119,11 @@
         decoratie: 'vulkaan',
         lucht: ['#2b0a0a', '#8a2a0a'], bodem: '#3a2a2a', platform: '#4d3b3b', rand: '#7a5a5a', gatKleur: '#ff6a00',
         gaten: [{ x: 0.101, breedte: 0.047 }, { x: 0.263, breedte: 0.040 }, { x: 0.368, breedte: 0.040 }, { x: 0.511, breedte: 0.033 }, { x: 0.662, breedte: 0.033 }, { x: 0.769, breedte: 0.033 }],
+        obstakels: [
+          { soort: 'vallend', naam: 'lavabrok', x: 0.425, periode: 1.8 },
+          { soort: 'stekels', naam: 'vuur', x: 0.631, breedte: 0.020 },
+          { soort: 'stekels', naam: 'vuur', x: 0.713, breedte: 0.020 },
+        ],
         platforms: [
           { x: 0.100, y: 0.68, breedte: 0.027 }, { x: 0.168, y: 0.58, breedte: 0.027 },
           { x: 0.236, y: 0.68, breedte: 0.027 }, { x: 0.305, y: 0.68, breedte: 0.027 },
@@ -120,6 +140,12 @@
         decoratie: 'moeras',
         lucht: ['#1f3d2b', '#6fa06b'], bodem: '#4d5a2a', platform: '#5c4a2a', rand: '#7f9a3a', gatKleur: '#2e6b4a',
         gaten: [{ x: 0.139, breedte: 0.033 }, { x: 0.215, breedte: 0.047 }, { x: 0.324, breedte: 0.033 }, { x: 0.449, breedte: 0.040 }, { x: 0.547, breedte: 0.047 }, { x: 0.658, breedte: 0.047 }, { x: 0.768, breedte: 0.047 }],
+        obstakels: [
+          { soort: 'stekels', naam: 'doorns', x: 0.729, breedte: 0.020 },
+          { soort: 'stekels', naam: 'doorns', x: 0.383, breedte: 0.020 },
+          { soort: 'stekels', naam: 'doorns', x: 0.387, breedte: 0.020 },
+          { soort: 'stekels', naam: 'doorns', x: 0.621, breedte: 0.020 },
+        ],
         platforms: [
           { x: 0.100, y: 0.68, breedte: 0.027 }, { x: 0.158, y: 0.68, breedte: 0.027 },
           { x: 0.215, y: 0.68, breedte: 0.027 }, { x: 0.273, y: 0.68, breedte: 0.027 },
@@ -138,6 +164,12 @@
         decoratie: 'oerwoud',
         lucht: ['#0f2a14', '#3f7a3a'], bodem: '#3b5a22', platform: '#6b4a2a', rand: '#8fbf4a', gatKleur: '#0a1a0a',
         gaten: [{ x: 0.140, breedte: 0.047 }, { x: 0.220, breedte: 0.033 }, { x: 0.290, breedte: 0.033 }, { x: 0.391, breedte: 0.040 }, { x: 0.478, breedte: 0.047 }, { x: 0.585, breedte: 0.040 }, { x: 0.681, breedte: 0.033 }, { x: 0.764, breedte: 0.047 }],
+        obstakels: [
+          { soort: 'vallend', naam: 'kokosnoot', x: 0.438, periode: 2.3 },
+          { soort: 'stekels', naam: 'doorns', x: 0.444, breedte: 0.020 },
+          { soort: 'vallend', naam: 'kokosnoot', x: 0.484, periode: 2.2 },
+          { soort: 'vallend', naam: 'kokosnoot', x: 0.212, periode: 1.8 },
+        ],
         platforms: [
           { x: 0.100, y: 0.68, breedte: 0.027 }, { x: 0.150, y: 0.58, breedte: 0.027 },
           { x: 0.200, y: 0.68, breedte: 0.027 }, { x: 0.250, y: 0.68, breedte: 0.027 },
@@ -156,6 +188,13 @@
         decoratie: 'woestijn',
         lucht: ['#ffb347', '#ffe9a8'], bodem: '#e0b96a', platform: '#c49a4a', rand: '#f5d78a', gatKleur: '#7a5a2a',
         gaten: [{ x: 0.133, breedte: 0.025 }, { x: 0.212, breedte: 0.025 }, { x: 0.295, breedte: 0.035 }, { x: 0.355, breedte: 0.030 }, { x: 0.465, breedte: 0.035 }, { x: 0.516, breedte: 0.025 }, { x: 0.599, breedte: 0.025 }, { x: 0.698, breedte: 0.030 }, { x: 0.770, breedte: 0.035 }],
+        obstakels: [
+          { soort: 'beest', naam: 'schorpioen', x: 0.842, bereik: 0.045, snelheid: 2.10 },
+          { soort: 'stekels', naam: 'botten', x: 0.179, breedte: 0.015 },
+          { soort: 'stekels', naam: 'botten', x: 0.840, breedte: 0.015 },
+          { soort: 'stekels', naam: 'botten', x: 0.827, breedte: 0.015 },
+          { soort: 'stekels', naam: 'botten', x: 0.671, breedte: 0.015 },
+        ],
         platforms: [
           { x: 0.100, y: 0.68, breedte: 0.020 }, { x: 0.144, y: 0.58, breedte: 0.020 },
           { x: 0.188, y: 0.48, breedte: 0.020 }, { x: 0.232, y: 0.42, breedte: 0.020 },
@@ -176,6 +215,13 @@
         decoratie: 'kampvuur',
         lucht: ['#050a1f', '#1f2a5a'], bodem: '#2f3a2a', platform: '#5a4a3a', rand: '#8a7a5a', gatKleur: '#000000',
         gaten: [{ x: 0.130, breedte: 0.025 }, { x: 0.184, breedte: 0.030 }, { x: 0.257, breedte: 0.025 }, { x: 0.327, breedte: 0.030 }, { x: 0.415, breedte: 0.025 }, { x: 0.470, breedte: 0.025 }, { x: 0.576, breedte: 0.030 }, { x: 0.640, breedte: 0.035 }, { x: 0.708, breedte: 0.025 }, { x: 0.784, breedte: 0.025 }],
+        obstakels: [
+          { soort: 'stekels', naam: 'vuur', x: 0.297, breedte: 0.015 },
+          { soort: 'stekels', naam: 'vuur', x: 0.371, breedte: 0.015 },
+          { soort: 'stekels', naam: 'vuur', x: 0.525, breedte: 0.015 },
+          { soort: 'beest', naam: 'wolf', x: 0.837, bereik: 0.045, snelheid: 2.25 },
+          { soort: 'beest', naam: 'wolf', x: 0.832, bereik: 0.045, snelheid: 2.25 },
+        ],
         platforms: [
           { x: 0.100, y: 0.68, breedte: 0.020 }, { x: 0.139, y: 0.68, breedte: 0.020 },
           { x: 0.179, y: 0.68, breedte: 0.020 }, { x: 0.218, y: 0.68, breedte: 0.020 },
@@ -196,6 +242,14 @@
         decoratie: 'bergen',
         lucht: ['#5a7fb5', '#d7e6f5'], bodem: '#7a7a7a', platform: '#8a8a8a', rand: '#ffffff', gatKleur: '#2a3a4a',
         gaten: [{ x: 0.103, breedte: 0.030 }, { x: 0.202, breedte: 0.030 }, { x: 0.270, breedte: 0.025 }, { x: 0.333, breedte: 0.035 }, { x: 0.365, breedte: 0.035 }, { x: 0.445, breedte: 0.035 }, { x: 0.496, breedte: 0.025 }, { x: 0.565, breedte: 0.035 }, { x: 0.633, breedte: 0.030 }, { x: 0.729, breedte: 0.035 }, { x: 0.773, breedte: 0.035 }],
+        obstakels: [
+          { soort: 'vallend', naam: 'rots', x: 0.653, periode: 1.7 },
+          { soort: 'stekels', naam: 'ijspegel', x: 0.676, breedte: 0.015 },
+          { soort: 'vallend', naam: 'rots', x: 0.530, periode: 1.7 },
+          { soort: 'stekels', naam: 'ijspegel', x: 0.835, breedte: 0.015 },
+          { soort: 'vallend', naam: 'rots', x: 0.232, periode: 1.6 },
+          { soort: 'vallend', naam: 'rots', x: 0.338, periode: 1.9 },
+        ],
         platforms: [
           { x: 0.100, y: 0.68, breedte: 0.020 }, { x: 0.136, y: 0.68, breedte: 0.020 },
           { x: 0.171, y: 0.68, breedte: 0.020 }, { x: 0.207, y: 0.68, breedte: 0.020 },
@@ -218,6 +272,14 @@
         decoratie: 'tijgerhol',
         lucht: ['#0a0210', '#3a1a4a'], bodem: '#2a1a2a', platform: '#4a2a4a', rand: '#7a4a7a', gatKleur: '#000000',
         gaten: [{ x: 0.106, breedte: 0.035 }, { x: 0.168, breedte: 0.025 }, { x: 0.250, breedte: 0.030 }, { x: 0.306, breedte: 0.030 }, { x: 0.360, breedte: 0.025 }, { x: 0.413, breedte: 0.035 }, { x: 0.470, breedte: 0.035 }, { x: 0.537, breedte: 0.025 }, { x: 0.615, breedte: 0.030 }, { x: 0.649, breedte: 0.030 }, { x: 0.708, breedte: 0.025 }, { x: 0.780, breedte: 0.025 }],
+        obstakels: [
+          { soort: 'vallend', naam: 'stalactiet', x: 0.357, periode: 2.6 },
+          { soort: 'vallend', naam: 'stalactiet', x: 0.549, periode: 2.5 },
+          { soort: 'beest', naam: 'sabeltandtijger', x: 0.829, bereik: 0.045, snelheid: 2.55 },
+          { soort: 'stekels', naam: 'botten', x: 0.819, breedte: 0.015 },
+          { soort: 'vallend', naam: 'stalactiet', x: 0.206, periode: 1.7 },
+          { soort: 'vallend', naam: 'stalactiet', x: 0.175, periode: 1.9 },
+        ],
         platforms: [
           { x: 0.100, y: 0.68, breedte: 0.020 }, { x: 0.133, y: 0.62, breedte: 0.020 },
           { x: 0.165, y: 0.68, breedte: 0.020 }, { x: 0.198, y: 0.68, breedte: 0.020 },
@@ -338,13 +400,53 @@
       // In een gat gevallen, of de lava aangeraakt: een leven kwijt
       const inLava = level().lava && bovenGat() && mens.y > bodemHoogte() + 10;
       if (mens.y > canvas.height + 50 || inLava) {
-        mens.levens -= 1;
-        if (mens.levens <= 0) {
-          gameOver = true;
-        } else {
-          startOpnieuw();
-        }
+        verliesLeven();
       }
+
+      // Tegen een obstakel aan gelopen
+      if (raaktObstakel()) {
+        verliesLeven();
+      }
+    }
+
+    function verliesLeven() {
+      mens.levens -= 1;
+      if (mens.levens <= 0) {
+        gameOver = true;
+      } else {
+        startOpnieuw();
+      }
+    }
+
+    // Waar is een obstakel op dit moment? Geeft x, y (onderkant) en de helft van de breedte/hoogte.
+    function obstakelPositie(ob) {
+      const b = levelBreedte();
+      const h = canvas.height;
+      const tijd = performance.now() / 1000;
+      if (ob.soort === 'stekels') {
+        return { x: (ob.x + ob.breedte / 2) * b, y: bodemHoogte(), halfBreed: ob.breedte * b / 2, hoog: 30 };
+      }
+      if (ob.soort === 'beest') {
+        // Heen en weer lopen over het bereik
+        const deel = 0.5 + 0.5 * Math.sin(tijd * ob.snelheid);
+        const richting = Math.cos(tijd * ob.snelheid) >= 0 ? 1 : -1;
+        return { x: (ob.x + ob.bereik * deel) * b, y: bodemHoogte(), halfBreed: 30, hoog: 55, richting };
+      }
+      // Vallend: steeds opnieuw van het plafond naar de bodem
+      const deel = (tijd / ob.periode) % 1;
+      const y = deel * deel * h; // steeds sneller, net als echt vallen
+      return { x: ob.x * b, y, halfBreed: 18, hoog: 40 };
+    }
+
+    function raaktObstakel() {
+      for (const ob of level().obstakels) {
+        const pos = obstakelPositie(ob);
+        // De mens is ongeveer 40 breed en 170 hoog, gemeten vanaf de voeten
+        const overlapX = Math.abs(mens.x - pos.x) < pos.halfBreed + 15;
+        const overlapY = mens.y > pos.y - pos.hoog && mens.y - 170 < pos.y;
+        if (overlapX && overlapY) return true;
+      }
+      return false;
     }
 
     // Lucht en bodem in de kleuren van het level
@@ -668,6 +770,126 @@
       }
     }
 
+    function tekenObstakels() {
+      const tijd = performance.now() / 1000;
+      for (const ob of level().obstakels) {
+        const pos = obstakelPositie(ob);
+        if (ob.soort === 'stekels') tekenStekels(ob, pos, tijd);
+        if (ob.soort === 'beest') tekenBeest(ob, pos, tijd);
+        if (ob.soort === 'vallend') tekenVallend(ob, pos);
+      }
+    }
+
+    function tekenStekels(ob, pos, tijd) {
+      const kleuren = { botten: '#f0e8d8', ijspegel: '#bfe4ff', vuur: '#ff7a00', doorns: '#2f5a1a' };
+      ctx.fillStyle = kleuren[ob.naam];
+      const links = pos.x - pos.halfBreed;
+      for (let x = links; x < pos.x + pos.halfBreed; x += 18) {
+        const hoog = ob.naam === 'vuur' ? 25 + Math.sin(tijd * 10 + x) * 8 : 30;
+        ctx.beginPath();
+        ctx.moveTo(x, pos.y);
+        ctx.lineTo(x + 9, pos.y - hoog);
+        ctx.lineTo(x + 18, pos.y);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    function tekenBeest(ob, pos, tijd) {
+      const kleuren = {
+        vleermuis: '#3a2a4a', sneeuwbal: '#ffffff', mammoet: '#6b4a2a', dino: '#3f8a3a',
+        slang: '#4a8a2a', schorpioen: '#3a2a1a', wolf: '#7a7a7a', sabeltandtijger: '#e08a2a',
+      };
+      const kleur = kleuren[ob.naam];
+      const y = pos.y;
+      ctx.save();
+      ctx.translate(pos.x, 0);
+      ctx.scale(pos.richting, 1);
+      const pootZwaai = Math.sin(tijd * 10) * 8;
+
+      if (ob.naam === 'sneeuwbal') {
+        ctx.fillStyle = kleur;
+        ctx.beginPath(); ctx.arc(0, y - 28, 28, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#cfe4f5'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(0, y - 28, 18, tijd * 5, tijd * 5 + 2); ctx.stroke();
+      } else if (ob.naam === 'vleermuis') {
+        const vleugel = Math.sin(tijd * 15) * 15;
+        ctx.fillStyle = kleur;
+        ctx.beginPath(); ctx.ellipse(0, y - 40, 12, 16, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(0, y - 40); ctx.lineTo(-35, y - 50 - vleugel); ctx.lineTo(-30, y - 30);
+        ctx.moveTo(0, y - 40); ctx.lineTo(35, y - 50 - vleugel); ctx.lineTo(30, y - 30);
+        ctx.fill();
+      } else if (ob.naam === 'slang') {
+        ctx.strokeStyle = kleur; ctx.lineWidth = 12; ctx.lineCap = 'round';
+        ctx.beginPath();
+        for (let i = -30; i <= 30; i += 5) ctx.lineTo(i, y - 8 + Math.sin(i / 8 + tijd * 8) * 6);
+        ctx.stroke();
+        ctx.fillStyle = '#ff3030';
+        ctx.beginPath(); ctx.moveTo(30, y - 8); ctx.lineTo(42, y - 12); ctx.lineTo(42, y - 4); ctx.fill();
+      } else if (ob.naam === 'schorpioen') {
+        ctx.fillStyle = kleur;
+        ctx.beginPath(); ctx.ellipse(0, y - 12, 25, 12, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = kleur; ctx.lineWidth = 6; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(-20, y - 15); ctx.quadraticCurveTo(-45, y - 60, -20, y - 55); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(20, y - 15); ctx.lineTo(40, y - 25); ctx.stroke();
+      } else {
+        // Viervoeter: lijf, kop, poten, en per soort iets extra's
+        ctx.fillStyle = kleur;
+        ctx.beginPath(); ctx.ellipse(0, y - 35, 32, 20, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(32, y - 45, 14, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = kleur; ctx.lineWidth = 7; ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-18, y - 25); ctx.lineTo(-18 + pootZwaai, y);
+        ctx.moveTo(-6, y - 25); ctx.lineTo(-6 - pootZwaai, y);
+        ctx.moveTo(8, y - 25); ctx.lineTo(8 + pootZwaai, y);
+        ctx.moveTo(20, y - 25); ctx.lineTo(20 - pootZwaai, y);
+        ctx.stroke();
+        ctx.fillStyle = '#111';
+        ctx.beginPath(); ctx.arc(37, y - 48, 2.5, 0, Math.PI * 2); ctx.fill();
+        if (ob.naam === 'mammoet') {
+          ctx.strokeStyle = kleur; ctx.lineWidth = 6;
+          ctx.beginPath(); ctx.moveTo(44, y - 40); ctx.quadraticCurveTo(58, y - 20, 50, y - 5); ctx.stroke();
+          ctx.strokeStyle = '#f5f0e0'; ctx.lineWidth = 4;
+          ctx.beginPath(); ctx.moveTo(40, y - 36); ctx.quadraticCurveTo(62, y - 30, 58, y - 50); ctx.stroke();
+        }
+        if (ob.naam === 'sabeltandtijger') {
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath(); ctx.moveTo(38, y - 36); ctx.lineTo(42, y - 20); ctx.lineTo(46, y - 36); ctx.fill();
+          ctx.strokeStyle = '#7a4a10'; ctx.lineWidth = 3;
+          for (const sx of [-15, -5, 5]) { ctx.beginPath(); ctx.moveTo(sx, y - 52); ctx.lineTo(sx + 3, y - 35); ctx.stroke(); }
+        }
+        if (ob.naam === 'dino') {
+          ctx.fillStyle = kleur;
+          ctx.beginPath(); ctx.moveTo(-30, y - 40); ctx.lineTo(-60, y - 30); ctx.lineTo(-30, y - 25); ctx.fill();
+          for (const sx of [-15, 0, 15]) { ctx.beginPath(); ctx.moveTo(sx - 6, y - 52); ctx.lineTo(sx, y - 66); ctx.lineTo(sx + 6, y - 52); ctx.fill(); }
+        }
+        if (ob.naam === 'wolf') {
+          ctx.fillStyle = kleur;
+          ctx.beginPath(); ctx.moveTo(26, y - 55); ctx.lineTo(30, y - 68); ctx.lineTo(36, y - 55); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(-30, y - 40); ctx.lineTo(-50, y - 55); ctx.lineTo(-28, y - 30); ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+
+    function tekenVallend(ob, pos) {
+      if (ob.naam === 'stalactiet') {
+        ctx.fillStyle = '#5a4a3a';
+        ctx.beginPath();
+        ctx.moveTo(pos.x - 15, pos.y - 45); ctx.lineTo(pos.x + 15, pos.y - 45); ctx.lineTo(pos.x, pos.y);
+        ctx.closePath(); ctx.fill();
+      } else {
+        const kleuren = { lavabrok: '#ff6a00', rots: '#6a6a6a', kokosnoot: '#6b4a2a' };
+        ctx.fillStyle = kleuren[ob.naam];
+        ctx.beginPath(); ctx.arc(pos.x, pos.y - 18, 18, 0, Math.PI * 2); ctx.fill();
+        if (ob.naam === 'lavabrok') {
+          ctx.fillStyle = '#ffd23f';
+          ctx.beginPath(); ctx.arc(pos.x - 5, pos.y - 22, 6, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+    }
+
     function tekenParcours() {
       const b = levelBreedte();
       const h = canvas.height;
@@ -846,6 +1068,7 @@
       ctx.translate(-cameraX(), 0);
       tekenAchtergrond();
       tekenParcours();
+      tekenObstakels();
       tekenMens();
       ctx.restore();
 
