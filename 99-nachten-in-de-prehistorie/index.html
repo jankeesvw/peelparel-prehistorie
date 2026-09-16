@@ -131,10 +131,11 @@
       updateDagNacht(dt);
       if (winkelOpen) for (const t of ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']) toetsen[t] = false;
       let dx = 0, dd = 0;
-      if (toetsen['ArrowLeft']) { dx -= loopSnelheid * dt; speler.richting = -1; }
-      if (toetsen['ArrowRight']) { dx += loopSnelheid * dt; speler.richting = 1; }
-      if (toetsen['ArrowUp']) dd -= diepteSnelheid * dt;   // naar achteren, richting de horizon
-      if (toetsen['ArrowDown']) dd += diepteSnelheid * dt; // naar voren
+      const tempo = kleding().snelheid; // sommige kleren maken je sneller
+      if (toetsen['ArrowLeft']) { dx -= loopSnelheid * tempo * dt; speler.richting = -1; }
+      if (toetsen['ArrowRight']) { dx += loopSnelheid * tempo * dt; speler.richting = 1; }
+      if (toetsen['ArrowUp']) dd -= diepteSnelheid * tempo * dt;   // naar achteren, richting de horizon
+      if (toetsen['ArrowDown']) dd += diepteSnelheid * tempo * dt; // naar voren
       speler.loopt = dx !== 0 || dd !== 0;
       if (speler.loopt) speler.stap += dt * 10;
 
@@ -178,8 +179,9 @@
       const missie = missies.find(m => m.soort === soort);
       if (!missie || missie.voortgang >= missie.doel) return;
       missie.voortgang++;
-      munten += muntenPerStap;
-      toonMelding(`+${muntenPerStap} munten`, x, y, '#ffd166');
+      const verdiend = muntenPerStap + kleding().muntenBonus;
+      munten += verdiend;
+      toonMelding(`+${verdiend} munten`, x, y, '#ffd166');
       if (missie.voortgang === missie.doel) {
         munten += muntenPerMissie;
         toonMelding(`Missie voltooid! +${muntenPerMissie} munten`, x, y - 40, '#ffd166');
@@ -302,7 +304,7 @@
       ctx.font = '16px sans-serif';
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'right';
-      ctx.fillText(`Wapen: ${wapens[huidigWapen].naam}`, 366, py + 26);
+      ctx.fillText(`${wapens[huidigWapen].naam} · ${kleding().naam}`, 366, py + 26);
       ctx.textAlign = 'left';
 
       // Uitleg van de besturing
@@ -477,17 +479,42 @@
     const wapens = [
       // hak is hoeveel schade een slag aan een boom doet. Een boom heeft 4 leven.
       { naam: 'Knots', prijs: 0, bereik: 80, hak: 1, gekocht: true, uitleg: 'Je oude vertrouwde knots.' },
-      { naam: 'Stenen bijl', prijs: 10, bereik: 110, hak: 2, gekocht: false, uitleg: 'Scherpe steen, hakt bomen snel om.' },
-      { naam: 'Speer', prijs: 20, bereik: 170, hak: 1, gekocht: false, uitleg: 'Lang en puntig, raakt van ver.' },
-      { naam: 'Boog', prijs: 35, bereik: 380, hak: 0, gekocht: false, uitleg: 'Schiet ver, maar hakt niet.' },
+      { naam: 'Stenen bijl', prijs: 25, bereik: 110, hak: 2, gekocht: false, uitleg: 'Scherpe steen, hakt bomen snel om.' },
+      { naam: 'Speer', prijs: 60, bereik: 170, hak: 1, gekocht: false, uitleg: 'Lang en puntig, raakt van ver.' },
+      { naam: 'Slinger', prijs: 90, bereik: 260, hak: 0, gekocht: false, uitleg: 'Leren riem die stenen wegslingert.' },
+      { naam: 'Boog', prijs: 120, bereik: 380, hak: 0, gekocht: false, uitleg: 'Schiet ver, maar hakt niet.' },
+      { naam: 'Sabeltandknuppel', prijs: 200, bereik: 200, hak: 4, gekocht: false, uitleg: 'Knuppel met tijgertanden: hakt een boom in één klap.' },
     ];
+
+    // Kleren van de prehistorie. Elk kledingstuk ziet anders uit én doet iets voor je.
+    const kleren = [
+      { naam: 'Dierenvel', prijs: 0, gekocht: true, uitleg: 'Je gewone bruine vel.',
+        velKleur: ['#8b4a22', '#b8683a', '#7a3d1c'], vlekKleur: '#4a2410', hoofd: 'geen', snelheid: 1, muntenBonus: 0, dierTempo: 1, steenBereik: 22 },
+      { naam: 'Wolvenvacht', prijs: 50, gekocht: false, uitleg: 'Grijze vacht, je loopt 30% sneller.',
+        velKleur: ['#5a5a60', '#8a8a92', '#4a4a50'], vlekKleur: '#2e2e33', hoofd: 'geen', snelheid: 1.3, muntenBonus: 0, dierTempo: 1, steenBereik: 22 },
+      { naam: 'Verenkroon', prijs: 80, gekocht: false, uitleg: 'Kleurige veren op je hoofd, dieren komen vaker.',
+        velKleur: ['#8b4a22', '#b8683a', '#7a3d1c'], vlekKleur: '#4a2410', hoofd: 'veren', snelheid: 1, muntenBonus: 0, dierTempo: 0.5, steenBereik: 22 },
+      { naam: 'Berenhuid', prijs: 110, gekocht: false, uitleg: 'Dikke donkere huid, elke missiestap geeft 1 munt extra.',
+        velKleur: ['#2e1a0e', '#4a2c18', '#22120a'], vlekKleur: '#1a0d06', hoofd: 'geen', snelheid: 1, muntenBonus: 1, dierTempo: 1, steenBereik: 22 },
+      { naam: 'Mammoetlaarzen', prijs: 150, gekocht: false, uitleg: 'Wollige laarzen, je raapt stenen van verder op.',
+        velKleur: ['#8b4a22', '#b8683a', '#7a3d1c'], vlekKleur: '#4a2410', hoofd: 'laarzen', snelheid: 1.1, muntenBonus: 0, dierTempo: 1, steenBereik: 60 },
+      { naam: 'Sjamanenmasker', prijs: 250, gekocht: false, uitleg: 'Houten masker met horens: 2 munten extra per stap.',
+        velKleur: ['#6b2d2d', '#a04040', '#5a2222'], vlekKleur: '#ffd166', hoofd: 'masker', snelheid: 1.1, muntenBonus: 2, dierTempo: 0.8, steenBereik: 30 },
+    ];
+    let huidigeKleren = 0;
+    function kleding() { return kleren[huidigeKleren]; }
     let huidigWapen = 0;
 
     // De handelaar staat met zijn kraampje op een vaste plek op de grond.
     const handelaar = { x: 1600, d: 0.4 };
     let winkelOpen = false;
     let winkelKeuze = 0;
+    let winkelTab = 0; // 0 = wapens, 1 = kleren
     let winkelBericht = '';
+    const winkelTabs = [
+      { naam: 'Wapens', lijst: () => wapens, huidig: () => huidigWapen },
+      { naam: 'Kleren', lijst: () => kleren, huidig: () => huidigeKleren },
+    ];
 
     function bijHandelaar() {
       return Math.abs(speler.x - handelaar.x) < 110 && Math.abs(spelerY() - diepteNaarY(handelaar.d)) < 60;
@@ -495,28 +522,36 @@
 
     function openWinkel() {
       winkelOpen = true;
+      winkelTab = 0;
       winkelKeuze = huidigWapen;
       winkelBericht = 'Welkom! Wat wil je kopen?';
     }
 
     function winkelToets(toets) {
-      if (toets === 'ArrowUp') winkelKeuze = (winkelKeuze + wapens.length - 1) % wapens.length;
-      if (toets === 'ArrowDown') winkelKeuze = (winkelKeuze + 1) % wapens.length;
-      if (toets === 'Enter' || toets === ' ') koopOfKies(wapens[winkelKeuze], winkelKeuze);
+      const lijst = winkelTabs[winkelTab].lijst();
+      if (toets === 'ArrowUp') winkelKeuze = (winkelKeuze + lijst.length - 1) % lijst.length;
+      if (toets === 'ArrowDown') winkelKeuze = (winkelKeuze + 1) % lijst.length;
+      if (toets === 'ArrowLeft' || toets === 'ArrowRight') {
+        winkelTab = 1 - winkelTab;
+        winkelKeuze = winkelTabs[winkelTab].huidig();
+      }
+      if (toets === 'Enter' || toets === ' ') koopOfKies(lijst[winkelKeuze], winkelKeuze);
       if (toets === 'e' || toets === 'E' || toets === 'Escape') winkelOpen = false;
     }
 
-    function koopOfKies(wapen, index) {
-      if (wapen.gekocht) {
-        huidigWapen = index;
-        winkelBericht = `Je hebt nu de ${wapen.naam.toLowerCase()} in je hand.`;
-      } else if (munten >= wapen.prijs) {
-        munten -= wapen.prijs;
-        wapen.gekocht = true;
-        huidigWapen = index;
-        winkelBericht = `Gekocht! Veel jachtplezier met je ${wapen.naam.toLowerCase()}.`;
+    function koopOfKies(ding, index) {
+      const isWapen = winkelTab === 0;
+      const naam = ding.naam.toLowerCase();
+      if (ding.gekocht) {
+        if (isWapen) huidigWapen = index; else huidigeKleren = index;
+        winkelBericht = isWapen ? `Je hebt nu de ${naam} in je hand.` : `Je draagt nu de ${naam}.`;
+      } else if (munten >= ding.prijs) {
+        munten -= ding.prijs;
+        ding.gekocht = true;
+        if (isWapen) huidigWapen = index; else huidigeKleren = index;
+        winkelBericht = isWapen ? `Gekocht! Veel jachtplezier met je ${naam}.` : `Gekocht! De ${naam} staat je goed.`;
       } else {
-        winkelBericht = `Te weinig munten. Je hebt er nog ${wapen.prijs - munten} nodig.`;
+        winkelBericht = `Te weinig munten. Je hebt er nog ${ding.prijs - munten} nodig.`;
       }
     }
 
@@ -630,8 +665,11 @@
     function tekenWinkel() {
       if (!winkelOpen) return;
       const b = canvas.width, h = canvas.height;
-      const pw = 460, ph = 90 + wapens.length * 56 + 70;
-      const px = b / 2 - pw / 2, py = h / 2 - ph / 2;
+      const lijst = winkelTabs[winkelTab].lijst();
+      const huidig = winkelTabs[winkelTab].huidig();
+      const rijHoogte = 54;
+      const pw = Math.min(620, b - 40), ph = 130 + lijst.length * rijHoogte + 70;
+      const px = b / 2 - pw / 2, py = Math.max(10, h / 2 - ph / 2);
 
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
       ctx.fillRect(0, 0, b, h);
@@ -650,42 +688,59 @@
       ctx.fillText(`${munten} munten`, px + pw - 24, py + 40);
       tekenMunt(px + pw - 24 - ctx.measureText(`${munten} munten`).width - 18, py + 32, 10);
 
-      wapens.forEach((w, i) => {
-        const ry = py + 66 + i * 56;
+      // Tabbladen
+      winkelTabs.forEach((tab, i) => {
+        const tx = px + 24 + i * 150, ty = py + 58;
+        const actief = i === winkelTab;
+        ctx.fillStyle = actief ? '#a0522d' : 'rgba(255,255,255,0.08)';
+        ctx.fillRect(tx, ty, 140, 34);
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillStyle = actief ? '#fff' : 'rgba(255,255,255,0.6)';
+        ctx.fillText(tab.naam, tx + 70, ty + 24);
+      });
+      ctx.textAlign = 'right';
+      ctx.font = '14px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillText('Pijltje links/rechts wisselt van tabblad', px + pw - 24, py + 82);
+
+      lijst.forEach((ding, i) => {
+        const ry = py + 104 + i * rijHoogte;
         const gekozen = i === winkelKeuze;
         ctx.fillStyle = gekozen ? 'rgba(255,209,102,0.2)' : 'rgba(255,255,255,0.04)';
-        ctx.fillRect(px + 16, ry, pw - 32, 50);
+        ctx.fillRect(px + 16, ry, pw - 32, rijHoogte - 6);
         if (gekozen) {
           ctx.strokeStyle = '#ffd166';
           ctx.lineWidth = 2;
-          ctx.strokeRect(px + 16, ry, pw - 32, 50);
+          ctx.strokeRect(px + 16, ry, pw - 32, rijHoogte - 6);
         }
-        // Plaatje van het wapen
+        // Plaatje
         ctx.save();
-        ctx.translate(px + 50, ry + 38);
-        ctx.rotate(-0.9);
-        tekenWapenVorm(i, 0, 0, 0.5);
+        ctx.translate(px + 50, ry + 40);
+        if (winkelTab === 0) { ctx.rotate(-0.9); tekenWapenVorm(i, 0, 0, 0.45); }
+        else tekenKledingIcoon(ding, 0, 0);
         ctx.restore();
 
         ctx.textAlign = 'left';
-        ctx.font = 'bold 19px sans-serif';
+        ctx.font = 'bold 18px sans-serif';
         ctx.fillStyle = '#fff';
-        ctx.fillText(w.naam, px + 90, ry + 22);
-        ctx.font = '14px sans-serif';
+        ctx.fillText(ding.naam, px + 90, ry + 21);
+        ctx.font = '13px sans-serif';
         ctx.fillStyle = 'rgba(255,255,255,0.7)';
-        ctx.fillText(`${w.uitleg}  Bereik ${w.bereik}`, px + 90, ry + 41);
+        const extra = winkelTab === 0 ? `  Bereik ${ding.bereik}, hakkracht ${ding.hak}` : '';
+        ctx.fillText(ding.uitleg + extra, px + 90, ry + 39);
 
         ctx.textAlign = 'right';
-        ctx.font = 'bold 18px sans-serif';
-        if (i === huidigWapen) {
+        ctx.font = 'bold 17px sans-serif';
+        if (i === huidig) {
           ctx.fillStyle = '#8fd18f';
-          ctx.fillText('In de hand', px + pw - 30, ry + 31);
-        } else if (w.gekocht) {
+          ctx.fillText(winkelTab === 0 ? 'In de hand' : 'Aan', px + pw - 30, ry + 30);
+        } else if (ding.gekocht) {
           ctx.fillStyle = '#8fd18f';
-          ctx.fillText('Gekocht', px + pw - 30, ry + 31);
+          ctx.fillText('Gekocht', px + pw - 30, ry + 30);
         } else {
-          ctx.fillStyle = munten >= w.prijs ? '#ffd166' : '#d96c6c';
-          ctx.fillText(`${w.prijs} munten`, px + pw - 30, ry + 31);
+          ctx.fillStyle = munten >= ding.prijs ? '#ffd166' : '#d96c6c';
+          ctx.fillText(`${ding.prijs} munten`, px + pw - 30, ry + 30);
         }
       });
 
@@ -695,8 +750,37 @@
       ctx.fillText(winkelBericht, b / 2, py + ph - 40);
       ctx.font = '14px sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fillText('Pijltjes omhoog/omlaag = kiezen, Enter = kopen of in de hand nemen, E = sluiten', b / 2, py + ph - 16);
+      ctx.fillText('Omhoog/omlaag = kiezen, Enter = kopen of gebruiken, E = sluiten', b / 2, py + ph - 16);
       ctx.textAlign = 'left';
+    }
+
+    // Klein plaatje van een kledingstuk voor in de winkel: een velletje in de juiste kleur.
+    function tekenKledingIcoon(k, x, y) {
+      ctx.fillStyle = k.velKleur[1];
+      ctx.beginPath();
+      ctx.moveTo(x - 12, y - 18); ctx.lineTo(x + 12, y - 18); ctx.lineTo(x + 16, y + 10);
+      for (let i = 16; i >= -16; i -= 8) ctx.lineTo(x + i - 4, y + (i % 16 === 0 ? 14 : 10));
+      ctx.lineTo(x - 16, y + 10);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = k.vlekKleur;
+      ctx.beginPath(); ctx.arc(x - 3, y - 4, 3, 0, Math.PI * 2); ctx.arc(x + 5, y + 4, 2.5, 0, Math.PI * 2); ctx.fill();
+      if (k.hoofd === 'veren') {
+        const kleuren = ['#d9534f', '#ffd166', '#4ecdc4'];
+        kleuren.forEach((kl, i) => {
+          ctx.fillStyle = kl;
+          ctx.beginPath(); ctx.ellipse(x - 8 + i * 8, y - 28, 3, 9, (i - 1) * 0.3, 0, Math.PI * 2); ctx.fill();
+        });
+      }
+      if (k.hoofd === 'masker') {
+        ctx.fillStyle = '#c9a066';
+        ctx.beginPath(); ctx.ellipse(x, y - 26, 9, 11, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(x - 3, y - 28, 1.5, 0, Math.PI * 2); ctx.arc(x + 3, y - 28, 1.5, 0, Math.PI * 2); ctx.fill();
+      }
+      if (k.hoofd === 'laarzen') {
+        ctx.fillStyle = '#e8dcc8';
+        ctx.fillRect(x - 12, y + 12, 9, 8); ctx.fillRect(x + 3, y + 12, 9, 8);
+      }
     }
 
     // Tekent de vorm van een wapen met het handvat op (x, y), rechtop naar boven. Wordt gebruikt
@@ -743,7 +827,17 @@
         ctx.fillStyle = '#d9534f';
         ctx.beginPath(); ctx.moveTo(-1, -85); ctx.lineTo(-9, -78); ctx.lineTo(-1, -70); ctx.closePath(); ctx.fill();
         ctx.beginPath(); ctx.moveTo(1, -85); ctx.lineTo(9, -78); ctx.lineTo(1, -70); ctx.closePath(); ctx.fill();
-      } else {
+      } else if (index === 3) {
+        // Slinger: leren riem met een steen erin
+        ctx.strokeStyle = '#8a5a30';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(-18, -35, 0, -60); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(18, -35, 0, -60); ctx.stroke();
+        ctx.fillStyle = '#6b4423';
+        ctx.beginPath(); ctx.ellipse(0, -60, 10, 6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#8a8a86';
+        ctx.beginPath(); ctx.arc(0, -62, 5, 0, Math.PI * 2); ctx.fill();
+      } else if (index === 4) {
         // Boog: gebogen tak met een pees, en een pijl
         ctx.strokeStyle = '#7a5a30';
         ctx.lineWidth = 5;
@@ -756,6 +850,19 @@
         ctx.beginPath(); ctx.moveTo(-6, -30); ctx.lineTo(40, -30); ctx.stroke();
         ctx.fillStyle = '#9a9a96';
         ctx.beginPath(); ctx.moveTo(38, -36); ctx.lineTo(52, -30); ctx.lineTo(38, -24); ctx.closePath(); ctx.fill();
+      } else {
+        // Sabeltandknuppel: zware knuppel met een rij tijgertanden
+        ctx.strokeStyle = '#3e2510';
+        ctx.lineWidth = 9;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(12, -70); ctx.stroke();
+        ctx.fillStyle = '#5a3a1c';
+        ctx.beginPath(); ctx.ellipse(14, -78, 14, 22, 0.2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#f0e6d0';
+        for (let i = 0; i < 4; i++) {
+          ctx.beginPath();
+          ctx.moveTo(24 + i * 1.5, -96 + i * 12); ctx.lineTo(36 + i * 1.5, -92 + i * 12); ctx.lineTo(24 + i * 1.5, -86 + i * 12);
+          ctx.fill();
+        }
       }
       ctx.restore();
     }
@@ -770,7 +877,7 @@
       volgendDier -= dt;
       const jagenKlaar = missies[0].voortgang >= missies[0].doel;
       if (volgendDier <= 0 && dieren.length < 2 && !jagenKlaar) {
-        volgendDier = 3 + Math.random() * 3;
+        volgendDier = (3 + Math.random() * 3) * kleding().dierTempo;
         // Het dier komt net buiten beeld de wereld in, links of rechts van de camera
         const vanLinks = Math.random() < 0.5;
         dieren.push({
@@ -872,7 +979,7 @@
       if (stenenKlaar) return;
       for (let i = stenen.length - 1; i >= 0; i--) {
         const st = stenen[i];
-        if (Math.abs(st.x - speler.x) < 22 && Math.abs(diepteNaarY(st.d) - spelerY()) < 16) {
+        if (Math.abs(st.x - speler.x) < kleding().steenBereik && Math.abs(diepteNaarY(st.d) - spelerY()) < 16) {
           stenen.splice(i, 1);
           missieVoortgang('stenen', speler.x, spelerY() - 170);
         }
@@ -1371,18 +1478,30 @@
       ctx.lineTo(x + 6, y - 42);
       ctx.stroke();
 
-      // Voeten
-      ctx.fillStyle = huidDonker;
-      ctx.beginPath();
-      ctx.ellipse(x - 8 + zwaai, y, 9, 4, 0, 0, Math.PI * 2);
-      ctx.ellipse(x + 12 - zwaai, y, 9, 4, 0, 0, Math.PI * 2);
-      ctx.fill();
+      // Voeten (of wollige mammoetlaarzen)
+      const k = kleding();
+      if (k.hoofd === 'laarzen') {
+        ctx.fillStyle = '#e8dcc8';
+        ctx.beginPath();
+        ctx.ellipse(x - 8 + zwaai, y - 4, 11, 9, 0, 0, Math.PI * 2);
+        ctx.ellipse(x + 12 - zwaai, y - 4, 11, 9, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#c9b89a';
+        ctx.fillRect(x - 16 + zwaai, y - 20, 16, 10);
+        ctx.fillRect(x + 4 - zwaai, y - 20, 16, 10);
+      } else {
+        ctx.fillStyle = huidDonker;
+        ctx.beginPath();
+        ctx.ellipse(x - 8 + zwaai, y, 9, 4, 0, 0, Math.PI * 2);
+        ctx.ellipse(x + 12 - zwaai, y, 9, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       // Dierenvel (lijf) met rafelige onderrand en vacht-schaduw
       const vel = ctx.createLinearGradient(x - 20, 0, x + 20, 0);
-      vel.addColorStop(0, '#8b4a22');
-      vel.addColorStop(0.5, '#b8683a');
-      vel.addColorStop(1, '#7a3d1c');
+      vel.addColorStop(0, k.velKleur[0]);
+      vel.addColorStop(0.5, k.velKleur[1]);
+      vel.addColorStop(1, k.velKleur[2]);
       ctx.fillStyle = vel;
       ctx.beginPath();
       ctx.moveTo(x - 16, y - 96);
@@ -1395,7 +1514,7 @@
       ctx.closePath();
       ctx.fill();
       // Vlekken op het vel
-      ctx.fillStyle = '#4a2410';
+      ctx.fillStyle = k.vlekKleur;
       ctx.beginPath();
       ctx.arc(x - 6, y - 60, 5, 0, Math.PI * 2);
       ctx.arc(x + 8, y - 78, 4, 0, Math.PI * 2);
@@ -1486,6 +1605,34 @@
       ctx.beginPath();
       ctx.arc(x + 1, y - 108, 4, 0, Math.PI * 2);
       ctx.fill();
+
+      // Hoofddeksel, afhankelijk van de kleding
+      if (k.hoofd === 'veren') {
+        const kleuren = ['#d9534f', '#ffd166', '#4ecdc4', '#ffd166', '#d9534f'];
+        kleuren.forEach((kl, i) => {
+          ctx.fillStyle = kl;
+          ctx.beginPath();
+          ctx.ellipse(x - 20 + i * 10, y - 158 - (i === 2 ? 8 : 0), 4, 16, (i - 2) * 0.25, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.fillStyle = '#c9a066';
+        ctx.fillRect(x - 24, y - 142, 48, 6);
+      }
+      if (k.hoofd === 'masker') {
+        // Houten masker met horens over het gezicht
+        ctx.fillStyle = '#c9a066';
+        ctx.beginPath(); ctx.ellipse(x, y - 113, 22, 26, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#6b4423';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(x - 10, y - 130); ctx.lineTo(x + 10, y - 130); ctx.moveTo(x, y - 125); ctx.lineTo(x, y - 100); ctx.stroke();
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(x - 8, y - 116, 4, 0, Math.PI * 2); ctx.arc(x + 8, y - 116, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffd166';
+        ctx.beginPath(); ctx.arc(x - 8, y - 116, 1.5, 0, Math.PI * 2); ctx.arc(x + 8, y - 116, 1.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#e8e0c8';
+        ctx.beginPath(); ctx.moveTo(x - 18, y - 132); ctx.quadraticCurveTo(x - 36, y - 150, x - 26, y - 168); ctx.lineTo(x - 12, y - 136); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(x + 18, y - 132); ctx.quadraticCurveTo(x + 36, y - 150, x + 26, y - 168); ctx.lineTo(x + 12, y - 136); ctx.fill();
+      }
 
       ctx.restore();
     }
