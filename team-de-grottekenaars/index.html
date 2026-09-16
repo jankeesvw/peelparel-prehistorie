@@ -26,7 +26,9 @@
     // De oermens: positie en aantal levens
     const mens = {
       x: 200,
-      y: 0, // wordt in draw op de bodem gezet
+      y: 0,          // hoogte van de voeten, wordt bij de start op de bodem gezet
+      vy: 0,         // snelheid omhoog/omlaag (positief = vallen)
+      opDeGrond: false,
       levens: 3,
       snelheid: 300, // pixels per seconde
       richting: 1,   // 1 = naar rechts kijken, -1 = naar links
@@ -41,6 +43,30 @@
 
     // Het parcours: rotsplatforms op verschillende hoogtes.
     // x en breedte als deel van de schermbreedte, y als deel van de schermhoogte.
+    const zwaartekracht = 1800;
+    const springKracht = 750;
+
+    // Het gat in de bodem, als deel van de schermbreedte
+    const gat = { x: 0.48, breedte: 0.18 };
+
+    let gameOver = false;
+
+    function bodemHoogte() {
+      return canvas.height * 0.8;
+    }
+
+    function startOpnieuw() {
+      mens.x = 200;
+      mens.y = bodemHoogte();
+      mens.vy = 0;
+    }
+
+    // Staat de mens boven het gat?
+    function bovenGat() {
+      const b = canvas.width;
+      return mens.x > gat.x * b && mens.x < (gat.x + gat.breedte) * b;
+    }
+
     const platforms = [
       { x: 0.20, y: 0.68, breedte: 0.10 },
       { x: 0.33, y: 0.58, breedte: 0.08 },
@@ -66,6 +92,49 @@
 
       // Niet van het scherm af lopen
       mens.x = Math.max(40, Math.min(canvas.width - 40, mens.x));
+
+      // Springen met spatie, alleen als je op de grond of een platform staat
+      if (toetsen[' '] && mens.opDeGrond) {
+        mens.vy = -springKracht;
+        mens.opDeGrond = false;
+      }
+
+      // Zwaartekracht
+      const vorigeY = mens.y;
+      mens.vy += zwaartekracht * dt;
+      mens.y += mens.vy * dt;
+      mens.opDeGrond = false;
+
+      // Landen op de bodem (behalve boven het gat)
+      if (mens.y >= bodemHoogte() && !bovenGat()) {
+        mens.y = bodemHoogte();
+        mens.vy = 0;
+        mens.opDeGrond = true;
+      }
+
+      // Landen op een platform: alleen als je naar beneden beweegt
+      // en je voeten in deze stap door de bovenkant van het platform gaan
+      for (const pl of platforms) {
+        const px = pl.x * canvas.width;
+        const pBreedte = pl.breedte * canvas.width;
+        const py = pl.y * canvas.height;
+        const erboven = mens.x > px && mens.x < px + pBreedte;
+        if (mens.vy >= 0 && erboven && vorigeY <= py && mens.y >= py) {
+          mens.y = py;
+          mens.vy = 0;
+          mens.opDeGrond = true;
+        }
+      }
+
+      // In het gat gevallen: een leven kwijt
+      if (mens.y > canvas.height + 50) {
+        mens.levens -= 1;
+        if (mens.levens <= 0) {
+          gameOver = true;
+        } else {
+          startOpnieuw();
+        }
+      }
     }
 
     function tekenGrot() {
@@ -275,7 +344,7 @@
     }
 
     function tekenMens() {
-      const voeten = canvas.height * 0.8; // de mens staat op de rotsbodem
+      const voeten = mens.y; // de hoogte van de voeten
 
       // Alles tekenen we rond x = 0 en spiegelen we als de mens naar links kijkt
       ctx.save();
@@ -359,6 +428,18 @@
       }
     }
 
+    function tekenGameOver() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#e63946';
+      ctx.font = 'bold 120px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('RIP', canvas.width / 2, canvas.height / 2);
+      ctx.fillStyle = '#fff';
+      ctx.font = '32px sans-serif';
+      ctx.fillText('Druk op R om opnieuw te beginnen', canvas.width / 2, canvas.height / 2 + 70);
+    }
+
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       tekenGrot();
@@ -366,11 +447,18 @@
       tekenParcours();
       tekenMens();
       tekenLevens();
+      if (gameOver) tekenGameOver();
     }
 
+    startOpnieuw();
     let vorige = performance.now();
     function loop(nu) {
-      update((nu - vorige) / 1000);
+      if (gameOver && toetsen['r']) {
+        gameOver = false;
+        mens.levens = 3;
+        startOpnieuw();
+      }
+      if (!gameOver) update(Math.min((nu - vorige) / 1000, 0.05));
       vorige = nu;
       draw();
       requestAnimationFrame(loop);
