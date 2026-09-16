@@ -171,7 +171,7 @@
       ctx.textAlign = 'center';
       ctx.font = 'bold 56px sans-serif';
       ctx.fillStyle = '#e63946';
-      ctx.fillText('Je bent gedood door een wolharige neushoorn', b / 2, h * 0.4);
+      ctx.fillText(`Je bent gedood door ${doodDoor}`, b / 2, h * 0.4);
       ctx.font = '26px sans-serif';
       ctx.fillStyle = '#fff';
       ctx.fillText(`Je overleefde tot nacht ${nacht}, ronde ${ronde}, met ${munten} munten.`, b / 2, h * 0.4 + 50);
@@ -185,7 +185,7 @@
       if (gameOver) return;
       updateDagNacht(dt);
       if (onkwetsbaar > 0) onkwetsbaar -= dt;
-      updateNeushoorns(dt);
+      updateRoofdieren(dt);
       if (winkelOpen) for (const t of ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']) toetsen[t] = false;
       let dx = 0, dd = 0;
       const tempo = kleding().snelheid; // sommige kleren maken je sneller
@@ -226,7 +226,7 @@
 
     // Elke missie heeft een doel en een voortgang. Als voortgang het doel haalt, is de missie klaar.
     const missies = [
-      { naam: 'Jaag op 3 everzwijnen', soort: 'jagen', doel: 3, voortgang: 0 },
+      { naam: 'Jaag op 3 dieren', soort: 'jagen', doel: 3, voortgang: 0 },
       { naam: 'Vang 2 vissen uit het meer', soort: 'vissen', doel: 2, voortgang: 0 },
       { naam: 'Verzamel 5 stenen', soort: 'stenen', doel: 5, voortgang: 0 },
       { naam: 'Hak 3 bomen om', soort: 'hout', doel: 3, voortgang: 0 },
@@ -277,10 +277,6 @@
       }
     }
 
-    // Hoe snel de everzwijnen lopen hangt af van de ronde.
-    function dierSnelheid() {
-      return (70 + Math.random() * 60) * (1 + (ronde - 1) * 0.25);
-    }
 
     // Korte tekstjes die omhoog zweven en vervagen, zoals "+1".
     const meldingen = [];
@@ -334,11 +330,11 @@
 
     // Een slag met een knots of bijl: raakt het dichtstbijzijnde dier vóór ons.
     function slaDier(bereik) {
-      // Eerst kijken of er een neushoorn vóór ons staat
-      for (const n of neushoorns) {
+      // Eerst kijken of er een roofdier vóór ons staat
+      for (const n of roofdieren) {
         const afstand = n.x - speler.x;
         if (Math.abs(afstand) < bereik + 40 && Math.sign(afstand) === speler.richting && Math.abs(diepteNaarY(n.d) - spelerY()) < 40) {
-          return raakNeushoorn(speler.x, speler.d, bereik + 40);
+          return raakRoofdier(speler.x, speler.d, bereik + 40);
         }
       }
       for (let i = dieren.length - 1; i >= 0; i--) {
@@ -347,9 +343,7 @@
         const diepteVerschil = Math.abs(diepteNaarY(d.d) - spelerY());
         // Alleen dieren vóór het poppetje, dichtbij genoeg en op ongeveer dezelfde diepte
         if (Math.abs(afstand) < bereik && Math.sign(afstand) === speler.richting && diepteVerschil < 40) {
-          dieren.splice(i, 1);
-          missieVoortgang('jagen', d.x, spelerY() - 120);
-          return true;
+          return raakDier(d, i);
         }
       }
       return false;
@@ -387,14 +381,13 @@
         let geraakt = false;
         for (let j = dieren.length - 1; j >= 0; j--) {
           const dier = dieren[j];
-          if (Math.abs(dier.x - pr.x) < 36 && Math.abs(diepteNaarY(dier.d) - diepteNaarY(pr.d)) < 30) {
-            dieren.splice(j, 1);
-            missieVoortgang('jagen', dier.x, diepteNaarY(dier.d) - 120);
+          if (Math.abs(dier.x - pr.x) < 40 && Math.abs(diepteNaarY(dier.d) - diepteNaarY(pr.d)) < 30) {
+            raakDier(dier, j);
             geraakt = true;
             break;
           }
         }
-        if (!geraakt && raakNeushoorn(pr.x, pr.d, 60)) geraakt = true;
+        if (!geraakt && raakRoofdier(pr.x, pr.d, 60)) geraakt = true;
         if (geraakt || pr.afstand > pr.maxAfstand || inMeer(pr.x, pr.d, 0)) projectielen.splice(i, 1);
       }
     }
@@ -1066,67 +1059,260 @@
       ctx.restore();
     }
 
-    // ---------- Dieren ----------
+    // ---------- Dieren (om op te jagen) ----------
 
-    // Everzwijnen lopen van de ene kant van het scherm naar de andere.
+    // Elke diersoort heeft een snelheid, een aantal levens (klappen), een beloning en een tekenfunctie.
+    // gedrag: 'loopt' gewoon door, 'vlucht' rent weg als je dichtbij komt, 'huppelt' springt en zigzagt.
+    const dierSoorten = [
+      { naam: 'everzwijn', kans: 4, snelheid: [70, 130], leven: 1, beloning: 0, gedrag: 'loopt', teken: d => tekenEverzwijn(0, 0, Math.sign(d.snelheid), d.stap) },
+      { naam: 'hert', kans: 3, snelheid: [90, 140], leven: 1, beloning: 2, gedrag: 'vlucht', teken: d => tekenHert(d) },
+      { naam: 'haas', kans: 3, snelheid: [140, 200], leven: 1, beloning: 1, gedrag: 'huppelt', teken: d => tekenHaas(d) },
+      { naam: 'mammoet', kans: 1, snelheid: [35, 55], leven: 3, beloning: 15, gedrag: 'loopt', teken: d => tekenMammoet(d) },
+    ];
+
+    function kiesSoort(soorten) {
+      let totaal = 0;
+      for (const s of soorten) totaal += s.kans;
+      let lot = Math.random() * totaal;
+      for (const s of soorten) { lot -= s.kans; if (lot <= 0) return s; }
+      return soorten[0];
+    }
+
     const dieren = [];
     let volgendDier = 2; // seconden tot het volgende dier verschijnt
 
     function updateDieren(dt) {
       volgendDier -= dt;
       const jagenKlaar = missies[0].voortgang >= missies[0].doel;
-      if (volgendDier <= 0 && dieren.length < 2 && !jagenKlaar) {
-        volgendDier = (3 + Math.random() * 3) * kleding().dierTempo;
+      if (volgendDier <= 0 && dieren.length < 3 && !jagenKlaar) {
+        volgendDier = (2.5 + Math.random() * 2.5) * kleding().dierTempo;
         // Het dier komt net buiten beeld de wereld in, links of rechts van de camera
         const vanLinks = Math.random() < 0.5;
+        const soort = kiesSoort(dierSoorten);
+        const basis = soort.snelheid[0] + Math.random() * (soort.snelheid[1] - soort.snelheid[0]);
         dieren.push({
+          soort,
           x: vanLinks ? camera.x - 60 : camera.x + canvas.width + 60,
           d: 0.1 + Math.random() * 0.85,
-          snelheid: (vanLinks ? 1 : -1) * dierSnelheid(),
+          snelheid: (vanLinks ? 1 : -1) * basis * (1 + (ronde - 1) * 0.25),
+          leven: soort.leven,
           stap: 0,
+          schud: 0,
+          zigzag: Math.random() * Math.PI * 2,
         });
       }
       for (let i = dieren.length - 1; i >= 0; i--) {
         const d = dieren[i];
+        if (d.schud > 0) d.schud -= dt;
+        d.stap += dt * (d.soort.gedrag === 'huppelt' ? 14 : d.soort.naam === 'mammoet' ? 5 : 12);
+
+        // Een hert vlucht weg zodra je dichtbij komt
+        if (d.soort.gedrag === 'vlucht' && Math.abs(d.x - speler.x) < 260 && Math.abs(diepteNaarY(d.d) - spelerY()) < 60) {
+          const weg = Math.sign(d.x - speler.x) || 1;
+          d.snelheid = weg * Math.max(Math.abs(d.snelheid), 240);
+        }
+        // Een haas zigzagt in de diepte
+        if (d.soort.gedrag === 'huppelt') {
+          d.zigzag += dt * 3;
+          d.d = Math.max(0.08, Math.min(0.97, d.d + Math.sin(d.zigzag) * 0.5 * dt));
+        }
+
         const nieuwX = d.x + d.snelheid * dt;
-        // Everzwijnen lopen om het meer heen: bij het water keren ze om
+        // Dieren lopen om het meer heen: bij het water keren ze om
         if (inMeer(nieuwX, d.d, 40)) d.snelheid = -d.snelheid;
         else d.x = nieuwX;
-        d.stap += dt * 12;
         // Ver buiten beeld verdwijnt het dier weer
-        if (d.x < camera.x - 300 || d.x > camera.x + canvas.width + 300) dieren.splice(i, 1);
+        if (d.x < camera.x - 400 || d.x > camera.x + canvas.width + 400) dieren.splice(i, 1);
       }
     }
 
-    // ---------- Wolharige neushoorn ----------
+    // Een klap of schot op een dier. Geeft true als er een geraakt is.
+    function raakDier(d, index) {
+      d.leven--;
+      d.schud = 0.3;
+      if (d.leven > 0) {
+        // Grote dieren schrikken en rennen even harder
+        d.snelheid *= 1.4;
+        toonMelding(`Nog ${d.leven} klappen`, d.x, diepteNaarY(d.d) - 140, '#fff');
+        return true;
+      }
+      dieren.splice(index, 1);
+      missieVoortgang('jagen', d.x, diepteNaarY(d.d) - 120);
+      if (d.soort.beloning > 0) {
+        munten += d.soort.beloning;
+        toonMelding(`${d.soort.naam} gevangen! +${d.soort.beloning} munten`, d.x, diepteNaarY(d.d) - 160, '#ffd166');
+      }
+      return true;
+    }
 
-    // De neushoorn rent op je af. Raakt hij je, dan verlies je een leven. Je kunt hem doden,
-    // maar daar zijn een paar rake klappen voor nodig.
-    const neushoorns = [];
-    let volgendeNeushoorn = 15; // seconden tot de eerste neushoorn
-    const neushoornLeven = 3;
-    const neushoornBeloning = 20; // munten voor een gedode neushoorn
+    // Hert: slank bruin lijf, lange nek en een gewei. Kijkt naar rechts; we spiegelen op looprichting.
+    function tekenHert(d) {
+      ctx.save();
+      ctx.scale(Math.sign(d.snelheid) || 1, 1);
+      if (d.schud > 0) ctx.translate(Math.sin(d.schud * 60) * 4, 0);
+      const zwaai = Math.sin(d.stap) * 12;
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(0, 2, 36, 6, 0, 0, Math.PI * 2); ctx.fill();
+      // Dunne poten
+      ctx.strokeStyle = '#7a5230';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-20 + zwaai, 0); ctx.lineTo(-18, -40);
+      ctx.moveTo(-10 - zwaai, 0); ctx.lineTo(-12, -40);
+      ctx.moveTo(14 + zwaai, 0); ctx.lineTo(14, -40);
+      ctx.moveTo(24 - zwaai, 0); ctx.lineTo(22, -40);
+      ctx.stroke();
+      // Lijf
+      ctx.fillStyle = '#a8703f';
+      ctx.beginPath(); ctx.ellipse(0, -50, 30, 15, 0, 0, Math.PI * 2); ctx.fill();
+      // Witte vlekjes
+      ctx.fillStyle = '#f5e6c8';
+      for (let i = -14; i <= 14; i += 9) { ctx.beginPath(); ctx.arc(i, -55 + (i % 2) * 5, 2, 0, Math.PI * 2); ctx.fill(); }
+      // Nek en kop
+      ctx.strokeStyle = '#a8703f';
+      ctx.lineWidth = 10;
+      ctx.beginPath(); ctx.moveTo(24, -55); ctx.lineTo(38, -90); ctx.stroke();
+      ctx.fillStyle = '#a8703f';
+      ctx.beginPath(); ctx.ellipse(44, -94, 13, 8, -0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.arc(46, -97, 2, 0, Math.PI * 2); ctx.fill();
+      // Gewei
+      ctx.strokeStyle = '#d9c8a8';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(38, -100); ctx.lineTo(30, -125); ctx.moveTo(33, -112); ctx.lineTo(24, -118); ctx.moveTo(32, -118); ctx.lineTo(36, -130);
+      ctx.moveTo(44, -101); ctx.lineTo(50, -126); ctx.moveTo(48, -113); ctx.lineTo(56, -118); ctx.moveTo(49, -119); ctx.lineTo(46, -131);
+      ctx.stroke();
+      // Staartje
+      ctx.fillStyle = '#f5e6c8';
+      ctx.beginPath(); ctx.ellipse(-30, -54, 4, 6, 0.4, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
 
-    function updateNeushoorns(dt) {
-      volgendeNeushoorn -= dt;
-      if (volgendeNeushoorn <= 0 && neushoorns.length === 0) {
+    // Haas: klein grijsbruin diertje met lange oren dat huppelt.
+    function tekenHaas(d) {
+      ctx.save();
+      ctx.scale(Math.sign(d.snelheid) || 1, 1);
+      if (d.schud > 0) ctx.translate(Math.sin(d.schud * 60) * 4, 0);
+      const sprong = Math.abs(Math.sin(d.stap * 0.5)) * 14;
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(0, 2, 16, 4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.translate(0, -sprong);
+      // Achterpoot en voorpoot
+      ctx.fillStyle = '#8a7358';
+      ctx.beginPath(); ctx.ellipse(-8, -8, 9, 6, 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(10, -6, 5, 4, 0, 0, Math.PI * 2); ctx.fill();
+      // Lijf
+      ctx.fillStyle = '#a08a68';
+      ctx.beginPath(); ctx.ellipse(0, -16, 16, 11, -0.2, 0, Math.PI * 2); ctx.fill();
+      // Kop
+      ctx.beginPath(); ctx.arc(15, -26, 7, 0, Math.PI * 2); ctx.fill();
+      // Lange oren
+      ctx.beginPath(); ctx.ellipse(11, -40, 3, 10, -0.1, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(16, -40, 3, 10, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#e8c8b8';
+      ctx.beginPath(); ctx.ellipse(11, -40, 1.3, 7, -0.1, 0, Math.PI * 2); ctx.fill();
+      // Oog en staartje
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.arc(17, -27, 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f5f0e6';
+      ctx.beginPath(); ctx.arc(-15, -18, 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    // Mammoet: groot, langzaam en harig, met gebogen slagtanden. Drie klappen nodig.
+    function tekenMammoet(d) {
+      ctx.save();
+      ctx.scale(Math.sign(d.snelheid) || 1, 1);
+      if (d.schud > 0) ctx.translate(Math.sin(d.schud * 60) * 5, 0);
+      const zwaai = Math.sin(d.stap) * 8;
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(0, 2, 80, 12, 0, 0, Math.PI * 2); ctx.fill();
+      // Poten als boomstammen
+      ctx.strokeStyle = '#5a3c26';
+      ctx.lineWidth = 18;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-45 + zwaai, 0); ctx.lineTo(-42, -60);
+      ctx.moveTo(-20 - zwaai, 0); ctx.lineTo(-22, -60);
+      ctx.moveTo(25 + zwaai, 0); ctx.lineTo(24, -60);
+      ctx.moveTo(50 - zwaai, 0); ctx.lineTo(46, -60);
+      ctx.stroke();
+      // Lijf met hoge rug
+      const vacht = ctx.createLinearGradient(0, -150, 0, -40);
+      vacht.addColorStop(0, '#8a5a34');
+      vacht.addColorStop(1, '#4a2e1a');
+      ctx.fillStyle = vacht;
+      ctx.beginPath(); ctx.ellipse(0, -95, 80, 55, 0, 0, Math.PI * 2); ctx.fill();
+      // Lange haren langs de buik
+      ctx.fillStyle = '#6a4224';
+      for (let i = -70; i <= 60; i += 13) {
+        ctx.beginPath(); ctx.moveTo(i, -55); ctx.lineTo(i + 5, -30 + (i % 26 === 0 ? 6 : 0)); ctx.lineTo(i + 12, -55); ctx.fill();
+      }
+      // Kop met bol voorhoofd
+      ctx.fillStyle = '#6a4224';
+      ctx.beginPath(); ctx.arc(72, -110, 34, 0, Math.PI * 2); ctx.fill();
+      // Slurf
+      ctx.strokeStyle = '#6a4224';
+      ctx.lineWidth = 14;
+      ctx.beginPath(); ctx.moveTo(92, -95); ctx.quadraticCurveTo(112, -60, 100 + Math.sin(d.stap) * 6, -15); ctx.stroke();
+      // Gebogen slagtanden
+      ctx.strokeStyle = '#f0e6d0';
+      ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.moveTo(86, -88); ctx.quadraticCurveTo(130, -70, 120, -30); ctx.stroke();
+      // Oor en oog
+      ctx.fillStyle = '#5a3c26';
+      ctx.beginPath(); ctx.ellipse(52, -110, 10, 16, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.arc(80, -115, 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      // Levensbalkje als hij al geraakt is
+      if (d.leven < d.soort.leven) {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(-30, -170, 60, 8);
+        ctx.fillStyle = '#7bd389'; ctx.fillRect(-30, -170, 60 * d.leven / d.soort.leven, 8);
+      }
+    }
+
+    // ---------- Roofdieren ----------
+
+    // Roofdieren rennen op je af. Raken ze je, dan verlies je een leven. Je kunt ze doden,
+    // maar daar zijn een paar rake klappen voor nodig. Elke soort is anders:
+    // de neushoorn is stevig, de sabeltandtijger snel, de holenbeer traag maar heel taai.
+    const roofdierSoorten = [
+      { naam: 'wolharige neushoorn', kans: 3, snelheid: 150, leven: 3, beloning: 20, teken: n => tekenNeushoorn(n) },
+      { naam: 'sabeltandtijger', kans: 3, snelheid: 230, leven: 2, beloning: 25, teken: n => tekenSabeltandtijger(n) },
+      { naam: 'holenbeer', kans: 2, snelheid: 110, leven: 5, beloning: 35, teken: n => tekenHolenbeer(n) },
+    ];
+
+    const roofdieren = [];
+    let volgendRoofdier = 15; // seconden tot het eerste roofdier
+    let doodDoor = 'een roofdier';
+
+    function updateRoofdieren(dt) {
+      volgendRoofdier -= dt;
+      // In latere rondes kunnen er meer roofdieren tegelijk zijn
+      const maxRoofdieren = 1 + Math.floor((ronde - 1) / 2);
+      if (volgendRoofdier <= 0 && roofdieren.length < maxRoofdieren) {
         // 's Nachts komen ze vaker, en in latere rondes ook
-        volgendeNeushoorn = (isNacht() ? 18 : 30) / (1 + (ronde - 1) * 0.3);
-        const vanLinks = speler.x > wereldBreedte / 2;
-        neushoorns.push({
+        volgendRoofdier = (isNacht() ? 14 : 26) / (1 + (ronde - 1) * 0.3);
+        const soort = kiesSoort(roofdierSoorten);
+        const vanLinks = Math.random() < 0.5;
+        roofdieren.push({
+          soort,
           x: vanLinks ? camera.x - 120 : camera.x + canvas.width + 120,
           d: speler.d,
           richting: vanLinks ? 1 : -1,
-          snelheid: 150 + (ronde - 1) * 30,
-          leven: neushoornLeven,
+          snelheid: soort.snelheid + (ronde - 1) * 25,
+          leven: soort.leven,
           stap: 0,
           doorrennen: 0, // na een aanval rent hij even door voordat hij omkeert
           schud: 0,
         });
       }
-      for (let i = neushoorns.length - 1; i >= 0; i--) {
-        const n = neushoorns[i];
-        n.stap += dt * 10;
+      for (let i = roofdieren.length - 1; i >= 0; i--) {
+        const n = roofdieren[i];
+        n.stap += dt * (n.snelheid / 15);
         if (n.schud > 0) n.schud -= dt;
         if (n.doorrennen > 0) {
           n.doorrennen -= dt;
@@ -1144,23 +1330,24 @@
 
         // Raakt hij de speler?
         if (n.doorrennen <= 0 && Math.abs(n.x - speler.x) < 50 && Math.abs(diepteNaarY(n.d) - spelerY()) < 30) {
+          doodDoor = 'een ' + n.soort.naam;
           raakSpeler(n.x);
           n.doorrennen = 1.5;
         }
       }
     }
 
-    // Een klap of schot op een neushoorn. Geeft true als er een geraakt is.
-    function raakNeushoorn(x, d, bereik) {
-      for (let i = neushoorns.length - 1; i >= 0; i--) {
-        const n = neushoorns[i];
+    // Een klap of schot op een roofdier. Geeft true als er een geraakt is.
+    function raakRoofdier(x, d, bereik) {
+      for (let i = roofdieren.length - 1; i >= 0; i--) {
+        const n = roofdieren[i];
         if (Math.abs(n.x - x) < bereik && Math.abs(diepteNaarY(n.d) - diepteNaarY(d)) < 40) {
           n.leven--;
           n.schud = 0.3;
           if (n.leven <= 0) {
-            neushoorns.splice(i, 1);
-            munten += neushoornBeloning;
-            toonMelding(`Neushoorn verslagen! +${neushoornBeloning} munten`, n.x, diepteNaarY(n.d) - 160, '#ffd166');
+            roofdieren.splice(i, 1);
+            munten += n.soort.beloning;
+            toonMelding(`${n.soort.naam} verslagen! +${n.soort.beloning} munten`, n.x, diepteNaarY(n.d) - 160, '#ffd166');
           } else {
             toonMelding(`Nog ${n.leven} klappen`, n.x, diepteNaarY(n.d) - 160, '#fff');
           }
@@ -1168,6 +1355,116 @@
         }
       }
       return false;
+    }
+
+    // Levensbalkje boven een roofdier
+    function tekenRoofdierLeven(n) {
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(-30, -150, 60, 8);
+      ctx.fillStyle = '#e63946';
+      ctx.fillRect(-30, -150, 60 * n.leven / n.soort.leven, 8);
+    }
+
+    // Sabeltandtijger: laag, snel, oranje met strepen en twee lange hoektanden.
+    function tekenSabeltandtijger(n) {
+      ctx.save();
+      ctx.scale(n.richting, 1);
+      if (n.schud > 0) ctx.translate(Math.sin(n.schud * 60) * 5, 0);
+      const zwaai = Math.sin(n.stap) * 16;
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(0, 2, 60, 8, 0, 0, Math.PI * 2); ctx.fill();
+      // Poten
+      ctx.strokeStyle = '#c47a3a';
+      ctx.lineWidth = 9;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-40 + zwaai, 0); ctx.lineTo(-34, -32);
+      ctx.moveTo(-26 - zwaai, 0); ctx.lineTo(-26, -32);
+      ctx.moveTo(26 + zwaai, 0); ctx.lineTo(28, -32);
+      ctx.moveTo(40 - zwaai, 0); ctx.lineTo(36, -32);
+      ctx.stroke();
+      // Lijf
+      ctx.fillStyle = '#d98b45';
+      ctx.beginPath(); ctx.ellipse(0, -42, 50, 20, 0, 0, Math.PI * 2); ctx.fill();
+      // Strepen
+      ctx.strokeStyle = '#7a4a1e';
+      ctx.lineWidth = 4;
+      for (let i = -30; i <= 20; i += 12) { ctx.beginPath(); ctx.moveTo(i, -60); ctx.lineTo(i - 4, -38); ctx.stroke(); }
+      // Staart
+      ctx.strokeStyle = '#d98b45';
+      ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(-48, -48); ctx.quadraticCurveTo(-80, -70 + Math.sin(n.stap) * 8, -70, -30); ctx.stroke();
+      // Kop
+      ctx.fillStyle = '#d98b45';
+      ctx.beginPath(); ctx.arc(56, -52, 20, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f5e6c8';
+      ctx.beginPath(); ctx.ellipse(64, -44, 11, 8, 0, 0, Math.PI * 2); ctx.fill();
+      // Oren
+      ctx.fillStyle = '#c47a3a';
+      ctx.beginPath(); ctx.moveTo(44, -66); ctx.lineTo(48, -80); ctx.lineTo(56, -68); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(60, -70); ctx.lineTo(68, -80); ctx.lineTo(70, -66); ctx.fill();
+      // Ogen en neus
+      ctx.fillStyle = '#ffd166';
+      ctx.beginPath(); ctx.arc(60, -56, 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.arc(61, -56, 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(72, -46, 2.5, 0, Math.PI * 2); ctx.fill();
+      // Sabeltanden
+      ctx.fillStyle = '#fff8e8';
+      ctx.beginPath(); ctx.moveTo(58, -38); ctx.lineTo(60, -14); ctx.lineTo(64, -38); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(68, -38); ctx.lineTo(72, -14); ctx.lineTo(74, -38); ctx.fill();
+      ctx.restore();
+      tekenRoofdierLeven(n);
+    }
+
+    // Holenbeer: enorm, donkerbruin en taai. Traag, maar hij houdt vijf klappen uit.
+    function tekenHolenbeer(n) {
+      ctx.save();
+      ctx.scale(n.richting, 1);
+      if (n.schud > 0) ctx.translate(Math.sin(n.schud * 60) * 5, 0);
+      const zwaai = Math.sin(n.stap) * 10;
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(0, 2, 66, 10, 0, 0, Math.PI * 2); ctx.fill();
+      // Poten met klauwen
+      ctx.strokeStyle = '#3a2416';
+      ctx.lineWidth = 16;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-40 + zwaai, 0); ctx.lineTo(-36, -50);
+      ctx.moveTo(-18 - zwaai, 0); ctx.lineTo(-20, -50);
+      ctx.moveTo(22 + zwaai, 0); ctx.lineTo(22, -50);
+      ctx.moveTo(42 - zwaai, 0); ctx.lineTo(38, -50);
+      ctx.stroke();
+      ctx.fillStyle = '#e8dcc8';
+      for (const px of [-40 + zwaai, -18 - zwaai, 22 + zwaai, 42 - zwaai]) {
+        for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(px + k * 5 + 4, 0); ctx.lineTo(px + k * 5 + 6, 6); ctx.lineTo(px + k * 5 + 8, 0); ctx.fill(); }
+      }
+      // Lijf, hoog en rond
+      const vacht = ctx.createLinearGradient(0, -120, 0, -40);
+      vacht.addColorStop(0, '#5a3a24');
+      vacht.addColorStop(1, '#2e1a0e');
+      ctx.fillStyle = vacht;
+      ctx.beginPath(); ctx.ellipse(0, -75, 66, 42, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-10, -105, 40, 22, 0, 0, Math.PI * 2); ctx.fill();
+      // Kop
+      ctx.fillStyle = '#4a2e1c';
+      ctx.beginPath(); ctx.arc(64, -88, 26, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#7a5a40';
+      ctx.beginPath(); ctx.ellipse(78, -80, 14, 10, 0, 0, Math.PI * 2); ctx.fill();
+      // Ronde oren
+      ctx.fillStyle = '#4a2e1c';
+      ctx.beginPath(); ctx.arc(48, -108, 8, 0, Math.PI * 2); ctx.arc(74, -110, 8, 0, Math.PI * 2); ctx.fill();
+      // Oog, neus, open bek met tanden
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.arc(68, -94, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(88, -82, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#5a1a1a';
+      ctx.beginPath(); ctx.moveTo(70, -72); ctx.lineTo(92, -72); ctx.lineTo(80, -60); ctx.fill();
+      ctx.fillStyle = '#fff8e8';
+      ctx.beginPath(); ctx.moveTo(72, -72); ctx.lineTo(74, -66); ctx.lineTo(76, -72); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(84, -72); ctx.lineTo(86, -66); ctx.lineTo(88, -72); ctx.fill();
+      ctx.restore();
+      tekenRoofdierLeven(n);
     }
 
     function tekenNeushoorn(n) {
@@ -1233,11 +1530,7 @@
 
       ctx.restore();
 
-      // Levensbalkje boven de kop
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(-30, -150, 60, 8);
-      ctx.fillStyle = '#e63946';
-      ctx.fillRect(-30, -150, 60 * n.leven / neushoornLeven, 8);
+      tekenRoofdierLeven(n);
     }
 
     function tekenEverzwijn(x, y, richting, stap) {
@@ -2025,11 +2318,11 @@
       for (const boom of bomen) dingen.push({ d: boom.d, teken: () => tekenOpWereld(boom.x, boom.d, () => tekenBoom(boom)) });
       dingen.push({ d: handelaar.d, teken: () => tekenOpWereld(handelaar.x, handelaar.d, tekenHandelaar) });
       for (const dier of dieren) {
-        dingen.push({ d: dier.d, teken: () => tekenOpWereld(dier.x, dier.d, () => tekenEverzwijn(0, 0, Math.sign(dier.snelheid), dier.stap)) });
+        dingen.push({ d: dier.d, teken: () => tekenOpWereld(dier.x, dier.d, () => dier.soort.teken(dier)) });
       }
       dingen.push({ d: speler.d, teken: () => tekenOpWereld(speler.x, speler.d, () => tekenPoppetje(0, 0, speler.richting)) });
       for (const pr of projectielen) dingen.push({ d: pr.d + 0.001, teken: () => tekenOpWereld(pr.x, pr.d, () => tekenProjectiel(pr)) });
-      for (const n of neushoorns) dingen.push({ d: n.d, teken: () => tekenOpWereld(n.x, n.d, () => tekenNeushoorn(n)) });
+      for (const n of roofdieren) dingen.push({ d: n.d, teken: () => tekenOpWereld(n.x, n.d, () => n.soort.teken(n)) });
       dingen.sort((a, b) => a.d - b.d);
       for (const ding of dingen) ding.teken();
 
