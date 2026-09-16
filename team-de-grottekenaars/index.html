@@ -40,6 +40,108 @@
     const maxLevens = 3;
     const slagDuur = 0.3; // seconden
 
+    // Het discoliedje voor de all-time disco. Gemaakt met de Web Audio API, dus zonder
+    // geluidsbestanden: elke noot is een toongenerator die kort aan gaat.
+    let audio = null; // wordt aangemaakt bij de eerste toetsaanslag (browsers eisen dat)
+
+    function startAudio() {
+      if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === 'suspended') audio.resume();
+    }
+
+    // Frequentie van een noot, bijvoorbeeld noot('C4') = 261.6 Hz
+    function noot(naam) {
+      const tonen = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+      let halve = tonen[naam[0]];
+      let rest = naam.slice(1);
+      if (rest[0] === '#') { halve += 1; rest = rest.slice(1); }
+      const octaaf = parseInt(rest);
+      return 440 * Math.pow(2, (octaaf - 4) + (halve - 9) / 12);
+    }
+
+    // Het liedje: 32 stappen van een zestiende noot (2 maten). null = rust.
+    const discoMelodie = [
+      'E5', null, 'G5', null, 'A5', null, 'G5', 'E5', null, 'C5', null, 'D5', null, 'E5', null, null,
+      'D5', null, 'F5', null, 'G5', null, 'F5', 'D5', null, 'B4', null, 'C5', null, 'D5', null, null,
+    ];
+    const discoBas = [
+      'C2', 'C3', 'C2', 'C3', 'C2', 'C3', 'C2', 'C3', 'A1', 'A2', 'A1', 'A2', 'A1', 'A2', 'A1', 'A2',
+      'F1', 'F2', 'F1', 'F2', 'F1', 'F2', 'F1', 'F2', 'G1', 'G2', 'G1', 'G2', 'G1', 'G2', 'B1', 'B2',
+    ];
+    const discoTempo = 125; // beats per minuut
+    const stapDuur = 60 / discoTempo / 4; // een zestiende noot in seconden
+    let discoStap = 0;
+    let discoVolgendeTijd = 0;
+
+    function speelToon(freq, tijd, duur, soort, volume) {
+      const osc = audio.createOscillator();
+      const gain = audio.createGain();
+      osc.type = soort;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(volume, tijd);
+      gain.gain.exponentialRampToValueAtTime(0.001, tijd + duur);
+      osc.connect(gain).connect(audio.destination);
+      osc.start(tijd);
+      osc.stop(tijd + duur);
+    }
+
+    // Kick: een sinus die snel in toonhoogte zakt
+    function speelKick(tijd) {
+      const osc = audio.createOscillator();
+      const gain = audio.createGain();
+      osc.frequency.setValueAtTime(150, tijd);
+      osc.frequency.exponentialRampToValueAtTime(40, tijd + 0.15);
+      gain.gain.setValueAtTime(0.8, tijd);
+      gain.gain.exponentialRampToValueAtTime(0.001, tijd + 0.25);
+      osc.connect(gain).connect(audio.destination);
+      osc.start(tijd);
+      osc.stop(tijd + 0.25);
+    }
+
+    // Hihat: een kort stukje ruis
+    function speelHihat(tijd, open) {
+      const duur = open ? 0.15 : 0.05;
+      const buffer = audio.createBuffer(1, audio.sampleRate * duur, audio.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      const bron = audio.createBufferSource();
+      bron.buffer = buffer;
+      const filter = audio.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.value = 7000;
+      const gain = audio.createGain();
+      gain.gain.setValueAtTime(0.25, tijd);
+      gain.gain.exponentialRampToValueAtTime(0.001, tijd + duur);
+      bron.connect(filter).connect(gain).connect(audio.destination);
+      bron.start(tijd);
+    }
+
+    // Wordt elke frame aangeroepen: plant de noten van de komende 0,2 seconde in
+    function speelDiscoLiedje() {
+      const aan = level().decoratie === 'superdisco' && !gameOver && !gewonnen;
+      if (!aan || !audio || audio.state !== 'running') {
+        discoVolgendeTijd = 0;
+        return;
+      }
+      if (discoVolgendeTijd === 0) {
+        discoVolgendeTijd = audio.currentTime + 0.1;
+        discoStap = 0;
+      }
+      while (discoVolgendeTijd < audio.currentTime + 0.2) {
+        const t = discoVolgendeTijd;
+        const i = discoStap % 32;
+        if (i % 4 === 0) speelKick(t);                       // kick op elke tel
+        speelHihat(t, i % 4 === 2);                          // hihat op elke zestiende, open tussen de tellen
+        speelToon(noot(discoBas[i]), t, stapDuur * 0.9, 'sawtooth', 0.18);
+        if (i % 2 === 0) {                                   // bas als achtste noten
+          speelToon(noot(discoBas[i]) * 2, t, stapDuur * 0.5, 'square', 0.05);
+        }
+        if (discoMelodie[i]) speelToon(noot(discoMelodie[i]), t, stapDuur * 1.8, 'triangle', 0.3);
+        discoVolgendeTijd += stapDuur;
+        discoStap += 1;
+      }
+    }
+
     // Het cheatscherm (X): los 10 sommen uit willekeurige tafels goed op en kies dan zelf een level.
     // De lastige tafels (6, 7, 8, 9 en 12) staan vaker in de lijst en komen dus vaker voor.
     const cheatTafels = [2, 3, 4, 5, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9, 11, 12, 12, 12];
@@ -252,6 +354,7 @@
     let spatieNetIngedrukt = false; // wordt true op het moment dat spatie ingedrukt wordt
     let kNetIngedrukt = false;      // idem voor de K van knots
     window.addEventListener('keydown', (e) => {
+      startAudio();
       if (cheat.open) {
         cheatToets(e.key);
         e.preventDefault();
@@ -1473,6 +1576,11 @@
         ctx.font = 'bold 80px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('ALL-TIME DISCO!', b / 2, h * 0.35);
+        if (!audio || audio.state !== 'running') {
+          ctx.fillStyle = '#fff';
+          ctx.font = '24px sans-serif';
+          ctx.fillText('(druk op een toets voor muziek)', b / 2, h * 0.42);
+        }
       }
 
       if (soort === 'bonus') {
@@ -2450,6 +2558,7 @@
       }
       if (!gameOver && !gewonnen && !kastOpen && !cheat.open) update(Math.min((nu - vorige) / 1000, 0.05));
       vorige = nu;
+      speelDiscoLiedje();
       draw();
       requestAnimationFrame(loop);
     }
