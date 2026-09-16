@@ -45,6 +45,8 @@
       }
       // Niet buiten het scherm lopen.
       speler.x = Math.max(30, Math.min(canvas.width - 30, speler.x));
+
+      updateVissen(dt);
     }
 
     // Vaste sterren, zodat ze niet elke frame verspringen.
@@ -89,6 +91,76 @@
       const b = canvas.width, h = canvas.height;
       ctx.fillStyle = '#3a5a2a';
       ctx.fillRect(0, h * 0.8, b, h * 0.2);
+    }
+
+    // Het meer ligt rechts op de grond. Posities zijn fracties van de schermbreedte/-hoogte.
+    const meer = { x: 0.75, y: 0.9, breedte: 0.18, hoogte: 0.06 };
+
+    // Vissen zwemmen heen en weer binnen het meer. x is een fractie (0 = linkerkant, 1 = rechterkant).
+    const vissen = [
+      { x: 0.2, y: 0.4, snelheid: 0.25, kleur: '#ff8c42' },
+      { x: 0.6, y: 0.6, snelheid: -0.18, kleur: '#4ecdc4' },
+      { x: 0.8, y: 0.3, snelheid: 0.3, kleur: '#ffd166' },
+    ];
+
+    function updateVissen(dt) {
+      for (const vis of vissen) {
+        vis.x += vis.snelheid * dt;
+        // Aan de rand van het meer keert de vis om.
+        if (vis.x > 0.9 || vis.x < 0.1) vis.snelheid = -vis.snelheid;
+      }
+    }
+
+    function tekenMeer() {
+      const b = canvas.width, h = canvas.height;
+      const mx = meer.x * b, my = meer.y * h;
+      const rx = meer.breedte * b, ry = meer.hoogte * h;
+
+      // Water
+      ctx.fillStyle = '#1e5a8a';
+      ctx.beginPath();
+      ctx.ellipse(mx, my, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Lichte rand aan de bovenkant, als weerspiegeling van de maan
+      ctx.strokeStyle = '#7fb3d5';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(mx, my, rx, ry, 0, Math.PI, Math.PI * 2);
+      ctx.stroke();
+
+      for (const vis of vissen) {
+        // Vis-positie omrekenen naar het scherm; y blijft binnen de ellips.
+        const vx = mx - rx + vis.x * rx * 2;
+        const vy = my - ry * 0.6 + vis.y * ry * 1.2;
+        tekenVis(vx, vy, vis.snelheid > 0 ? 1 : -1, vis.kleur);
+      }
+    }
+
+    function tekenVis(x, y, richting, kleur) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(richting, 1);
+
+      // Lijf
+      ctx.fillStyle = kleur;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 14, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Staart
+      ctx.beginPath();
+      ctx.moveTo(-12, 0);
+      ctx.lineTo(-22, -8);
+      ctx.lineTo(-22, 8);
+      ctx.closePath();
+      ctx.fill();
+      // Oog
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.arc(7, -2, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
     }
 
     function tekenGrot() {
@@ -208,6 +280,7 @@
       tekenLucht();
       tekenHeuvels();
       tekenGrond();
+      tekenMeer();
       tekenGrot();
       // Het poppetje staat altijd op de grond.
       speler.y = canvas.height * 0.85;
