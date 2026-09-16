@@ -41,40 +41,157 @@
     window.addEventListener('keydown', (e) => { toetsen[e.key] = true; });
     window.addEventListener('keyup', (e) => { toetsen[e.key] = false; });
 
-    // Het parcours: rotsplatforms op verschillende hoogtes.
-    // x en breedte als deel van de schermbreedte, y als deel van de schermhoogte.
     const zwaartekracht = 1800;
     const springKracht = 750;
 
-    // Het gat in de bodem, als deel van de schermbreedte
-    const gat = { x: 0.48, breedte: 0.18 };
-
     let gameOver = false;
+    let gewonnen = false;
+    let huidigLevel = 0;
+
+    // De 10 levels. Elk level heeft een thema uit de prehistorie, eigen kleuren,
+    // een parcours van platforms en gaten in de bodem.
+    // x, y en breedte zijn een deel van het scherm (0 = links/boven, 1 = rechts/onder).
+    const levels = [
+      {
+        naam: 'Level 1: De grot',
+        decoratie: 'grot',
+        lucht: ['#1a1210', '#5a3d2b'], bodem: '#3d2b1f', platform: '#4a3527', rand: '#6b4f3a', gatKleur: '#1a1210',
+        gaten: [{ x: 0.48, breedte: 0.18 }],
+        platforms: [
+          { x: 0.20, y: 0.68, breedte: 0.10 }, { x: 0.33, y: 0.58, breedte: 0.08 },
+          { x: 0.45, y: 0.48, breedte: 0.10 }, { x: 0.60, y: 0.58, breedte: 0.08 },
+          { x: 0.72, y: 0.46, breedte: 0.10 }, { x: 0.86, y: 0.36, breedte: 0.10 },
+        ],
+      },
+      {
+        naam: 'Level 2: De ijstijd',
+        decoratie: 'ijs',
+        lucht: ['#0b1a33', '#4a7fb5'], bodem: '#dfe9f3', platform: '#b7d3ea', rand: '#ffffff', gatKleur: '#0b2d4d',
+        gaten: [{ x: 0.30, breedte: 0.12 }, { x: 0.62, breedte: 0.14 }],
+        platforms: [
+          { x: 0.15, y: 0.66, breedte: 0.10 }, { x: 0.35, y: 0.56, breedte: 0.09 },
+          { x: 0.50, y: 0.64, breedte: 0.08 }, { x: 0.63, y: 0.52, breedte: 0.09 },
+          { x: 0.78, y: 0.42, breedte: 0.08 }, { x: 0.88, y: 0.32, breedte: 0.10 },
+        ],
+      },
+      {
+        naam: 'Level 3: De mammoetsteppe',
+        decoratie: 'steppe',
+        lucht: ['#7ec8e3', '#f4e3b2'], bodem: '#a9a24a', platform: '#8b7a3a', rand: '#c9b85a', gatKleur: '#4a3a1a',
+        gaten: [{ x: 0.22, breedte: 0.10 }, { x: 0.55, breedte: 0.20 }],
+        platforms: [
+          { x: 0.10, y: 0.66, breedte: 0.08 }, { x: 0.30, y: 0.58, breedte: 0.10 },
+          { x: 0.47, y: 0.50, breedte: 0.08 }, { x: 0.60, y: 0.60, breedte: 0.08 },
+          { x: 0.72, y: 0.48, breedte: 0.08 }, { x: 0.87, y: 0.38, breedte: 0.10 },
+        ],
+      },
+      {
+        naam: 'Level 4: Het vulkaanland',
+        decoratie: 'vulkaan',
+        lucht: ['#2b0a0a', '#8a2a0a'], bodem: '#3a2a2a', platform: '#4d3b3b', rand: '#7a5a5a', gatKleur: '#ff6a00',
+        gaten: [{ x: 0.18, breedte: 0.12 }, { x: 0.42, breedte: 0.12 }, { x: 0.68, breedte: 0.14 }],
+        platforms: [
+          { x: 0.12, y: 0.62, breedte: 0.08 }, { x: 0.26, y: 0.52, breedte: 0.08 },
+          { x: 0.40, y: 0.60, breedte: 0.09 }, { x: 0.55, y: 0.50, breedte: 0.08 },
+          { x: 0.70, y: 0.58, breedte: 0.08 }, { x: 0.86, y: 0.44, breedte: 0.10 },
+        ],
+      },
+      {
+        naam: 'Level 5: Het dinomoeras',
+        decoratie: 'moeras',
+        lucht: ['#1f3d2b', '#6fa06b'], bodem: '#4d5a2a', platform: '#5c4a2a', rand: '#7f9a3a', gatKleur: '#2e6b4a',
+        gaten: [{ x: 0.25, breedte: 0.15 }, { x: 0.58, breedte: 0.16 }],
+        platforms: [
+          { x: 0.18, y: 0.64, breedte: 0.08 }, { x: 0.32, y: 0.54, breedte: 0.08 },
+          { x: 0.46, y: 0.62, breedte: 0.09 }, { x: 0.60, y: 0.50, breedte: 0.08 },
+          { x: 0.74, y: 0.58, breedte: 0.08 }, { x: 0.87, y: 0.40, breedte: 0.10 },
+        ],
+      },
+      {
+        naam: 'Level 6: Het oerwoud',
+        decoratie: 'oerwoud',
+        lucht: ['#0f2a14', '#3f7a3a'], bodem: '#3b5a22', platform: '#6b4a2a', rand: '#8fbf4a', gatKleur: '#0a1a0a',
+        gaten: [{ x: 0.15, breedte: 0.10 }, { x: 0.40, breedte: 0.14 }, { x: 0.70, breedte: 0.12 }],
+        platforms: [
+          { x: 0.10, y: 0.60, breedte: 0.08 }, { x: 0.24, y: 0.50, breedte: 0.08 },
+          { x: 0.38, y: 0.42, breedte: 0.08 }, { x: 0.52, y: 0.52, breedte: 0.08 },
+          { x: 0.66, y: 0.44, breedte: 0.08 }, { x: 0.80, y: 0.54, breedte: 0.08 },
+          { x: 0.90, y: 0.40, breedte: 0.08 },
+        ],
+      },
+      {
+        naam: 'Level 7: De woestijn',
+        decoratie: 'woestijn',
+        lucht: ['#ffb347', '#ffe9a8'], bodem: '#e0b96a', platform: '#c49a4a', rand: '#f5d78a', gatKleur: '#7a5a2a',
+        gaten: [{ x: 0.30, breedte: 0.16 }, { x: 0.60, breedte: 0.18 }],
+        platforms: [
+          { x: 0.16, y: 0.66, breedte: 0.09 }, { x: 0.33, y: 0.56, breedte: 0.08 },
+          { x: 0.48, y: 0.64, breedte: 0.08 }, { x: 0.62, y: 0.54, breedte: 0.08 },
+          { x: 0.76, y: 0.46, breedte: 0.08 }, { x: 0.88, y: 0.36, breedte: 0.10 },
+        ],
+      },
+      {
+        naam: 'Level 8: Het kampvuurdorp',
+        decoratie: 'kampvuur',
+        lucht: ['#050a1f', '#1f2a5a'], bodem: '#2f3a2a', platform: '#5a4a3a', rand: '#8a7a5a', gatKleur: '#000000',
+        gaten: [{ x: 0.20, breedte: 0.12 }, { x: 0.45, breedte: 0.12 }, { x: 0.72, breedte: 0.12 }],
+        platforms: [
+          { x: 0.14, y: 0.62, breedte: 0.08 }, { x: 0.28, y: 0.52, breedte: 0.08 },
+          { x: 0.42, y: 0.60, breedte: 0.08 }, { x: 0.56, y: 0.48, breedte: 0.08 },
+          { x: 0.70, y: 0.56, breedte: 0.08 }, { x: 0.86, y: 0.42, breedte: 0.10 },
+        ],
+      },
+      {
+        naam: 'Level 9: De bergen',
+        decoratie: 'bergen',
+        lucht: ['#5a7fb5', '#d7e6f5'], bodem: '#7a7a7a', platform: '#8a8a8a', rand: '#ffffff', gatKleur: '#2a3a4a',
+        gaten: [{ x: 0.18, breedte: 0.10 }, { x: 0.38, breedte: 0.12 }, { x: 0.60, breedte: 0.14 }, { x: 0.84, breedte: 0.10 }],
+        platforms: [
+          { x: 0.12, y: 0.64, breedte: 0.08 }, { x: 0.26, y: 0.54, breedte: 0.08 },
+          { x: 0.40, y: 0.44, breedte: 0.08 }, { x: 0.54, y: 0.54, breedte: 0.08 },
+          { x: 0.68, y: 0.44, breedte: 0.08 }, { x: 0.80, y: 0.34, breedte: 0.07 },
+          { x: 0.90, y: 0.26, breedte: 0.08 },
+        ],
+      },
+      {
+        naam: 'Level 10: Het sabeltandtijgerhol',
+        decoratie: 'tijgerhol',
+        lucht: ['#0a0210', '#3a1a4a'], bodem: '#2a1a2a', platform: '#4a2a4a', rand: '#7a4a7a', gatKleur: '#000000',
+        gaten: [{ x: 0.14, breedte: 0.12 }, { x: 0.34, breedte: 0.12 }, { x: 0.54, breedte: 0.14 }, { x: 0.76, breedte: 0.12 }],
+        platforms: [
+          { x: 0.10, y: 0.60, breedte: 0.07 }, { x: 0.22, y: 0.50, breedte: 0.07 },
+          { x: 0.34, y: 0.40, breedte: 0.07 }, { x: 0.47, y: 0.50, breedte: 0.07 },
+          { x: 0.60, y: 0.40, breedte: 0.07 }, { x: 0.72, y: 0.50, breedte: 0.07 },
+          { x: 0.84, y: 0.38, breedte: 0.07 }, { x: 0.92, y: 0.28, breedte: 0.07 },
+        ],
+      },
+    ];
+
+    function level() {
+      return levels[huidigLevel];
+    }
 
     function bodemHoogte() {
       return canvas.height * 0.8;
     }
 
     function startOpnieuw() {
-      mens.x = 200;
+      mens.x = 60;
       mens.y = bodemHoogte();
       mens.vy = 0;
     }
 
-    // Staat de mens boven het gat?
+    // Staat de mens boven een gat?
     function bovenGat() {
       const b = canvas.width;
-      return mens.x > gat.x * b && mens.x < (gat.x + gat.breedte) * b;
+      return level().gaten.some((g) => mens.x > g.x * b && mens.x < (g.x + g.breedte) * b);
     }
 
-    const platforms = [
-      { x: 0.20, y: 0.68, breedte: 0.10 },
-      { x: 0.33, y: 0.58, breedte: 0.08 },
-      { x: 0.45, y: 0.48, breedte: 0.10 },
-      { x: 0.60, y: 0.58, breedte: 0.08 },
-      { x: 0.72, y: 0.46, breedte: 0.10 },
-      { x: 0.86, y: 0.36, breedte: 0.10 },
-    ];
+    // Het laatste platform van het level, daar staat de vlag
+    function vlagPlatform() {
+      const pls = level().platforms;
+      return pls[pls.length - 1];
+    }
 
     function update(dt) {
       mens.loopt = false;
@@ -105,7 +222,7 @@
       mens.y += mens.vy * dt;
       mens.opDeGrond = false;
 
-      // Landen op de bodem (behalve boven het gat)
+      // Landen op de bodem (behalve boven een gat)
       if (mens.y >= bodemHoogte() && !bovenGat()) {
         mens.y = bodemHoogte();
         mens.vy = 0;
@@ -114,7 +231,8 @@
 
       // Landen op een platform: alleen als je naar beneden beweegt
       // en je voeten in deze stap door de bovenkant van het platform gaan
-      for (const pl of platforms) {
+      let staatOp = null;
+      for (const pl of level().platforms) {
         const px = pl.x * canvas.width;
         const pBreedte = pl.breedte * canvas.width;
         const py = pl.y * canvas.height;
@@ -123,10 +241,21 @@
           mens.y = py;
           mens.vy = 0;
           mens.opDeGrond = true;
+          staatOp = pl;
         }
       }
 
-      // In het gat gevallen: een leven kwijt
+      // Bij de vlag: volgend level
+      if (staatOp === vlagPlatform()) {
+        huidigLevel += 1;
+        if (huidigLevel >= levels.length) {
+          huidigLevel = levels.length - 1;
+          gewonnen = true;
+        }
+        startOpnieuw();
+      }
+
+      // In een gat gevallen: een leven kwijt
       if (mens.y > canvas.height + 50) {
         mens.levens -= 1;
         if (mens.levens <= 0) {
@@ -137,23 +266,22 @@
       }
     }
 
-    function tekenGrot() {
+    // Lucht en bodem in de kleuren van het level
+    function tekenAchtergrond() {
       const b = canvas.width;
       const h = canvas.height;
+      const lv = level();
 
-      // Donkere achtergrond: diep in de grot
-      ctx.fillStyle = '#1a1210';
+      const lucht = ctx.createLinearGradient(0, 0, 0, h * 0.8);
+      lucht.addColorStop(0, lv.lucht[0]);
+      lucht.addColorStop(1, lv.lucht[1]);
+      ctx.fillStyle = lucht;
       ctx.fillRect(0, 0, b, h);
 
-      // Zachte gloed in het midden, alsof er licht van buiten naar binnen valt
-      const gloed = ctx.createRadialGradient(b / 2, h / 2, 50, b / 2, h / 2, b * 0.6);
-      gloed.addColorStop(0, '#5a3d2b');
-      gloed.addColorStop(1, '#1a1210');
-      ctx.fillStyle = gloed;
-      ctx.fillRect(0, 0, b, h);
+      tekenDecoratie();
 
-      // Rotsbodem
-      ctx.fillStyle = '#3d2b1f';
+      // Hobbelige bodem
+      ctx.fillStyle = lv.bodem;
       ctx.beginPath();
       ctx.moveTo(0, h);
       ctx.lineTo(0, h * 0.8);
@@ -164,28 +292,144 @@
       ctx.lineTo(b, h);
       ctx.closePath();
       ctx.fill();
+    }
 
-      // Stalactieten aan het plafond
-      ctx.fillStyle = '#2b1d15';
-      for (let x = 30; x < b; x += 90) {
-        const lengte = 60 + (x * 7) % 80;
-        ctx.beginPath();
-        ctx.moveTo(x - 25, 0);
-        ctx.lineTo(x + 25, 0);
-        ctx.lineTo(x, lengte);
-        ctx.closePath();
-        ctx.fill();
+    // Per thema een paar simpele vormen op de achtergrond
+    function tekenDecoratie() {
+      const b = canvas.width;
+      const h = canvas.height;
+      const soort = level().decoratie;
+
+      if (soort === 'grot') {
+        ctx.fillStyle = '#2b1d15';
+        for (let x = 30; x < b; x += 90) { // stalactieten
+          const lengte = 60 + (x * 7) % 80;
+          ctx.beginPath();
+          ctx.moveTo(x - 25, 0); ctx.lineTo(x + 25, 0); ctx.lineTo(x, lengte);
+          ctx.closePath(); ctx.fill();
+        }
+        tekenGrotTekeningen();
       }
 
-      // Stalagmieten op de bodem
-      for (let x = 70; x < b; x += 130) {
-        const hoogte = 40 + (x * 3) % 50;
+      if (soort === 'ijs') {
+        ctx.fillStyle = '#ffffff';
+        for (let i = 0; i < 60; i++) { // sneeuwvlokken
+          const x = (i * 137) % b;
+          const y = (i * 91) % (h * 0.8);
+          ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = '#9fc9e8';
+        for (const x of [0.05, 0.75]) { // ijsbergen
+          ctx.beginPath();
+          ctx.moveTo(x * b, h * 0.8); ctx.lineTo((x + 0.08) * b, h * 0.45); ctx.lineTo((x + 0.18) * b, h * 0.8);
+          ctx.closePath(); ctx.fill();
+        }
+      }
+
+      if (soort === 'steppe') {
+        ctx.fillStyle = '#ffd54a'; // zon
+        ctx.beginPath(); ctx.arc(b * 0.85, h * 0.15, 50, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#6b7a2a'; ctx.lineWidth = 3; // graspollen
+        for (let x = 10; x < b; x += 45) {
+          ctx.beginPath();
+          ctx.moveTo(x, h * 0.8); ctx.lineTo(x - 6, h * 0.8 - 22);
+          ctx.moveTo(x, h * 0.8); ctx.lineTo(x + 7, h * 0.8 - 25);
+          ctx.stroke();
+        }
+      }
+
+      if (soort === 'vulkaan') {
+        ctx.fillStyle = '#3a1a1a'; // vulkaan
         ctx.beginPath();
-        ctx.moveTo(x - 20, h * 0.8);
-        ctx.lineTo(x + 20, h * 0.8);
-        ctx.lineTo(x, h * 0.8 - hoogte);
-        ctx.closePath();
-        ctx.fill();
+        ctx.moveTo(b * 0.3, h * 0.8); ctx.lineTo(b * 0.5, h * 0.2); ctx.lineTo(b * 0.7, h * 0.8);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ff6a00'; // lava uit de top
+        ctx.beginPath();
+        ctx.moveTo(b * 0.47, h * 0.22); ctx.lineTo(b * 0.53, h * 0.22); ctx.lineTo(b * 0.55, h * 0.4); ctx.lineTo(b * 0.45, h * 0.4);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ffb347'; // rondvliegende vonken
+        for (let i = 0; i < 25; i++) {
+          ctx.beginPath(); ctx.arc((i * 173) % b, (i * 67) % (h * 0.5), 3, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+
+      if (soort === 'moeras') {
+        ctx.strokeStyle = '#2f5a2a'; ctx.lineWidth = 4; // riet
+        for (let x = 20; x < b; x += 60) {
+          ctx.beginPath(); ctx.moveTo(x, h * 0.8); ctx.lineTo(x + 5, h * 0.62); ctx.stroke();
+          ctx.fillStyle = '#5a3a1a';
+          ctx.fillRect(x + 1, h * 0.62, 8, 20);
+        }
+        ctx.fillStyle = '#2f6b3a'; // een dino in de verte
+        ctx.beginPath(); ctx.ellipse(b * 0.5, h * 0.35, 70, 30, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(b * 0.55, h * 0.33); ctx.lineTo(b * 0.62, h * 0.18); ctx.lineTo(b * 0.66, h * 0.2); ctx.lineTo(b * 0.58, h * 0.36); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(b * 0.44, h * 0.35); ctx.lineTo(b * 0.32, h * 0.3); ctx.lineTo(b * 0.45, h * 0.39); ctx.fill();
+      }
+
+      if (soort === 'oerwoud') {
+        for (let i = 0; i < 8; i++) { // bomen
+          const x = b * (0.06 + i * 0.125);
+          ctx.fillStyle = '#4a2f1a';
+          ctx.fillRect(x - 12, h * 0.35, 24, h * 0.45);
+          ctx.fillStyle = '#2f8a3a';
+          ctx.beginPath(); ctx.arc(x, h * 0.33, 70, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+
+      if (soort === 'woestijn') {
+        ctx.fillStyle = '#ff8c00'; // grote zon
+        ctx.beginPath(); ctx.arc(b * 0.5, h * 0.25, 80, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#d4a85a'; // duinen
+        for (const x of [0.0, 0.35, 0.7]) {
+          ctx.beginPath(); ctx.ellipse((x + 0.2) * b, h * 0.8, b * 0.25, h * 0.15, 0, Math.PI, 0); ctx.fill();
+        }
+        ctx.fillStyle = '#f5f0e0'; // botten
+        ctx.fillRect(b * 0.6, h * 0.76, 60, 8);
+        ctx.beginPath(); ctx.arc(b * 0.6, h * 0.76, 7, 0, Math.PI * 2); ctx.arc(b * 0.6 + 60, h * 0.76, 7, 0, Math.PI * 2); ctx.fill();
+      }
+
+      if (soort === 'kampvuur') {
+        ctx.fillStyle = '#ffffff'; // sterren
+        for (let i = 0; i < 80; i++) {
+          ctx.beginPath(); ctx.arc((i * 211) % b, (i * 53) % (h * 0.6), 2, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = '#6b5a3a'; // hutten
+        for (const x of [0.15, 0.6, 0.85]) {
+          ctx.beginPath(); ctx.moveTo(x * b, h * 0.8); ctx.lineTo((x + 0.06) * b, h * 0.6); ctx.lineTo((x + 0.12) * b, h * 0.8); ctx.closePath(); ctx.fill();
+        }
+        const flikker = 20 + Math.sin(performance.now() / 100) * 6; // kampvuur
+        ctx.fillStyle = '#ff9a00';
+        ctx.beginPath(); ctx.moveTo(b * 0.4 - 25, h * 0.8); ctx.lineTo(b * 0.4, h * 0.8 - flikker * 3); ctx.lineTo(b * 0.4 + 25, h * 0.8); ctx.fill();
+        ctx.fillStyle = '#ffe066';
+        ctx.beginPath(); ctx.moveTo(b * 0.4 - 12, h * 0.8); ctx.lineTo(b * 0.4, h * 0.8 - flikker * 1.5); ctx.lineTo(b * 0.4 + 12, h * 0.8); ctx.fill();
+      }
+
+      if (soort === 'bergen') {
+        for (const [x, top] of [[0.1, 0.25], [0.4, 0.15], [0.7, 0.3], [0.95, 0.2]]) {
+          ctx.fillStyle = '#5a6a7a';
+          ctx.beginPath(); ctx.moveTo((x - 0.25) * b, h * 0.8); ctx.lineTo(x * b, h * top); ctx.lineTo((x + 0.25) * b, h * 0.8); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = '#ffffff'; // sneeuwtop
+          ctx.beginPath(); ctx.moveTo((x - 0.06) * b, h * (top + 0.12)); ctx.lineTo(x * b, h * top); ctx.lineTo((x + 0.06) * b, h * (top + 0.12)); ctx.closePath(); ctx.fill();
+        }
+      }
+
+      if (soort === 'tijgerhol') {
+        ctx.fillStyle = '#1a0a1a';
+        for (let x = 30; x < b; x += 70) { // stalactieten
+          ctx.beginPath(); ctx.moveTo(x - 20, 0); ctx.lineTo(x + 20, 0); ctx.lineTo(x, 50 + (x * 5) % 90); ctx.closePath(); ctx.fill();
+        }
+        ctx.fillStyle = '#e8e0d0'; // botten op de grond
+        for (const x of [0.3, 0.5, 0.8]) {
+          ctx.fillRect(x * b, h * 0.77, 50, 6);
+        }
+        // gloeiende ogen in het donker
+        const knipper = Math.floor(performance.now() / 700) % 5 === 0;
+        if (!knipper) {
+          ctx.fillStyle = '#ffd700';
+          for (const [x, y] of [[0.2, 0.3], [0.65, 0.25], [0.9, 0.55]]) {
+            ctx.beginPath(); ctx.arc(x * b - 10, y * h, 5, 0, Math.PI * 2); ctx.arc(x * b + 10, y * h, 5, 0, Math.PI * 2); ctx.fill();
+          }
+        }
       }
     }
 
@@ -302,17 +546,20 @@
     function tekenParcours() {
       const b = canvas.width;
       const h = canvas.height;
+      const lv = level();
 
-      // Een gat in de bodem waar je overheen moet springen
-      ctx.fillStyle = '#1a1210';
-      ctx.fillRect(b * 0.48, h * 0.8 - 20, b * 0.18, h * 0.2 + 20);
+      // Gaten in de bodem: lava, water of gewoon diepte
+      ctx.fillStyle = lv.gatKleur;
+      for (const g of lv.gaten) {
+        ctx.fillRect(g.x * b, h * 0.8 - 20, g.breedte * b, h * 0.2 + 20);
+      }
 
-      // Rotsplatforms
-      for (const pl of platforms) {
+      // Platforms
+      for (const pl of lv.platforms) {
         const x = pl.x * b;
         const y = pl.y * h;
         const br = pl.breedte * b;
-        ctx.fillStyle = '#4a3527';
+        ctx.fillStyle = lv.platform;
         ctx.beginPath();
         ctx.moveTo(x, y);
         ctx.lineTo(x + br, y);
@@ -320,12 +567,12 @@
         ctx.lineTo(x + 10, y + 22);
         ctx.closePath();
         ctx.fill();
-        ctx.fillStyle = '#6b4f3a'; // lichte bovenrand
+        ctx.fillStyle = lv.rand; // lichte bovenrand
         ctx.fillRect(x, y, br, 6);
       }
 
       // Finishvlag op het laatste platform
-      const laatste = platforms[platforms.length - 1];
+      const laatste = vlagPlatform();
       const vx = (laatste.x + laatste.breedte / 2) * b;
       const vy = laatste.y * h;
       ctx.strokeStyle = '#5c3a1a';
@@ -440,25 +687,49 @@
       ctx.fillText('Druk op R om opnieuw te beginnen', canvas.width / 2, canvas.height / 2 + 70);
     }
 
+    function tekenLevelNaam() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(canvas.width / 2 - 220, 14, 440, 44);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 26px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(level().naam, canvas.width / 2, 45);
+    }
+
+    function tekenGewonnen() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#ffd700';
+      ctx.font = 'bold 100px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('GEWONNEN!', canvas.width / 2, canvas.height / 2);
+      ctx.fillStyle = '#fff';
+      ctx.font = '32px sans-serif';
+      ctx.fillText('Je hebt alle 10 levels gehaald. Druk op R om opnieuw te beginnen', canvas.width / 2, canvas.height / 2 + 70);
+    }
+
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      tekenGrot();
-      tekenGrotTekeningen();
+      tekenAchtergrond();
       tekenParcours();
       tekenMens();
       tekenLevens();
+      tekenLevelNaam();
       if (gameOver) tekenGameOver();
+      if (gewonnen) tekenGewonnen();
     }
 
     startOpnieuw();
     let vorige = performance.now();
     function loop(nu) {
-      if (gameOver && toetsen['r']) {
+      if ((gameOver || gewonnen) && toetsen['r']) {
         gameOver = false;
+        gewonnen = false;
+        huidigLevel = 0;
         mens.levens = 3;
         startOpnieuw();
       }
-      if (!gameOver) update(Math.min((nu - vorige) / 1000, 0.05));
+      if (!gameOver && !gewonnen) update(Math.min((nu - vorige) / 1000, 0.05));
       vorige = nu;
       draw();
       requestAnimationFrame(loop);
