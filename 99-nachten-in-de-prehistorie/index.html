@@ -103,7 +103,9 @@
     // stap loopt op tijdens het lopen en zorgt voor de beenbeweging.
     // slaat telt af tijdens een slag met de knots.
     // d is de diepte op de grond (0 = bij de horizon, 1 = helemaal vooraan).
-    const speler = { x: 700, d: 0.6, richting: 1, stap: 0, loopt: false, slaat: 0 };
+    // vrouw bepaalt hoe het poppetje getekend wordt (lang haar of baard).
+    const speler = { x: 700, d: 0.6, richting: 1, stap: 0, loopt: false, slaat: 0, vrouw: false };
+    let keuzeScherm = true; // zolang dit waar is, zie je het keuzescherm en staat het spel stil
     function spelerY() { return diepteNaarY(speler.d); }
 
     // Welke toetsen zijn nu ingedrukt?
@@ -117,6 +119,13 @@
       }
       if (gameOver) {
         if (e.key === 'Enter') location.reload();
+        return;
+      }
+      // Aan het begin kies je wie je speelt: de man of de vrouw.
+      if (keuzeScherm) {
+        if (e.key === 'ArrowLeft') speler.vrouw = false;
+        if (e.key === 'ArrowRight') speler.vrouw = true;
+        if (e.key === 'Enter' || e.key === ' ') keuzeScherm = false;
         return;
       }
       toetsen[e.key] = true;
@@ -182,8 +191,8 @@
 
     function update(dt) {
       tijd += dt;
-      // Bij game over en zolang de winkel open is, staat het spel stil.
-      if (gameOver || winkelOpen) return;
+      // Bij het keuzescherm, bij game over en zolang de winkel open is, staat het spel stil.
+      if (keuzeScherm || gameOver || winkelOpen) return;
       updateDagNacht(dt);
       if (onkwetsbaar > 0) onkwetsbaar -= dt;
       updateRoofdieren(dt);
@@ -2252,25 +2261,54 @@
       ctx.arc(x, y - 115, 22, 0, Math.PI * 2);
       ctx.fill();
 
-      // Baard
-      ctx.fillStyle = '#3b2314';
-      ctx.beginPath();
-      ctx.moveTo(x - 18, y - 112);
-      ctx.quadraticCurveTo(x, y - 80, x + 18, y - 112);
-      ctx.quadraticCurveTo(x, y - 95, x - 18, y - 112);
-      ctx.fill();
-
-      // Wild haar
-      ctx.fillStyle = '#3b2314';
-      ctx.beginPath();
-      ctx.arc(x, y - 122, 24, Math.PI, 0);
-      ctx.fill();
-      for (let i = -2; i <= 2; i++) {
+      if (speler.vrouw) {
+        // Lang haar dat over de schouders valt, met een bloem erin
+        ctx.fillStyle = '#4a2a14';
         ctx.beginPath();
-        ctx.moveTo(x + i * 10 - 6, y - 124);
-        ctx.lineTo(x + i * 10 + (i * 2), y - 152 - Math.abs(i) * -4);
-        ctx.lineTo(x + i * 10 + 6, y - 124);
+        ctx.moveTo(x - 24, y - 122);
+        ctx.quadraticCurveTo(x - 30, y - 90, x - 26, y - 70);
+        ctx.lineTo(x - 14, y - 70);
+        ctx.quadraticCurveTo(x - 16, y - 100, x - 14, y - 110);
+        ctx.lineTo(x + 14, y - 110);
+        ctx.quadraticCurveTo(x + 16, y - 100, x + 14, y - 70);
+        ctx.lineTo(x + 26, y - 70);
+        ctx.quadraticCurveTo(x + 30, y - 90, x + 24, y - 122);
+        ctx.closePath();
         ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x, y - 122, 24, Math.PI, 0);
+        ctx.fill();
+        // Bloem
+        ctx.fillStyle = '#f47fa4';
+        for (let i = 0; i < 5; i++) {
+          const hoek = i * Math.PI * 2 / 5;
+          ctx.beginPath();
+          ctx.arc(x - 16 + Math.cos(hoek) * 5, y - 138 + Math.sin(hoek) * 5, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = '#ffd166';
+        ctx.beginPath(); ctx.arc(x - 16, y - 138, 2.5, 0, Math.PI * 2); ctx.fill();
+      } else {
+        // Baard
+        ctx.fillStyle = '#3b2314';
+        ctx.beginPath();
+        ctx.moveTo(x - 18, y - 112);
+        ctx.quadraticCurveTo(x, y - 80, x + 18, y - 112);
+        ctx.quadraticCurveTo(x, y - 95, x - 18, y - 112);
+        ctx.fill();
+
+        // Wild haar
+        ctx.fillStyle = '#3b2314';
+        ctx.beginPath();
+        ctx.arc(x, y - 122, 24, Math.PI, 0);
+        ctx.fill();
+        for (let i = -2; i <= 2; i++) {
+          ctx.beginPath();
+          ctx.moveTo(x + i * 10 - 6, y - 124);
+          ctx.lineTo(x + i * 10 + (i * 2), y - 152 - Math.abs(i) * -4);
+          ctx.lineTo(x + i * 10 + 6, y - 124);
+          ctx.fill();
+        }
       }
 
       // Wenkbrauwen
@@ -2364,6 +2402,51 @@
       tekenLevens();
       tekenWinkel();
       tekenGameOver();
+      tekenKeuzeScherm();
+    }
+
+    // Het keuzescherm aan het begin: kies de man of de vrouw.
+    function tekenKeuzeScherm() {
+      if (!keuzeScherm) return;
+      const b = canvas.width, h = canvas.height;
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(0, 0, b, h);
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 52px sans-serif';
+      ctx.fillStyle = '#ffd166';
+      ctx.fillText('99 nachten in de prehistorie', b / 2, h * 0.2);
+      ctx.font = '26px sans-serif';
+      ctx.fillStyle = '#fff';
+      ctx.fillText('Wie ga je spelen?', b / 2, h * 0.2 + 50);
+
+      // Twee poppetjes naast elkaar; de gekozen staat in een lichtkring
+      const echteKeuze = speler.vrouw;
+      [false, true].forEach((vrouw, i) => {
+        const x = b / 2 + (i === 0 ? -160 : 160), y = h * 0.62;
+        const gekozen = vrouw === echteKeuze;
+        if (gekozen) {
+          const kring = ctx.createRadialGradient(x, y - 80, 20, x, y - 80, 140);
+          kring.addColorStop(0, 'rgba(255,209,102,0.35)');
+          kring.addColorStop(1, 'rgba(255,209,102,0)');
+          ctx.fillStyle = kring;
+          ctx.beginPath(); ctx.arc(x, y - 80, 140, 0, Math.PI * 2); ctx.fill();
+        }
+        speler.vrouw = vrouw;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(1.2, 1.2);
+        tekenPoppetje(0, 0, 1);
+        ctx.restore();
+        ctx.font = gekozen ? 'bold 24px sans-serif' : '22px sans-serif';
+        ctx.fillStyle = gekozen ? '#ffd166' : 'rgba(255,255,255,0.6)';
+        ctx.fillText(vrouw ? 'Vrouw' : 'Man', x, y + 40);
+      });
+      speler.vrouw = echteKeuze;
+
+      ctx.font = '20px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.fillText('Pijltje links of rechts om te kiezen, Enter om te beginnen', b / 2, h * 0.9);
+      ctx.textAlign = 'left';
     }
 
     // Het landschap donkerder maken in de nacht en warmer in de dag.
