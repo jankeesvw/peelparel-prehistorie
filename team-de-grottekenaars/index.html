@@ -39,7 +39,11 @@
 
     // Welke toetsen zijn ingedrukt?
     const toetsen = {};
-    window.addEventListener('keydown', (e) => { toetsen[e.key] = true; });
+    let spatieNetIngedrukt = false; // wordt true op het moment dat spatie ingedrukt wordt
+    window.addEventListener('keydown', (e) => {
+      if (e.key === ' ' && !toetsen[' ']) spatieNetIngedrukt = true;
+      toetsen[e.key] = true;
+    });
     window.addEventListener('keyup', (e) => { toetsen[e.key] = false; });
 
     const zwaartekracht = 1800;
@@ -348,15 +352,24 @@
       // Niet buiten het level lopen
       mens.x = Math.max(40, Math.min(levelBreedte() - 40, mens.x));
 
-      // Springen: spatie inhouden laadt de jump-meter op, loslaten springt.
-      // Is de meter vol, dan wordt het een power-jump. Alleen op de grond.
+      // Gewoon springen: spatie indrukken terwijl je op de grond staat
+      if (spatieNetIngedrukt && mens.opDeGrond) {
+        mens.vy = -springKracht;
+        mens.opDeGrond = false;
+      }
+      spatieNetIngedrukt = false;
+
+      // Power-jump: spatie ingedrukt houden terwijl je op de grond staat laadt de meter op.
+      // Laat je los als de meter vol is, dan spring je extra hoog.
       if (mens.opDeGrond) {
         if (toetsen[' ']) {
           mens.lading = Math.min(1, mens.lading + dt / laadTijd);
-        } else if (mens.lading > 0) {
-          mens.vy = mens.lading >= 1 ? -powerJumpKracht : -springKracht;
+        } else {
+          if (mens.lading >= 1) {
+            mens.vy = -powerJumpKracht;
+            mens.opDeGrond = false;
+          }
           mens.lading = 0;
-          mens.opDeGrond = false;
         }
       } else {
         mens.lading = 0;
