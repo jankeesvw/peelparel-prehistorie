@@ -30,6 +30,17 @@
       levens: 3,
     };
 
+    // Het parcours: rotsplatforms op verschillende hoogtes.
+    // x en breedte als deel van de schermbreedte, y als deel van de schermhoogte.
+    const platforms = [
+      { x: 0.20, y: 0.68, breedte: 0.10 },
+      { x: 0.33, y: 0.58, breedte: 0.08 },
+      { x: 0.45, y: 0.48, breedte: 0.10 },
+      { x: 0.60, y: 0.58, breedte: 0.08 },
+      { x: 0.72, y: 0.46, breedte: 0.10 },
+      { x: 0.86, y: 0.36, breedte: 0.10 },
+    ];
+
     function update(dt) {
       // spel-logica
     }
@@ -196,6 +207,50 @@
       }
     }
 
+    function tekenParcours() {
+      const b = canvas.width;
+      const h = canvas.height;
+
+      // Een gat in de bodem waar je overheen moet springen
+      ctx.fillStyle = '#1a1210';
+      ctx.fillRect(b * 0.48, h * 0.8 - 20, b * 0.18, h * 0.2 + 20);
+
+      // Rotsplatforms
+      for (const pl of platforms) {
+        const x = pl.x * b;
+        const y = pl.y * h;
+        const br = pl.breedte * b;
+        ctx.fillStyle = '#4a3527';
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + br, y);
+        ctx.lineTo(x + br - 10, y + 22);
+        ctx.lineTo(x + 10, y + 22);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#6b4f3a'; // lichte bovenrand
+        ctx.fillRect(x, y, br, 6);
+      }
+
+      // Finishvlag op het laatste platform
+      const laatste = platforms[platforms.length - 1];
+      const vx = (laatste.x + laatste.breedte / 2) * b;
+      const vy = laatste.y * h;
+      ctx.strokeStyle = '#5c3a1a';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(vx, vy);
+      ctx.lineTo(vx, vy - 70);
+      ctx.stroke();
+      ctx.fillStyle = '#e63946';
+      ctx.beginPath();
+      ctx.moveTo(vx, vy - 70);
+      ctx.lineTo(vx + 40, vy - 58);
+      ctx.lineTo(vx, vy - 46);
+      ctx.closePath();
+      ctx.fill();
+    }
+
     function tekenMens() {
       const x = mens.x;
       const voeten = canvas.height * 0.8; // de mens staat op de rotsbodem
@@ -277,6 +332,7 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       tekenGrot();
       tekenGrotTekeningen();
+      tekenParcours();
       tekenMens();
       tekenLevens();
     }
