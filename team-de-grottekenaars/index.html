@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>team-de-grottekenaars</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; color: #111; font-family: sans-serif; }
+    canvas { display: block; background: #fff; }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    // Het canvas vult de hele pagina, ook als het venster van grootte verandert.
+    function pasGrootteAan() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    pasGrootteAan();
+    window.addEventListener('resize', pasGrootteAan);
+
+    function update(dt) {
+      // spel-logica
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // hier komt het tekenen
+    }
+
+    let vorige = performance.now();
+    function loop(nu) {
+      update((nu - vorige) / 1000);
+      vorige = nu;
+      draw();
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  </script>
+  <script src="../livereload.js"></script>
+</body>
+</html>
