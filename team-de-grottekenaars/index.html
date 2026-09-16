@@ -34,6 +34,7 @@
       richting: 1,   // 1 = naar rechts kijken, -1 = naar links
       loopt: false,
       stap: 0,       // telt op tijdens het lopen, voor de beenbeweging
+      lading: 0,     // de jump-meter: 0 = leeg, 1 = vol (spatie inhouden laadt op)
     };
 
     // Welke toetsen zijn ingedrukt?
@@ -43,6 +44,8 @@
 
     const zwaartekracht = 1800;
     const springKracht = 800;
+    const powerJumpKracht = 1150;  // een power-jump gaat ongeveer twee keer zo hoog
+    const laadTijd = 1.0;          // seconden spatie inhouden tot de meter vol is
 
     let gameOver = false;
     let gewonnen = false;
@@ -345,10 +348,18 @@
       // Niet buiten het level lopen
       mens.x = Math.max(40, Math.min(levelBreedte() - 40, mens.x));
 
-      // Springen met spatie, alleen als je op de grond of een platform staat
-      if (toetsen[' '] && mens.opDeGrond) {
-        mens.vy = -springKracht;
-        mens.opDeGrond = false;
+      // Springen: spatie inhouden laadt de jump-meter op, loslaten springt.
+      // Is de meter vol, dan wordt het een power-jump. Alleen op de grond.
+      if (mens.opDeGrond) {
+        if (toetsen[' ']) {
+          mens.lading = Math.min(1, mens.lading + dt / laadTijd);
+        } else if (mens.lading > 0) {
+          mens.vy = mens.lading >= 1 ? -powerJumpKracht : -springKracht;
+          mens.lading = 0;
+          mens.opDeGrond = false;
+        }
+      } else {
+        mens.lading = 0;
       }
 
       // Zwaartekracht
@@ -1031,6 +1042,24 @@
       ctx.fillText('Druk op R om opnieuw te beginnen', canvas.width / 2, canvas.height / 2 + 70);
     }
 
+    // De jump-meter boven het hoofd, alleen zichtbaar tijdens het opladen
+    function tekenJumpMeter() {
+      if (mens.lading <= 0) return;
+      const breed = 70;
+      const x = mens.x - breed / 2;
+      const y = mens.y - 200;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillRect(x - 2, y - 2, breed + 4, 14);
+      ctx.fillStyle = mens.lading >= 1 ? '#2ecc71' : '#f39c12';
+      ctx.fillRect(x, y, breed * mens.lading, 10);
+      if (mens.lading >= 1) {
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('POWER!', mens.x, y - 6);
+      }
+    }
+
     function tekenLevelNaam() {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
       ctx.fillRect(canvas.width / 2 - 220, 14, 440, 44);
@@ -1063,6 +1092,7 @@
       tekenParcours();
       tekenObstakels();
       tekenMens();
+      tekenJumpMeter();
       ctx.restore();
 
       // De hartjes en de levelnaam blijven op hun plek op het scherm
