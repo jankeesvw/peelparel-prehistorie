@@ -355,6 +355,10 @@
     let kNetIngedrukt = false;      // idem voor de K van knots
     window.addEventListener('keydown', (e) => {
       startAudio();
+      if (intro) {
+        if (e.key === 'Enter') intro = false;
+        return;
+      }
       if (cheat.open) {
         cheatToets(e.key);
         e.preventDefault();
@@ -380,6 +384,7 @@
 
     let gameOver = false;
     let gewonnen = false;
+    let intro = true; // het startscherm met de uitleg
     let huidigLevel = 0;
 
     // De 10 levels. Elk level heeft een thema uit de prehistorie, eigen kleuren,
@@ -2393,6 +2398,81 @@
       ctx.fillText('pijltjes = kiezen   Enter = kopen / aantrekken / uittrekken   C = sluiten', px + pb / 2, py + 580);
     }
 
+    // Het startscherm: waar het spel over gaat en hoe alles werkt
+    function tekenIntro() {
+      const b = canvas.width;
+      const h = canvas.height;
+      const tijd = performance.now() / 1000;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
+      ctx.fillRect(0, 0, b, h);
+
+      const pb = Math.min(900, b - 40);
+      const px = b / 2 - pb / 2;
+      const ph = Math.min(640, h - 40);
+      const py = h / 2 - ph / 2;
+      ctx.fillStyle = '#2b1d15';
+      ctx.fillRect(px, py, pb, ph);
+      ctx.strokeStyle = '#c8792a'; ctx.lineWidth = 6; ctx.strokeRect(px, py, pb, ph);
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#c8792a';
+      ctx.font = 'bold 44px sans-serif';
+      ctx.fillText('Team de Grottekenaars', b / 2, py + 60);
+
+      ctx.fillStyle = '#f0e8d8';
+      ctx.font = '19px sans-serif';
+      const verhaal = [
+        'Je bent een oermens die op avontuur gaat door de prehistorie: van een donkere grot',
+        'en de ijstijd, langs vulkanen, moerassen en een sabeltandtijgerhol, tot aan de disco.',
+        'Elk level is een parcours vol gaten, lava, stekels, beesten en vallende rotsen.',
+        'Haal de rode vlag aan het einde om naar het volgende level te gaan. Je hebt 3 levens.',
+      ];
+      verhaal.forEach((regel, i) => ctx.fillText(regel, b / 2, py + 105 + i * 28));
+
+      ctx.textAlign = 'left';
+      const kolom1 = px + 50;
+      const kolom2 = px + pb / 2 + 20;
+      ctx.fillStyle = '#ffe22d';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText('Besturing', kolom1, py + 245);
+      ctx.fillText('Verzamelen en kopen', kolom2, py + 245);
+
+      ctx.fillStyle = '#f0e8d8';
+      ctx.font = '18px sans-serif';
+      const besturing = [
+        'pijltjes of A / D: lopen',
+        'spatie: springen',
+        'spatie inhouden: meter vol = power-jump',
+        'K: slaan met de knots',
+        'C: kledingkast openen',
+        'X: cheatscherm',
+        'R: opnieuw na game-over',
+      ];
+      const kopen = [
+        'Pak gouden muntjes in elk level.',
+        'In de kledingkast koop je hoedjes,',
+        'zonnebrillen, shirtjes, kleren,',
+        'skateboards en make-up.',
+        'Het portaal (100 muntjes) brengt je',
+        'naar een bonuslevel met 300 muntjes.',
+        'Sla een beest dood: leven erbij en R.I.P.',
+      ];
+      besturing.forEach((regel, i) => ctx.fillText(regel, kolom1, py + 280 + i * 27));
+      kopen.forEach((regel, i) => ctx.fillText(regel, kolom2, py + 280 + i * 27));
+
+      ctx.fillStyle = '#aaa';
+      ctx.font = '17px sans-serif';
+      ctx.fillText('Cheat: los 10 tafelsommen goed op en kies zelf een level. Na level 10 wacht de disco, na level 21 de all-time disco!', kolom1, py + 490);
+
+      // Knipperende starttekst
+      if (Math.floor(tijd * 2) % 2 === 0) {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#2dff8a';
+        ctx.font = 'bold 30px sans-serif';
+        ctx.fillText('Druk op Enter om te beginnen', b / 2, py + ph - 40);
+      }
+    }
+
     function tekenCheat() {
       const b = canvas.width;
       const h = canvas.height;
@@ -2540,6 +2620,7 @@
       tekenLevelNaam();
       if (kastOpen) tekenKast();
       if (cheat.open) tekenCheat();
+      if (intro) tekenIntro();
       if (gameOver) tekenGameOver();
       if (gewonnen) tekenGewonnen();
     }
@@ -2556,7 +2637,7 @@
         beestenTerug();
         startOpnieuw();
       }
-      if (!gameOver && !gewonnen && !kastOpen && !cheat.open) update(Math.min((nu - vorige) / 1000, 0.05));
+      if (!intro && !gameOver && !gewonnen && !kastOpen && !cheat.open) update(Math.min((nu - vorige) / 1000, 0.05));
       vorige = nu;
       speelDiscoLiedje();
       draw();
