@@ -86,6 +86,116 @@
       }
     }
 
+    // Grotschilderingen op de achterwand, in oker en roodbruin
+    function tekenGrotTekeningen() {
+      const b = canvas.width;
+      const h = canvas.height;
+      const oker = '#c8792a';
+      const roodbruin = '#8e3b2a';
+
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Mammoet: dikke romp, kop met slurf en gebogen slagtanden
+      const mx = b * 0.55;
+      const my = h * 0.42;
+      ctx.fillStyle = roodbruin;
+      ctx.beginPath();
+      ctx.ellipse(mx, my, 90, 55, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(mx + 85, my - 25, 35, 0, Math.PI * 2); // kop
+      ctx.fill();
+      ctx.strokeStyle = roodbruin;
+      ctx.lineWidth = 12;
+      for (const px of [mx - 55, mx - 20, mx + 20, mx + 55]) { // poten
+        ctx.beginPath();
+        ctx.moveTo(px, my + 40);
+        ctx.lineTo(px, my + 95);
+        ctx.stroke();
+      }
+      ctx.lineWidth = 10;
+      ctx.beginPath(); // slurf
+      ctx.moveTo(mx + 115, my - 15);
+      ctx.quadraticCurveTo(mx + 150, my + 20, mx + 130, my + 70);
+      ctx.stroke();
+      ctx.strokeStyle = oker;
+      ctx.lineWidth = 6;
+      ctx.beginPath(); // slagtand
+      ctx.moveTo(mx + 105, my);
+      ctx.quadraticCurveTo(mx + 170, my + 10, mx + 150, my - 35);
+      ctx.stroke();
+
+      // Hert: klein lijf, dunne poten en een gewei
+      const hx = b * 0.25;
+      const hy = h * 0.4;
+      ctx.fillStyle = oker;
+      ctx.beginPath();
+      ctx.ellipse(hx, hy, 45, 25, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = oker;
+      ctx.lineWidth = 5;
+      for (const px of [hx - 30, hx - 15, hx + 15, hx + 30]) {
+        ctx.beginPath();
+        ctx.moveTo(px, hy + 20);
+        ctx.lineTo(px, hy + 65);
+        ctx.stroke();
+      }
+      ctx.beginPath(); // nek en kop
+      ctx.moveTo(hx + 40, hy - 10);
+      ctx.lineTo(hx + 65, hy - 45);
+      ctx.lineTo(hx + 85, hy - 40);
+      ctx.stroke();
+      ctx.lineWidth = 3;
+      ctx.beginPath(); // gewei
+      ctx.moveTo(hx + 65, hy - 45);
+      ctx.lineTo(hx + 55, hy - 80);
+      ctx.moveTo(hx + 60, hy - 65);
+      ctx.lineTo(hx + 45, hy - 75);
+      ctx.moveTo(hx + 65, hy - 45);
+      ctx.lineTo(hx + 80, hy - 80);
+      ctx.moveTo(hx + 72, hy - 65);
+      ctx.lineTo(hx + 88, hy - 70);
+      ctx.stroke();
+
+      // Jagers: stokfiguurtjes met een speer
+      ctx.strokeStyle = roodbruin;
+      ctx.lineWidth = 4;
+      for (let i = 0; i < 3; i++) {
+        const jx = b * 0.72 + i * 55;
+        const jy = h * 0.55;
+        ctx.beginPath();
+        ctx.arc(jx, jy - 40, 7, 0, Math.PI * 2); // hoofd
+        ctx.moveTo(jx, jy - 33);
+        ctx.lineTo(jx, jy); // lijf
+        ctx.moveTo(jx, jy);
+        ctx.lineTo(jx - 12, jy + 25); // benen
+        ctx.moveTo(jx, jy);
+        ctx.lineTo(jx + 12, jy + 25);
+        ctx.moveTo(jx, jy - 25);
+        ctx.lineTo(jx - 18, jy - 5); // armen
+        ctx.moveTo(jx, jy - 25);
+        ctx.lineTo(jx + 20, jy - 35);
+        ctx.moveTo(jx + 5, jy - 10); // speer
+        ctx.lineTo(jx + 35, jy - 60);
+        ctx.stroke();
+      }
+
+      // Handafdrukken: een cirkel met vijf vingers
+      ctx.fillStyle = oker;
+      for (const [hxp, hyp] of [[b * 0.12, h * 0.6], [b * 0.9, h * 0.35], [b * 0.4, h * 0.62]]) {
+        ctx.beginPath();
+        ctx.arc(hxp, hyp, 14, 0, Math.PI * 2);
+        ctx.fill();
+        for (let v = 0; v < 5; v++) {
+          const hoek = -Math.PI * 0.9 + v * Math.PI * 0.2;
+          ctx.beginPath();
+          ctx.ellipse(hxp + Math.cos(hoek) * 20, hyp + Math.sin(hoek) * 20, 5, 12, hoek + Math.PI / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
     function tekenMens() {
       const x = mens.x;
       const voeten = canvas.height * 0.8; // de mens staat op de rotsbodem
@@ -166,6 +276,7 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       tekenGrot();
+      tekenGrotTekeningen();
       tekenMens();
       tekenLevens();
     }
