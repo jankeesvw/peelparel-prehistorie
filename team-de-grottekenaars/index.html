@@ -50,125 +50,188 @@
 
     // De 10 levels. Elk level heeft een thema uit de prehistorie, eigen kleuren,
     // een parcours van platforms en gaten in de bodem.
-    // x, y en breedte zijn een deel van het scherm (0 = links/boven, 1 = rechts/onder).
+    // Een level is 'schermen' keer zo breed als het scherm; de camera schuift mee met de mens.
+    // x en breedte zijn een deel van de hele levelbreedte, y een deel van de schermhoogte.
     // Levels met lava: true hebben borrelende lava in de gaten, die is meteen dodelijk.
     const levels = [
       {
         naam: 'Level 1: De grot',
+        schermen: 2,
         lava: true,
         decoratie: 'grot',
         lucht: ['#1a1210', '#5a3d2b'], bodem: '#3d2b1f', platform: '#4a3527', rand: '#6b4f3a', gatKleur: '#1a1210',
-        gaten: [{ x: 0.48, breedte: 0.18 }],
+        gaten: [{ x: 0.134, breedte: 0.050 }, { x: 0.437, breedte: 0.070 }, { x: 0.779, breedte: 0.070 }],
         platforms: [
-          { x: 0.20, y: 0.68, breedte: 0.10 }, { x: 0.33, y: 0.58, breedte: 0.08 },
-          { x: 0.45, y: 0.48, breedte: 0.10 }, { x: 0.60, y: 0.58, breedte: 0.08 },
-          { x: 0.72, y: 0.46, breedte: 0.10 }, { x: 0.86, y: 0.36, breedte: 0.10 },
+          { x: 0.100, y: 0.68, breedte: 0.040 }, { x: 0.250, y: 0.68, breedte: 0.040 },
+          { x: 0.400, y: 0.62, breedte: 0.040 }, { x: 0.550, y: 0.68, breedte: 0.040 },
+          { x: 0.700, y: 0.68, breedte: 0.040 }, { x: 0.850, y: 0.62, breedte: 0.040 },
+          { x: 0.930, y: 0.42, breedte: 0.045 },
         ],
       },
       {
         naam: 'Level 2: De ijstijd',
+        schermen: 2,
         decoratie: 'ijs',
         lucht: ['#0b1a33', '#4a7fb5'], bodem: '#dfe9f3', platform: '#b7d3ea', rand: '#ffffff', gatKleur: '#0b2d4d',
-        gaten: [{ x: 0.30, breedte: 0.12 }, { x: 0.62, breedte: 0.14 }],
+        gaten: [{ x: 0.132, breedte: 0.070 }, { x: 0.345, breedte: 0.070 }, { x: 0.579, breedte: 0.060 }, { x: 0.786, breedte: 0.070 }],
         platforms: [
-          { x: 0.15, y: 0.66, breedte: 0.10 }, { x: 0.35, y: 0.56, breedte: 0.09 },
-          { x: 0.50, y: 0.64, breedte: 0.08 }, { x: 0.63, y: 0.52, breedte: 0.09 },
-          { x: 0.78, y: 0.42, breedte: 0.08 }, { x: 0.88, y: 0.32, breedte: 0.10 },
+          { x: 0.100, y: 0.68, breedte: 0.040 }, { x: 0.207, y: 0.58, breedte: 0.040 },
+          { x: 0.314, y: 0.48, breedte: 0.040 }, { x: 0.421, y: 0.58, breedte: 0.040 },
+          { x: 0.529, y: 0.66, breedte: 0.040 }, { x: 0.636, y: 0.56, breedte: 0.040 },
+          { x: 0.743, y: 0.46, breedte: 0.040 }, { x: 0.850, y: 0.40, breedte: 0.040 },
+          { x: 0.930, y: 0.42, breedte: 0.045 },
         ],
       },
       {
         naam: 'Level 3: De mammoetsteppe',
+        schermen: 3,
         decoratie: 'steppe',
         lucht: ['#7ec8e3', '#f4e3b2'], bodem: '#a9a24a', platform: '#8b7a3a', rand: '#c9b85a', gatKleur: '#4a3a1a',
-        gaten: [{ x: 0.22, breedte: 0.10 }, { x: 0.55, breedte: 0.20 }],
+        gaten: [{ x: 0.124, breedte: 0.040 }, { x: 0.278, breedte: 0.047 }, { x: 0.464, breedte: 0.047 }, { x: 0.604, breedte: 0.040 }, { x: 0.780, breedte: 0.047 }],
         platforms: [
-          { x: 0.10, y: 0.66, breedte: 0.08 }, { x: 0.30, y: 0.58, breedte: 0.10 },
-          { x: 0.47, y: 0.50, breedte: 0.08 }, { x: 0.60, y: 0.60, breedte: 0.08 },
-          { x: 0.72, y: 0.48, breedte: 0.08 }, { x: 0.87, y: 0.38, breedte: 0.10 },
+          { x: 0.100, y: 0.68, breedte: 0.027 }, { x: 0.183, y: 0.58, breedte: 0.027 },
+          { x: 0.267, y: 0.52, breedte: 0.027 }, { x: 0.350, y: 0.42, breedte: 0.027 },
+          { x: 0.433, y: 0.36, breedte: 0.027 }, { x: 0.517, y: 0.36, breedte: 0.027 },
+          { x: 0.600, y: 0.36, breedte: 0.027 }, { x: 0.683, y: 0.36, breedte: 0.027 },
+          { x: 0.767, y: 0.36, breedte: 0.027 }, { x: 0.850, y: 0.36, breedte: 0.027 },
+          { x: 0.930, y: 0.42, breedte: 0.030 },
         ],
       },
       {
         naam: 'Level 4: Het vulkaanland',
+        schermen: 3,
         lava: true,
         decoratie: 'vulkaan',
         lucht: ['#2b0a0a', '#8a2a0a'], bodem: '#3a2a2a', platform: '#4d3b3b', rand: '#7a5a5a', gatKleur: '#ff6a00',
-        gaten: [{ x: 0.18, breedte: 0.12 }, { x: 0.42, breedte: 0.12 }, { x: 0.68, breedte: 0.14 }],
+        gaten: [{ x: 0.101, breedte: 0.047 }, { x: 0.263, breedte: 0.040 }, { x: 0.368, breedte: 0.040 }, { x: 0.511, breedte: 0.033 }, { x: 0.662, breedte: 0.033 }, { x: 0.769, breedte: 0.033 }],
         platforms: [
-          { x: 0.12, y: 0.62, breedte: 0.08 }, { x: 0.26, y: 0.52, breedte: 0.08 },
-          { x: 0.40, y: 0.60, breedte: 0.09 }, { x: 0.55, y: 0.50, breedte: 0.08 },
-          { x: 0.70, y: 0.58, breedte: 0.08 }, { x: 0.86, y: 0.44, breedte: 0.10 },
+          { x: 0.100, y: 0.68, breedte: 0.027 }, { x: 0.168, y: 0.58, breedte: 0.027 },
+          { x: 0.236, y: 0.68, breedte: 0.027 }, { x: 0.305, y: 0.68, breedte: 0.027 },
+          { x: 0.373, y: 0.68, breedte: 0.027 }, { x: 0.441, y: 0.62, breedte: 0.027 },
+          { x: 0.509, y: 0.52, breedte: 0.027 }, { x: 0.577, y: 0.60, breedte: 0.027 },
+          { x: 0.645, y: 0.68, breedte: 0.027 }, { x: 0.714, y: 0.58, breedte: 0.027 },
+          { x: 0.782, y: 0.52, breedte: 0.027 }, { x: 0.850, y: 0.60, breedte: 0.027 },
+          { x: 0.930, y: 0.42, breedte: 0.030 },
         ],
       },
       {
         naam: 'Level 5: Het dinomoeras',
+        schermen: 3,
         decoratie: 'moeras',
         lucht: ['#1f3d2b', '#6fa06b'], bodem: '#4d5a2a', platform: '#5c4a2a', rand: '#7f9a3a', gatKleur: '#2e6b4a',
-        gaten: [{ x: 0.25, breedte: 0.15 }, { x: 0.58, breedte: 0.16 }],
+        gaten: [{ x: 0.139, breedte: 0.033 }, { x: 0.215, breedte: 0.047 }, { x: 0.324, breedte: 0.033 }, { x: 0.449, breedte: 0.040 }, { x: 0.547, breedte: 0.047 }, { x: 0.658, breedte: 0.047 }, { x: 0.768, breedte: 0.047 }],
         platforms: [
-          { x: 0.18, y: 0.64, breedte: 0.08 }, { x: 0.32, y: 0.54, breedte: 0.08 },
-          { x: 0.46, y: 0.62, breedte: 0.09 }, { x: 0.60, y: 0.50, breedte: 0.08 },
-          { x: 0.74, y: 0.58, breedte: 0.08 }, { x: 0.87, y: 0.40, breedte: 0.10 },
+          { x: 0.100, y: 0.68, breedte: 0.027 }, { x: 0.158, y: 0.68, breedte: 0.027 },
+          { x: 0.215, y: 0.68, breedte: 0.027 }, { x: 0.273, y: 0.68, breedte: 0.027 },
+          { x: 0.331, y: 0.68, breedte: 0.027 }, { x: 0.388, y: 0.58, breedte: 0.027 },
+          { x: 0.446, y: 0.52, breedte: 0.027 }, { x: 0.504, y: 0.42, breedte: 0.027 },
+          { x: 0.562, y: 0.50, breedte: 0.027 }, { x: 0.619, y: 0.58, breedte: 0.027 },
+          { x: 0.677, y: 0.48, breedte: 0.027 }, { x: 0.735, y: 0.56, breedte: 0.027 },
+          { x: 0.792, y: 0.64, breedte: 0.027 }, { x: 0.850, y: 0.54, breedte: 0.027 },
+          { x: 0.930, y: 0.42, breedte: 0.030 },
         ],
       },
       {
         naam: 'Level 6: Het oerwoud',
+        schermen: 3,
         lava: true,
         decoratie: 'oerwoud',
         lucht: ['#0f2a14', '#3f7a3a'], bodem: '#3b5a22', platform: '#6b4a2a', rand: '#8fbf4a', gatKleur: '#0a1a0a',
-        gaten: [{ x: 0.15, breedte: 0.10 }, { x: 0.40, breedte: 0.14 }, { x: 0.70, breedte: 0.12 }],
+        gaten: [{ x: 0.140, breedte: 0.047 }, { x: 0.220, breedte: 0.033 }, { x: 0.290, breedte: 0.033 }, { x: 0.391, breedte: 0.040 }, { x: 0.478, breedte: 0.047 }, { x: 0.585, breedte: 0.040 }, { x: 0.681, breedte: 0.033 }, { x: 0.764, breedte: 0.047 }],
         platforms: [
-          { x: 0.10, y: 0.60, breedte: 0.08 }, { x: 0.24, y: 0.50, breedte: 0.08 },
-          { x: 0.38, y: 0.42, breedte: 0.08 }, { x: 0.52, y: 0.52, breedte: 0.08 },
-          { x: 0.66, y: 0.44, breedte: 0.08 }, { x: 0.80, y: 0.54, breedte: 0.08 },
-          { x: 0.90, y: 0.40, breedte: 0.08 },
+          { x: 0.100, y: 0.68, breedte: 0.027 }, { x: 0.150, y: 0.58, breedte: 0.027 },
+          { x: 0.200, y: 0.68, breedte: 0.027 }, { x: 0.250, y: 0.68, breedte: 0.027 },
+          { x: 0.300, y: 0.58, breedte: 0.027 }, { x: 0.350, y: 0.68, breedte: 0.027 },
+          { x: 0.400, y: 0.68, breedte: 0.027 }, { x: 0.450, y: 0.58, breedte: 0.027 },
+          { x: 0.500, y: 0.48, breedte: 0.027 }, { x: 0.550, y: 0.56, breedte: 0.027 },
+          { x: 0.600, y: 0.50, breedte: 0.027 }, { x: 0.650, y: 0.58, breedte: 0.027 },
+          { x: 0.700, y: 0.48, breedte: 0.027 }, { x: 0.750, y: 0.38, breedte: 0.027 },
+          { x: 0.800, y: 0.36, breedte: 0.027 }, { x: 0.850, y: 0.46, breedte: 0.027 },
+          { x: 0.930, y: 0.42, breedte: 0.030 },
         ],
       },
       {
         naam: 'Level 7: De woestijn',
+        schermen: 4,
         decoratie: 'woestijn',
         lucht: ['#ffb347', '#ffe9a8'], bodem: '#e0b96a', platform: '#c49a4a', rand: '#f5d78a', gatKleur: '#7a5a2a',
-        gaten: [{ x: 0.30, breedte: 0.16 }, { x: 0.60, breedte: 0.18 }],
+        gaten: [{ x: 0.133, breedte: 0.025 }, { x: 0.212, breedte: 0.025 }, { x: 0.295, breedte: 0.035 }, { x: 0.355, breedte: 0.030 }, { x: 0.465, breedte: 0.035 }, { x: 0.516, breedte: 0.025 }, { x: 0.599, breedte: 0.025 }, { x: 0.698, breedte: 0.030 }, { x: 0.770, breedte: 0.035 }],
         platforms: [
-          { x: 0.16, y: 0.66, breedte: 0.09 }, { x: 0.33, y: 0.56, breedte: 0.08 },
-          { x: 0.48, y: 0.64, breedte: 0.08 }, { x: 0.62, y: 0.54, breedte: 0.08 },
-          { x: 0.76, y: 0.46, breedte: 0.08 }, { x: 0.88, y: 0.36, breedte: 0.10 },
+          { x: 0.100, y: 0.68, breedte: 0.020 }, { x: 0.144, y: 0.58, breedte: 0.020 },
+          { x: 0.188, y: 0.48, breedte: 0.020 }, { x: 0.232, y: 0.42, breedte: 0.020 },
+          { x: 0.276, y: 0.50, breedte: 0.020 }, { x: 0.321, y: 0.58, breedte: 0.020 },
+          { x: 0.365, y: 0.52, breedte: 0.020 }, { x: 0.409, y: 0.62, breedte: 0.020 },
+          { x: 0.453, y: 0.52, breedte: 0.020 }, { x: 0.497, y: 0.46, breedte: 0.020 },
+          { x: 0.541, y: 0.56, breedte: 0.020 }, { x: 0.585, y: 0.50, breedte: 0.020 },
+          { x: 0.629, y: 0.40, breedte: 0.020 }, { x: 0.674, y: 0.50, breedte: 0.020 },
+          { x: 0.718, y: 0.40, breedte: 0.020 }, { x: 0.762, y: 0.36, breedte: 0.020 },
+          { x: 0.806, y: 0.44, breedte: 0.020 }, { x: 0.850, y: 0.36, breedte: 0.020 },
+          { x: 0.930, y: 0.42, breedte: 0.022 },
         ],
       },
       {
         naam: 'Level 8: Het kampvuurdorp',
+        schermen: 4,
         lava: true,
         decoratie: 'kampvuur',
         lucht: ['#050a1f', '#1f2a5a'], bodem: '#2f3a2a', platform: '#5a4a3a', rand: '#8a7a5a', gatKleur: '#000000',
-        gaten: [{ x: 0.20, breedte: 0.12 }, { x: 0.45, breedte: 0.12 }, { x: 0.72, breedte: 0.12 }],
+        gaten: [{ x: 0.130, breedte: 0.025 }, { x: 0.184, breedte: 0.030 }, { x: 0.257, breedte: 0.025 }, { x: 0.327, breedte: 0.030 }, { x: 0.415, breedte: 0.025 }, { x: 0.470, breedte: 0.025 }, { x: 0.576, breedte: 0.030 }, { x: 0.640, breedte: 0.035 }, { x: 0.708, breedte: 0.025 }, { x: 0.784, breedte: 0.025 }],
         platforms: [
-          { x: 0.14, y: 0.62, breedte: 0.08 }, { x: 0.28, y: 0.52, breedte: 0.08 },
-          { x: 0.42, y: 0.60, breedte: 0.08 }, { x: 0.56, y: 0.48, breedte: 0.08 },
-          { x: 0.70, y: 0.56, breedte: 0.08 }, { x: 0.86, y: 0.42, breedte: 0.10 },
+          { x: 0.100, y: 0.68, breedte: 0.020 }, { x: 0.139, y: 0.68, breedte: 0.020 },
+          { x: 0.179, y: 0.68, breedte: 0.020 }, { x: 0.218, y: 0.68, breedte: 0.020 },
+          { x: 0.258, y: 0.62, breedte: 0.020 }, { x: 0.297, y: 0.68, breedte: 0.020 },
+          { x: 0.337, y: 0.68, breedte: 0.020 }, { x: 0.376, y: 0.62, breedte: 0.020 },
+          { x: 0.416, y: 0.52, breedte: 0.020 }, { x: 0.455, y: 0.42, breedte: 0.020 },
+          { x: 0.495, y: 0.36, breedte: 0.020 }, { x: 0.534, y: 0.36, breedte: 0.020 },
+          { x: 0.574, y: 0.46, breedte: 0.020 }, { x: 0.613, y: 0.40, breedte: 0.020 },
+          { x: 0.653, y: 0.36, breedte: 0.020 }, { x: 0.692, y: 0.36, breedte: 0.020 },
+          { x: 0.732, y: 0.36, breedte: 0.020 }, { x: 0.771, y: 0.44, breedte: 0.020 },
+          { x: 0.811, y: 0.36, breedte: 0.020 }, { x: 0.850, y: 0.36, breedte: 0.020 },
+          { x: 0.930, y: 0.42, breedte: 0.022 },
         ],
       },
       {
         naam: 'Level 9: De bergen',
+        schermen: 4,
         decoratie: 'bergen',
         lucht: ['#5a7fb5', '#d7e6f5'], bodem: '#7a7a7a', platform: '#8a8a8a', rand: '#ffffff', gatKleur: '#2a3a4a',
-        gaten: [{ x: 0.18, breedte: 0.10 }, { x: 0.38, breedte: 0.12 }, { x: 0.60, breedte: 0.14 }, { x: 0.84, breedte: 0.10 }],
+        gaten: [{ x: 0.103, breedte: 0.030 }, { x: 0.202, breedte: 0.030 }, { x: 0.270, breedte: 0.025 }, { x: 0.333, breedte: 0.035 }, { x: 0.365, breedte: 0.035 }, { x: 0.445, breedte: 0.035 }, { x: 0.496, breedte: 0.025 }, { x: 0.565, breedte: 0.035 }, { x: 0.633, breedte: 0.030 }, { x: 0.729, breedte: 0.035 }, { x: 0.773, breedte: 0.035 }],
         platforms: [
-          { x: 0.12, y: 0.64, breedte: 0.08 }, { x: 0.26, y: 0.54, breedte: 0.08 },
-          { x: 0.40, y: 0.44, breedte: 0.08 }, { x: 0.54, y: 0.54, breedte: 0.08 },
-          { x: 0.68, y: 0.44, breedte: 0.08 }, { x: 0.80, y: 0.34, breedte: 0.07 },
-          { x: 0.90, y: 0.26, breedte: 0.08 },
+          { x: 0.100, y: 0.68, breedte: 0.020 }, { x: 0.136, y: 0.68, breedte: 0.020 },
+          { x: 0.171, y: 0.68, breedte: 0.020 }, { x: 0.207, y: 0.68, breedte: 0.020 },
+          { x: 0.243, y: 0.58, breedte: 0.020 }, { x: 0.279, y: 0.48, breedte: 0.020 },
+          { x: 0.314, y: 0.42, breedte: 0.020 }, { x: 0.350, y: 0.36, breedte: 0.020 },
+          { x: 0.386, y: 0.46, breedte: 0.020 }, { x: 0.421, y: 0.36, breedte: 0.020 },
+          { x: 0.457, y: 0.44, breedte: 0.020 }, { x: 0.493, y: 0.52, breedte: 0.020 },
+          { x: 0.529, y: 0.42, breedte: 0.020 }, { x: 0.564, y: 0.36, breedte: 0.020 },
+          { x: 0.600, y: 0.36, breedte: 0.020 }, { x: 0.636, y: 0.46, breedte: 0.020 },
+          { x: 0.671, y: 0.40, breedte: 0.020 }, { x: 0.707, y: 0.48, breedte: 0.020 },
+          { x: 0.743, y: 0.38, breedte: 0.020 }, { x: 0.779, y: 0.36, breedte: 0.020 },
+          { x: 0.814, y: 0.44, breedte: 0.020 }, { x: 0.850, y: 0.52, breedte: 0.020 },
+          { x: 0.930, y: 0.42, breedte: 0.022 },
         ],
       },
       {
         naam: 'Level 10: Het sabeltandtijgerhol',
+        schermen: 4,
         lava: true,
         decoratie: 'tijgerhol',
         lucht: ['#0a0210', '#3a1a4a'], bodem: '#2a1a2a', platform: '#4a2a4a', rand: '#7a4a7a', gatKleur: '#000000',
-        gaten: [{ x: 0.14, breedte: 0.12 }, { x: 0.34, breedte: 0.12 }, { x: 0.54, breedte: 0.14 }, { x: 0.76, breedte: 0.12 }],
+        gaten: [{ x: 0.106, breedte: 0.035 }, { x: 0.168, breedte: 0.025 }, { x: 0.250, breedte: 0.030 }, { x: 0.306, breedte: 0.030 }, { x: 0.360, breedte: 0.025 }, { x: 0.413, breedte: 0.035 }, { x: 0.470, breedte: 0.035 }, { x: 0.537, breedte: 0.025 }, { x: 0.615, breedte: 0.030 }, { x: 0.649, breedte: 0.030 }, { x: 0.708, breedte: 0.025 }, { x: 0.780, breedte: 0.025 }],
         platforms: [
-          { x: 0.10, y: 0.60, breedte: 0.07 }, { x: 0.22, y: 0.50, breedte: 0.07 },
-          { x: 0.34, y: 0.40, breedte: 0.07 }, { x: 0.47, y: 0.50, breedte: 0.07 },
-          { x: 0.60, y: 0.40, breedte: 0.07 }, { x: 0.72, y: 0.50, breedte: 0.07 },
-          { x: 0.84, y: 0.38, breedte: 0.07 }, { x: 0.92, y: 0.28, breedte: 0.07 },
+          { x: 0.100, y: 0.68, breedte: 0.020 }, { x: 0.133, y: 0.62, breedte: 0.020 },
+          { x: 0.165, y: 0.68, breedte: 0.020 }, { x: 0.198, y: 0.68, breedte: 0.020 },
+          { x: 0.230, y: 0.68, breedte: 0.020 }, { x: 0.263, y: 0.62, breedte: 0.020 },
+          { x: 0.296, y: 0.52, breedte: 0.020 }, { x: 0.328, y: 0.46, breedte: 0.020 },
+          { x: 0.361, y: 0.40, breedte: 0.020 }, { x: 0.393, y: 0.36, breedte: 0.020 },
+          { x: 0.426, y: 0.44, breedte: 0.020 }, { x: 0.459, y: 0.38, breedte: 0.020 },
+          { x: 0.491, y: 0.36, breedte: 0.020 }, { x: 0.524, y: 0.46, breedte: 0.020 },
+          { x: 0.557, y: 0.36, breedte: 0.020 }, { x: 0.589, y: 0.36, breedte: 0.020 },
+          { x: 0.622, y: 0.36, breedte: 0.020 }, { x: 0.654, y: 0.46, breedte: 0.020 },
+          { x: 0.687, y: 0.40, breedte: 0.020 }, { x: 0.720, y: 0.50, breedte: 0.020 },
+          { x: 0.752, y: 0.58, breedte: 0.020 }, { x: 0.785, y: 0.48, breedte: 0.020 },
+          { x: 0.817, y: 0.56, breedte: 0.020 }, { x: 0.850, y: 0.64, breedte: 0.020 },
+          { x: 0.930, y: 0.42, breedte: 0.022 },
         ],
       },
     ];
@@ -181,6 +244,17 @@
       return canvas.height * 0.8;
     }
 
+    // Hoe breed is het hele level in pixels?
+    function levelBreedte() {
+      return canvas.width * level().schermen;
+    }
+
+    // De camera kijkt naar de mens, maar niet voorbij de randen van het level
+    function cameraX() {
+      const x = mens.x - canvas.width / 2;
+      return Math.max(0, Math.min(levelBreedte() - canvas.width, x));
+    }
+
     function startOpnieuw() {
       mens.x = 60;
       mens.y = bodemHoogte();
@@ -189,7 +263,7 @@
 
     // Staat de mens boven een gat?
     function bovenGat() {
-      const b = canvas.width;
+      const b = levelBreedte();
       return level().gaten.some((g) => mens.x > g.x * b && mens.x < (g.x + g.breedte) * b);
     }
 
@@ -213,8 +287,8 @@
       }
       if (mens.loopt) mens.stap += dt * 12;
 
-      // Niet van het scherm af lopen
-      mens.x = Math.max(40, Math.min(canvas.width - 40, mens.x));
+      // Niet buiten het level lopen
+      mens.x = Math.max(40, Math.min(levelBreedte() - 40, mens.x));
 
       // Springen met spatie, alleen als je op de grond of een platform staat
       if (toetsen[' '] && mens.opDeGrond) {
@@ -239,8 +313,8 @@
       // en je voeten in deze stap door de bovenkant van het platform gaan
       let staatOp = null;
       for (const pl of level().platforms) {
-        const px = pl.x * canvas.width;
-        const pBreedte = pl.breedte * canvas.width;
+        const px = pl.x * levelBreedte();
+        const pBreedte = pl.breedte * levelBreedte();
         const py = pl.y * canvas.height;
         const erboven = mens.x > px && mens.x < px + pBreedte;
         if (mens.vy >= 0 && erboven && vorigeY <= py && mens.y >= py) {
@@ -274,16 +348,19 @@
     }
 
     // Lucht en bodem in de kleuren van het level
-    function tekenAchtergrond() {
-      const b = canvas.width;
-      const h = canvas.height;
+    function tekenLucht() {
       const lv = level();
-
-      const lucht = ctx.createLinearGradient(0, 0, 0, h * 0.8);
+      const lucht = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.8);
       lucht.addColorStop(0, lv.lucht[0]);
       lucht.addColorStop(1, lv.lucht[1]);
       ctx.fillStyle = lucht;
-      ctx.fillRect(0, 0, b, h);
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function tekenAchtergrond() {
+      const b = levelBreedte();
+      const h = canvas.height;
+      const lv = level();
 
       tekenDecoratie();
 
@@ -303,7 +380,7 @@
 
     // Per thema een paar simpele vormen op de achtergrond
     function tekenDecoratie() {
-      const b = canvas.width;
+      const b = levelBreedte();
       const h = canvas.height;
       const soort = level().decoratie;
 
@@ -442,7 +519,7 @@
 
     // Grotschilderingen op de achterwand, in oker en roodbruin
     function tekenGrotTekeningen() {
-      const b = canvas.width;
+      const b = levelBreedte();
       const h = canvas.height;
       const oker = '#c8792a';
       const roodbruin = '#8e3b2a';
@@ -592,7 +669,7 @@
     }
 
     function tekenParcours() {
-      const b = canvas.width;
+      const b = levelBreedte();
       const h = canvas.height;
       const lv = level();
 
@@ -762,9 +839,17 @@
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      tekenLucht();
+
+      // Alles in de wereld schuift mee met de camera
+      ctx.save();
+      ctx.translate(-cameraX(), 0);
       tekenAchtergrond();
       tekenParcours();
       tekenMens();
+      ctx.restore();
+
+      // De hartjes en de levelnaam blijven op hun plek op het scherm
       tekenLevens();
       tekenLevelNaam();
       if (gameOver) tekenGameOver();
