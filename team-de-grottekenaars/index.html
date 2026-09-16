@@ -40,11 +40,144 @@
     const maxLevens = 3;
     const slagDuur = 0.3; // seconden
 
+    // Muntjes en de kledingkast. Wat je koopt en draagt wordt in de browser bewaard.
+    let munten = 0;
+    let kastOpen = false;
+    const kast = {
+      categorieen: ['hoedjes', 'zonnebrillen', 'shirtjes', 'kleren', 'skateboards'],
+      spullen: {
+        hoedjes: [
+          { id: 'feesthoedje', naam: 'Feesthoedje', prijs: 5 },
+          { id: 'bloemenkrans', naam: 'Bloemenkrans', prijs: 8 },
+          { id: 'bothelm', naam: 'Bothelm', prijs: 12 },
+          { id: 'kroon', naam: 'Kroon', prijs: 25 },
+        ],
+        zonnebrillen: [
+          { id: 'zwartebril', naam: 'Zwarte bril', prijs: 5 },
+          { id: 'hartjesbril', naam: 'Hartjesbril', prijs: 10 },
+          { id: 'goudenbril', naam: 'Gouden bril', prijs: 20 },
+        ],
+        shirtjes: [
+          { id: 'stershirt', naam: 'Stershirt', prijs: 6 },
+          { id: 'hartshirt', naam: 'Hartshirt', prijs: 8 },
+          { id: 'dinoshirt', naam: 'Dinoshirt', prijs: 12 },
+          { id: 'bliksemshirt', naam: 'Bliksemshirt', prijs: 15 },
+        ],
+        kleren: [
+          { id: 'luipaardvel', naam: 'Luipaardvel', prijs: 8 },
+          { id: 'mammoetjas', naam: 'Mammoetjas', prijs: 14 },
+          { id: 'discopak', naam: 'Discopak', prijs: 30 },
+        ],
+        skateboards: [
+          { id: 'steenbord', naam: 'Steenbord', prijs: 15 },
+          { id: 'vuurbord', naam: 'Vuurbord', prijs: 30 },
+          { id: 'discobord', naam: 'Discobord', prijs: 45 },
+        ],
+      },
+      bezit: {},     // { feesthoedje: true, ... }
+      draagt: {},    // { hoedjes: 'feesthoedje', ... } of niets
+      rij: 0,        // gekozen categorie in de kast
+      kolom: 0,      // gekozen spul in die categorie
+    };
+
+    function bewaarSpullen() {
+      try {
+        localStorage.setItem('grottekenaars', JSON.stringify({ munten, bezit: kast.bezit, draagt: kast.draagt }));
+      } catch (e) { /* opslaan lukt niet, geen ramp */ }
+    }
+
+    function laadSpullen() {
+      try {
+        const data = JSON.parse(localStorage.getItem('grottekenaars'));
+        if (!data) return;
+        munten = data.munten || 0;
+        kast.bezit = data.bezit || {};
+        kast.draagt = data.draagt || {};
+      } catch (e) { /* niets bewaard */ }
+    }
+    laadSpullen();
+
+    // Welk spul draagt de mens in deze categorie? Geeft het id of null.
+    function draagt(categorie) {
+      return kast.draagt[categorie] || null;
+    }
+
+    // Het gekozen spul in de kast
+    function gekozenSpul() {
+      const cat = kast.categorieen[kast.rij];
+      return kast.spullen[cat][kast.kolom];
+    }
+
+    // Enter in de kast: kopen als je het nog niet hebt, anders aan- of uittrekken
+    function kiesSpul() {
+      const cat = kast.categorieen[kast.rij];
+      const spul = gekozenSpul();
+      if (!kast.bezit[spul.id]) {
+        if (munten >= spul.prijs) {
+          munten -= spul.prijs;
+          kast.bezit[spul.id] = true;
+          kast.draagt[cat] = spul.id;
+        }
+      } else if (kast.draagt[cat] === spul.id) {
+        delete kast.draagt[cat];
+      } else {
+        kast.draagt[cat] = spul.id;
+      }
+      bewaarSpullen();
+    }
+
+    // Toetsen in de kast: pijltjes kiezen, Enter koopt of trekt aan, C of Escape sluit
+    function kastToets(key) {
+      const cat = kast.categorieen[kast.rij];
+      if (key === 'ArrowUp') kast.rij = (kast.rij + kast.categorieen.length - 1) % kast.categorieen.length;
+      if (key === 'ArrowDown') kast.rij = (kast.rij + 1) % kast.categorieen.length;
+      if (key === 'ArrowLeft') kast.kolom = Math.max(0, kast.kolom - 1);
+      if (key === 'ArrowRight') kast.kolom = Math.min(kast.spullen[cat].length - 1, kast.kolom + 1);
+      kast.kolom = Math.min(kast.kolom, kast.spullen[kast.categorieen[kast.rij]].length - 1);
+      if (key === 'Enter') kiesSpul();
+      if (key === 'c' || key === 'Escape') kastOpen = false;
+    }
+
+    // Muntjes van een level: eentje boven elk platform en een rij langs de grond
+    function maakMunten() {
+      const lv = level();
+      if (lv.munten) return;
+      lv.munten = [];
+      for (const pl of lv.platforms) {
+        lv.munten.push({ x: pl.x + pl.breedte / 2, y: pl.y - 0.07, gepakt: false });
+      }
+      const stap = 0.30 / lv.schermen;
+      for (let x = 0.15; x < 0.85; x += stap) {
+        lv.munten.push({ x, y: 0.70, gepakt: false });
+      }
+    }
+
+    function pakMunten() {
+      const b = levelBreedte();
+      const h = canvas.height;
+      for (const m of level().munten) {
+        if (m.gepakt) continue;
+        const mx = m.x * b;
+        const my = m.y * h;
+        if (Math.abs(mens.x - mx) < 30 && my > mens.y - 170 && my < mens.y + 10) {
+          m.gepakt = true;
+          munten += 1;
+          bewaarSpullen();
+        }
+      }
+    }
+
     // Welke toetsen zijn ingedrukt?
     const toetsen = {};
     let spatieNetIngedrukt = false; // wordt true op het moment dat spatie ingedrukt wordt
     let kNetIngedrukt = false;      // idem voor de K van knots
     window.addEventListener('keydown', (e) => {
+      if (kastOpen) {
+        kastToets(e.key);
+        e.preventDefault();
+        return;
+      }
+      if (e.key === 'c' && !gameOver && !gewonnen) kastOpen = true;
       if (e.key === ' ' && !toetsen[' ']) spatieNetIngedrukt = true;
       if (e.key === 'k' && !toetsen['k']) kNetIngedrukt = true;
       toetsen[e.key] = true;
@@ -700,6 +833,7 @@
     // Alle beesten in het level weer tot leven wekken
     function beestenTerug() {
       for (const ob of level().obstakels) ob.dood = false;
+      for (const lv of levels) lv.munten = null; // muntjes komen terug bij een nieuw level of herstart
     }
 
     // Staat de mens boven een gat?
@@ -715,14 +849,16 @@
     }
 
     function update(dt) {
+      maakMunten();
+      pakMunten();
       mens.loopt = false;
       if (toetsen['ArrowLeft'] || toetsen['a']) {
-        mens.x -= mens.snelheid * dt;
+        mens.x -= mens.snelheid * snelheidFactor() * dt;
         mens.richting = -1;
         mens.loopt = true;
       }
       if (toetsen['ArrowRight'] || toetsen['d']) {
-        mens.x += mens.snelheid * dt;
+        mens.x += mens.snelheid * snelheidFactor() * dt;
         mens.richting = 1;
         mens.loopt = true;
       }
@@ -822,6 +958,11 @@
       if (raaktObstakel()) {
         verliesLeven();
       }
+    }
+
+    // Op een skateboard ga je 25% sneller
+    function snelheidFactor() {
+      return draagt('skateboards') ? 1.25 : 1;
     }
 
     function verliesLeven() {
@@ -1708,8 +1849,11 @@
       ctx.lineTo(x + 15 - zwaai, voeten);
       ctx.stroke();
 
-      // Lijf met dierenvel
-      ctx.fillStyle = '#8b5a2b';
+      // Skateboard onder de voeten
+      tekenSkateboard(x, voeten);
+
+      // Lijf met dierenvel (of wat je in de kast hebt gekocht)
+      ctx.fillStyle = kledingKleur();
       ctx.beginPath();
       ctx.moveTo(x - 22, voeten - 60);
       ctx.lineTo(x + 22, voeten - 60);
@@ -1717,6 +1861,19 @@
       ctx.lineTo(x - 16, voeten - 120);
       ctx.closePath();
       ctx.fill();
+      if (draagt('kleren') === 'luipaardvel') { // vlekken
+        ctx.fillStyle = '#3a2a1a';
+        for (const [vx, vy] of [[-10, -75], [6, -90], [-4, -105], [12, -70]]) {
+          ctx.beginPath(); ctx.arc(x + vx, voeten + vy, 4, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      if (draagt('kleren') === 'mammoetjas') { // harige rand
+        ctx.strokeStyle = '#8a6a4a'; ctx.lineWidth = 3;
+        for (let hx = -20; hx <= 20; hx += 6) {
+          ctx.beginPath(); ctx.moveTo(x + hx, voeten - 60); ctx.lineTo(x + hx - 2, voeten - 50); ctx.stroke();
+        }
+      }
+      tekenShirt(x, voeten);
 
       // Armen
       ctx.beginPath();
@@ -1760,7 +1917,210 @@
       ctx.arc(x + 8, voeten - 148, 3, 0, Math.PI * 2);
       ctx.fill();
 
+      tekenZonnebril(x, voeten);
+      tekenHoedje(x, voeten);
+
       ctx.restore();
+    }
+
+    function kledingKleur() {
+      const k = draagt('kleren');
+      if (k === 'luipaardvel') return '#d9a441';
+      if (k === 'mammoetjas') return '#5a3a1a';
+      if (k === 'discopak') return `hsl(${(performance.now() / 5) % 360}, 90%, 55%)`;
+      return '#8b5a2b';
+    }
+
+    function tekenShirt(x, voeten) {
+      const sh = draagt('shirtjes');
+      if (!sh) return;
+      const kleuren = { stershirt: '#2d9bff', hartshirt: '#ff5a8a', dinoshirt: '#3fbf5a', bliksemshirt: '#222' };
+      ctx.fillStyle = kleuren[sh];
+      ctx.beginPath(); // bovenste helft van het lijf
+      ctx.moveTo(x - 19, voeten - 90); ctx.lineTo(x + 19, voeten - 90);
+      ctx.lineTo(x + 16, voeten - 120); ctx.lineTo(x - 16, voeten - 120);
+      ctx.closePath(); ctx.fill();
+      const cx = x, cy = voeten - 105;
+      if (sh === 'stershirt') {
+        ctx.fillStyle = '#ffe22d';
+        ctx.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const r = i % 2 === 0 ? 9 : 4;
+          const hoek = -Math.PI / 2 + i * Math.PI / 5;
+          ctx.lineTo(cx + Math.cos(hoek) * r, cy + Math.sin(hoek) * r);
+        }
+        ctx.closePath(); ctx.fill();
+      }
+      if (sh === 'hartshirt') { ctx.fillStyle = '#fff'; tekenHart(cx, cy - 2, 6); }
+      if (sh === 'dinoshirt') {
+        ctx.fillStyle = '#1a6a2a';
+        ctx.beginPath(); ctx.ellipse(cx, cy, 9, 5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + 8, cy - 4, 4, 0, Math.PI * 2); ctx.fill();
+      }
+      if (sh === 'bliksemshirt') {
+        ctx.fillStyle = '#ffe22d';
+        ctx.beginPath();
+        ctx.moveTo(cx + 3, cy - 12); ctx.lineTo(cx - 6, cy + 1); ctx.lineTo(cx, cy + 1);
+        ctx.lineTo(cx - 3, cy + 12); ctx.lineTo(cx + 6, cy - 1); ctx.lineTo(cx, cy - 1);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+
+    function tekenZonnebril(x, voeten) {
+      const br = draagt('zonnebrillen');
+      if (!br) return;
+      const y = voeten - 148;
+      if (br === 'hartjesbril') {
+        ctx.fillStyle = '#ff5a8a';
+        tekenHart(x - 9, y - 1, 7); tekenHart(x + 9, y - 1, 7);
+        ctx.strokeStyle = '#ff5a8a'; ctx.lineWidth = 2;
+      } else {
+        ctx.fillStyle = '#111';
+        ctx.fillRect(x - 17, y - 5, 14, 9);
+        ctx.fillRect(x + 3, y - 5, 14, 9);
+        ctx.strokeStyle = br === 'goudenbril' ? '#ffd700' : '#111';
+        ctx.lineWidth = 2;
+        if (br === 'goudenbril') { ctx.strokeRect(x - 17, y - 5, 14, 9); ctx.strokeRect(x + 3, y - 5, 14, 9); }
+      }
+      ctx.beginPath(); // brug en pootjes
+      ctx.moveTo(x - 3, y); ctx.lineTo(x + 3, y);
+      ctx.moveTo(x - 17, y - 2); ctx.lineTo(x - 25, y - 5);
+      ctx.moveTo(x + 17, y - 2); ctx.lineTo(x + 25, y - 5);
+      ctx.stroke();
+    }
+
+    function tekenHoedje(x, voeten) {
+      const h = draagt('hoedjes');
+      if (!h) return;
+      const top = voeten - 170; // bovenkant van het hoofd
+      if (h === 'feesthoedje') {
+        ctx.fillStyle = '#2dff8a';
+        ctx.beginPath(); ctx.moveTo(x - 16, top + 6); ctx.lineTo(x, top - 36); ctx.lineTo(x + 16, top + 6); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ff2d95';
+        ctx.beginPath(); ctx.arc(x, top - 36, 5, 0, Math.PI * 2); ctx.fill();
+      }
+      if (h === 'bloemenkrans') {
+        const kleuren = ['#ff5a8a', '#ffe22d', '#2d9bff', '#ff7a2d', '#ffffff'];
+        for (let i = 0; i < 7; i++) {
+          const hoek = Math.PI + i * Math.PI / 6;
+          ctx.fillStyle = kleuren[i % kleuren.length];
+          ctx.beginPath(); ctx.arc(x + Math.cos(hoek) * 27, voeten - 155 + Math.sin(hoek) * 27, 5, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      if (h === 'bothelm') {
+        ctx.fillStyle = '#f0e8d8';
+        ctx.beginPath(); ctx.arc(x, voeten - 155, 29, Math.PI, 0); ctx.fill();
+        ctx.fillRect(x - 25, top + 12, 50, 6);
+        ctx.fillRect(x - 40, top - 8, 80, 6); // bot dwars erop
+        ctx.beginPath(); ctx.arc(x - 40, top - 5, 6, 0, Math.PI * 2); ctx.arc(x + 40, top - 5, 6, 0, Math.PI * 2); ctx.fill();
+      }
+      if (h === 'kroon') {
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath();
+        ctx.moveTo(x - 22, top + 8); ctx.lineTo(x - 22, top - 18); ctx.lineTo(x - 11, top - 6);
+        ctx.lineTo(x, top - 24); ctx.lineTo(x + 11, top - 6); ctx.lineTo(x + 22, top - 18); ctx.lineTo(x + 22, top + 8);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#e63946';
+        ctx.beginPath(); ctx.arc(x, top - 2, 4, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    function tekenSkateboard(x, voeten) {
+      const sb = draagt('skateboards');
+      if (!sb) return;
+      if (sb === 'vuurbord' && mens.loopt) { // vlammen erachter
+        ctx.fillStyle = '#ff7a00';
+        for (let i = 0; i < 3; i++) {
+          const l = 15 + Math.sin(performance.now() / 50 + i) * 8;
+          ctx.beginPath(); ctx.moveTo(x - 30, voeten - 2 - i * 3); ctx.lineTo(x - 30 - l, voeten - 6 - i * 4); ctx.lineTo(x - 30, voeten + 2 - i * 3); ctx.fill();
+        }
+      }
+      const kleuren = { steenbord: '#7a7a7a', vuurbord: '#c0392b', discobord: `hsl(${(performance.now() / 4) % 360}, 90%, 55%)` };
+      ctx.fillStyle = kleuren[sb];
+      ctx.beginPath();
+      ctx.moveTo(x - 34, voeten + 2); ctx.lineTo(x + 34, voeten + 2); ctx.lineTo(x + 30, voeten + 8); ctx.lineTo(x - 30, voeten + 8);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#222'; // wieltjes
+      ctx.beginPath(); ctx.arc(x - 20, voeten + 11, 5, 0, Math.PI * 2); ctx.arc(x + 20, voeten + 11, 5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    function tekenMunten() {
+      const b = levelBreedte();
+      const h = canvas.height;
+      const tijd = performance.now() / 1000;
+      for (const m of level().munten || []) {
+        if (m.gepakt) continue;
+        const breed = Math.abs(Math.cos(tijd * 4 + m.x * 20)) * 12 + 2; // draaiend muntje
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath(); ctx.ellipse(m.x * b, m.y * h, breed, 12, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#b8860b'; ctx.lineWidth = 2; ctx.stroke();
+      }
+    }
+
+    function tekenMuntenTeller() {
+      ctx.fillStyle = '#ffd700';
+      ctx.beginPath(); ctx.arc(canvas.width - 100, 40, 14, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#b8860b'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 26px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(munten, canvas.width - 78, 50);
+    }
+
+    function tekenUitleg() {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.font = '16px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('pijltjes = lopen   spatie = springen (inhouden = power-jump)   K = knots   C = kledingkast', 20, canvas.height - 16);
+    }
+
+    // De kledingkast: een paneel over het spel heen
+    function tekenKast() {
+      const b = canvas.width;
+      const h = canvas.height;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+      ctx.fillRect(0, 0, b, h);
+      const px = Math.max(20, b / 2 - 420);
+      const py = Math.max(20, h / 2 - 260);
+      const pb = Math.min(840, b - 40);
+      ctx.fillStyle = '#5a3a1a';
+      ctx.fillRect(px, py, pb, 520);
+      ctx.strokeStyle = '#8b5a2b'; ctx.lineWidth = 6; ctx.strokeRect(px, py, pb, 520);
+
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 32px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('Kledingkast', px + 24, py + 44);
+      ctx.textAlign = 'right';
+      ctx.fillText(munten + ' muntjes', px + pb - 24, py + 44);
+
+      const rijHoogte = 80;
+      kast.categorieen.forEach((cat, r) => {
+        const y = py + 80 + r * rijHoogte;
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillStyle = r === kast.rij ? '#ffe22d' : '#ddd';
+        ctx.fillText(cat, px + 24, y + 20);
+        kast.spullen[cat].forEach((spul, k) => {
+          const x = px + 170 + k * 160;
+          const gekozen = r === kast.rij && k === kast.kolom;
+          const aan = kast.draagt[cat] === spul.id;
+          ctx.fillStyle = gekozen ? '#8b5a2b' : '#3a2a1a';
+          ctx.fillRect(x, y - 6, 148, 60);
+          if (gekozen) { ctx.strokeStyle = '#ffe22d'; ctx.lineWidth = 3; ctx.strokeRect(x, y - 6, 148, 60); }
+          ctx.fillStyle = '#fff';
+          ctx.font = 'bold 15px sans-serif';
+          ctx.fillText(spul.naam, x + 10, y + 16);
+          ctx.font = '14px sans-serif';
+          ctx.fillStyle = aan ? '#2dff8a' : kast.bezit[spul.id] ? '#aaa' : munten >= spul.prijs ? '#ffd700' : '#ff7a7a';
+          ctx.fillText(aan ? 'aan' : kast.bezit[spul.id] ? 'gekocht' : spul.prijs + ' muntjes', x + 10, y + 40);
+        });
+      });
+
+      ctx.fillStyle = '#ddd';
+      ctx.font = '16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('pijltjes = kiezen   Enter = kopen / aantrekken / uittrekken   C = sluiten', px + pb / 2, py + 500);
     }
 
     function tekenHart(x, y, grootte) {
@@ -1841,13 +2201,17 @@
       tekenAchtergrond();
       tekenParcours();
       tekenObstakels();
+      tekenMunten();
       tekenMens();
       tekenJumpMeter();
       ctx.restore();
 
       // De hartjes en de levelnaam blijven op hun plek op het scherm
       tekenLevens();
+      tekenMuntenTeller();
+      tekenUitleg();
       tekenLevelNaam();
+      if (kastOpen) tekenKast();
       if (gameOver) tekenGameOver();
       if (gewonnen) tekenGewonnen();
     }
@@ -1863,7 +2227,7 @@
         beestenTerug();
         startOpnieuw();
       }
-      if (!gameOver && !gewonnen) update(Math.min((nu - vorige) / 1000, 0.05));
+      if (!gameOver && !gewonnen && !kastOpen) update(Math.min((nu - vorige) / 1000, 0.05));
       vorige = nu;
       draw();
       requestAnimationFrame(loop);
