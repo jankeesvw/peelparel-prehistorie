@@ -23,8 +23,28 @@
     pasGrootteAan();
     window.addEventListener('resize', pasGrootteAan);
 
+    // Het poppetje: een holbewoner. x en y zijn de plek van zijn voeten.
+    // richting is 1 (naar rechts kijken) of -1 (naar links kijken).
+    const speler = { x: window.innerWidth * 0.4, y: 0, richting: 1 };
+
+    // Welke toetsen zijn nu ingedrukt?
+    const toetsen = {};
+    window.addEventListener('keydown', (e) => { toetsen[e.key] = true; });
+    window.addEventListener('keyup', (e) => { toetsen[e.key] = false; });
+
+    const loopSnelheid = 250; // pixels per seconde
+
     function update(dt) {
-      // spel-logica
+      if (toetsen['ArrowLeft']) {
+        speler.x -= loopSnelheid * dt;
+        speler.richting = -1;
+      }
+      if (toetsen['ArrowRight']) {
+        speler.x += loopSnelheid * dt;
+        speler.richting = 1;
+      }
+      // Niet buiten het scherm lopen.
+      speler.x = Math.max(30, Math.min(canvas.width - 30, speler.x));
     }
 
     // Vaste sterren, zodat ze niet elke frame verspringen.
@@ -86,10 +106,14 @@
       ctx.fill();
     }
 
-    // Het poppetje: een holbewoner. x en y zijn de plek van zijn voeten.
-    const speler = { x: 0, y: 0 };
 
-    function tekenPoppetje(x, y) {
+    function tekenPoppetje(x, y, richting) {
+      // Spiegel de tekening als het poppetje naar links kijkt.
+      ctx.save();
+      ctx.translate(x, 0);
+      ctx.scale(richting, 1);
+      x = 0;
+
       // Benen
       ctx.strokeStyle = '#e0ac69';
       ctx.lineWidth = 8;
@@ -175,6 +199,8 @@
       ctx.beginPath();
       ctx.arc(x, y - 105, 8, 0.2, Math.PI - 0.2);
       ctx.stroke();
+
+      ctx.restore();
     }
 
     function draw() {
@@ -183,10 +209,9 @@
       tekenHeuvels();
       tekenGrond();
       tekenGrot();
-      // Het poppetje staat op de grond, rechts van de grot.
-      speler.x = canvas.width * 0.4;
+      // Het poppetje staat altijd op de grond.
       speler.y = canvas.height * 0.85;
-      tekenPoppetje(speler.x, speler.y);
+      tekenPoppetje(speler.x, speler.y, speler.richting);
     }
 
     let vorige = performance.now();
