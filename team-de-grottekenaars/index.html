@@ -40,6 +40,73 @@
     const maxLevens = 3;
     const slagDuur = 0.3; // seconden
 
+    // Het cheatscherm (X): kies een tafel, los 10 sommen goed op en kies dan zelf een level.
+    const cheat = {
+      open: false,
+      stap: 'tafel',   // 'tafel' -> 'sommen' -> 'level'
+      tafel: 1,
+      a: 1,            // de som is a x tafel
+      antwoord: '',    // wat je tot nu toe getypt hebt
+      goed: 0,         // aantal goede sommen tot nu toe
+      feedback: '',    // 'Goed!' of 'Fout, het was 21'
+      gekozenLevel: 0,
+    };
+
+    function nieuweSom() {
+      let a = cheat.a;
+      while (a === cheat.a) a = 1 + Math.floor(Math.random() * 10);
+      cheat.a = a;
+      cheat.antwoord = '';
+    }
+
+    function cheatToets(key) {
+      if (key === 'x' || key === 'Escape') { cheat.open = false; return; }
+
+      if (cheat.stap === 'tafel') {
+        if (key === 'ArrowLeft' || key === 'ArrowDown') cheat.tafel = Math.max(1, cheat.tafel - 1);
+        if (key === 'ArrowRight' || key === 'ArrowUp') cheat.tafel = Math.min(12, cheat.tafel + 1);
+        if (key === 'Enter') {
+          cheat.stap = 'sommen';
+          cheat.goed = 0;
+          cheat.feedback = '';
+          nieuweSom();
+        }
+      } else if (cheat.stap === 'sommen') {
+        if (key >= '0' && key <= '9' && cheat.antwoord.length < 3) cheat.antwoord += key;
+        if (key === 'Backspace') cheat.antwoord = cheat.antwoord.slice(0, -1);
+        if (key === 'Enter' && cheat.antwoord !== '') {
+          const juist = cheat.a * cheat.tafel;
+          if (parseInt(cheat.antwoord) === juist) {
+            cheat.goed += 1;
+            cheat.feedback = 'Goed!';
+          } else {
+            cheat.feedback = 'Fout, het was ' + juist;
+          }
+          if (cheat.goed >= 10) {
+            cheat.stap = 'level';
+            cheat.gekozenLevel = huidigLevel;
+          } else {
+            nieuweSom();
+          }
+        }
+      } else if (cheat.stap === 'level') {
+        if (key === 'ArrowLeft' || key === 'ArrowDown') cheat.gekozenLevel = Math.max(0, cheat.gekozenLevel - 1);
+        if (key === 'ArrowRight' || key === 'ArrowUp') cheat.gekozenLevel = Math.min(levels.length - 1, cheat.gekozenLevel + 1);
+        if (key === 'Enter') {
+          huidigLevel = cheat.gekozenLevel;
+          inBonus = false;
+          beestenTerug();
+          startOpnieuw();
+          cheat.open = false;
+        }
+      }
+    }
+
+    function openCheat() {
+      cheat.open = true;
+      cheat.stap = 'tafel';
+    }
+
     // Muntjes en de kledingkast. Wat je koopt en draagt wordt in de browser bewaard.
     let munten = 0;
     let kastOpen = false;
@@ -184,11 +251,17 @@
     let spatieNetIngedrukt = false; // wordt true op het moment dat spatie ingedrukt wordt
     let kNetIngedrukt = false;      // idem voor de K van knots
     window.addEventListener('keydown', (e) => {
+      if (cheat.open) {
+        cheatToets(e.key);
+        e.preventDefault();
+        return;
+      }
       if (kastOpen) {
         kastToets(e.key);
         e.preventDefault();
         return;
       }
+      if (e.key === 'x' && !gameOver && !gewonnen) openCheat();
       if (e.key === 'c' && !gameOver && !gewonnen) kastOpen = true;
       if (e.key === ' ' && !toetsen[' ']) spatieNetIngedrukt = true;
       if (e.key === 'k' && !toetsen['k']) kNetIngedrukt = true;
@@ -2136,7 +2209,7 @@
       ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
       ctx.font = '16px sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText('pijltjes = lopen   spatie = springen (inhouden = power-jump)   K = knots   C = kledingkast', 20, canvas.height - 16);
+      ctx.fillText('pijltjes = lopen   spatie = springen (inhouden = power-jump)   K = knots   C = kledingkast   X = cheat', 20, canvas.height - 16);
     }
 
     // De kledingkast: een paneel over het spel heen
@@ -2195,6 +2268,63 @@
       ctx.font = '16px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('pijltjes = kiezen   Enter = kopen / aantrekken / uittrekken   C = sluiten', px + pb / 2, py + 580);
+    }
+
+    function tekenCheat() {
+      const b = canvas.width;
+      const h = canvas.height;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+      ctx.fillRect(0, 0, b, h);
+      const pb = Math.min(700, b - 40);
+      const px = b / 2 - pb / 2;
+      const py = Math.max(20, h / 2 - 200);
+      ctx.fillStyle = '#1a2a3a';
+      ctx.fillRect(px, py, pb, 400);
+      ctx.strokeStyle = '#2dff8a'; ctx.lineWidth = 4; ctx.strokeRect(px, py, pb, 400);
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#2dff8a';
+      ctx.font = 'bold 34px monospace';
+      ctx.fillText('CHEAT', b / 2, py + 50);
+
+      if (cheat.stap === 'tafel') {
+        ctx.fillStyle = '#fff';
+        ctx.font = '22px sans-serif';
+        ctx.fillText('Welke tafel wil je oefenen?', b / 2, py + 120);
+        ctx.font = 'bold 90px sans-serif';
+        ctx.fillStyle = '#ffe22d';
+        ctx.fillText('< ' + cheat.tafel + ' >', b / 2, py + 230);
+        ctx.fillStyle = '#ddd';
+        ctx.font = '18px sans-serif';
+        ctx.fillText('pijltjes = kiezen (1 t/m 12)   Enter = start   X = sluiten', b / 2, py + 360);
+      }
+
+      if (cheat.stap === 'sommen') {
+        ctx.fillStyle = '#fff';
+        ctx.font = '22px sans-serif';
+        ctx.fillText('Tafel van ' + cheat.tafel + '   -   ' + cheat.goed + ' van de 10 goed', b / 2, py + 110);
+        ctx.font = 'bold 70px sans-serif';
+        ctx.fillStyle = '#ffe22d';
+        ctx.fillText(cheat.a + ' x ' + cheat.tafel + ' = ' + cheat.antwoord + '_', b / 2, py + 220);
+        ctx.font = 'bold 26px sans-serif';
+        ctx.fillStyle = cheat.feedback.startsWith('Goed') ? '#2dff8a' : '#ff7a7a';
+        ctx.fillText(cheat.feedback, b / 2, py + 285);
+        ctx.fillStyle = '#ddd';
+        ctx.font = '18px sans-serif';
+        ctx.fillText('typ het antwoord   Enter = controleren   X = sluiten', b / 2, py + 360);
+      }
+
+      if (cheat.stap === 'level') {
+        ctx.fillStyle = '#2dff8a';
+        ctx.font = 'bold 26px sans-serif';
+        ctx.fillText('10 goed! Naar welk level wil je?', b / 2, py + 110);
+        ctx.font = 'bold 34px sans-serif';
+        ctx.fillStyle = '#ffe22d';
+        ctx.fillText('< ' + levels[cheat.gekozenLevel].naam + ' >', b / 2, py + 220);
+        ctx.fillStyle = '#ddd';
+        ctx.font = '18px sans-serif';
+        ctx.fillText('pijltjes = kiezen   Enter = ga!   X = sluiten', b / 2, py + 360);
+      }
     }
 
     // Een draaiende paarse werveling
@@ -2298,6 +2428,7 @@
       tekenUitleg();
       tekenLevelNaam();
       if (kastOpen) tekenKast();
+      if (cheat.open) tekenCheat();
       if (gameOver) tekenGameOver();
       if (gewonnen) tekenGewonnen();
     }
@@ -2314,7 +2445,7 @@
         beestenTerug();
         startOpnieuw();
       }
-      if (!gameOver && !gewonnen && !kastOpen) update(Math.min((nu - vorige) / 1000, 0.05));
+      if (!gameOver && !gewonnen && !kastOpen && !cheat.open) update(Math.min((nu - vorige) / 1000, 0.05));
       vorige = nu;
       draw();
       requestAnimationFrame(loop);
