@@ -7,7 +7,7 @@ args: "[naam]"
 
 # Nieuwe game voor de les
 
-Alle games staan in deze repo, elk in een eigen map met één `index.html`. Het overzicht van alle games staat online op https://jankeesvw.github.io/peelparel-prehistorie/ en wordt automatisch bijgewerkt door `bin/new-game`.
+Alle games staan in deze repo, elk in een eigen map met één `index.html`. Het overzicht van alle games staat online op https://peelparel-games.site/ en wordt automatisch bijgewerkt door `bin/new-game`.
 
 ## Stap 1: Naam bepalen
 
@@ -76,7 +76,7 @@ Dit verplaatst de map met `git mv`, past de `<title>` aan en werkt het overzicht
 
 ## Stap 6: Online zetten
 
-Als de gebruiker de game wil delen: push naar `main`. GitHub Pages publiceert binnen een minuut op https://jankeesvw.github.io/peelparel-prehistorie/<naam>/ en het overzicht op de root toont de nieuwe game.
+Als de gebruiker de game wil delen: push naar `main`. GitHub Pages publiceert binnen een minuut op https://peelparel-games.site/<naam>/ en het overzicht op de root toont de nieuwe game.
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"

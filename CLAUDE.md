@@ -1,6 +1,6 @@
 # Peelparel prehistorie
 
-Lesproject: elke game staat in een eigen map in de root (bijv. `dino-run/index.html`) en wordt gepubliceerd op https://jankeesvw.github.io/peelparel-prehistorie/<naam>/.
+Lesproject: elke game staat in een eigen map in de root (bijv. `dino-run/index.html`) en wordt gepubliceerd op https://peelparel-games.site/<naam>/.
 
 - Nieuwe game: `bin/new-game <naam>` (kebab-case). Dit kopieert `template/index.html` en werkt het overzicht in `index.html` bij.
 - Dev-server: `bin/serve` (poort 8000). Open http://localhost:8000/<naam>/. De pagina herlaadt vanzelf zodra een bestand in de game-map verandert.
