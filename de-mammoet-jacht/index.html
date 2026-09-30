@@ -23,7 +23,8 @@
     pasGrootteAan();
     window.addEventListener('resize', pasGrootteAan);
 
-    let tijd = 0; // seconden sinds de start, handig voor animaties
+    let tijd = 0;   // seconden sinds de start, handig voor animaties
+    let punten = 0; // je krijgt 5 punten als je de mammoet raakt tot hij neergaat
 
     // De mammoet staat in het midden van het scherm.
     const mammoet = {
@@ -293,6 +294,13 @@
       ctx.restore();
     }
 
+    // De puntenteller linksboven.
+    function tekenPunten() {
+      ctx.fillStyle = '#111';
+      ctx.font = 'bold 26px sans-serif';
+      ctx.fillText('Punten: ' + punten, 24, 44);
+    }
+
     // Korte uitleg onderaan het scherm.
     function tekenUitleg() {
       ctx.fillStyle = '#111';
@@ -300,7 +308,7 @@
       ctx.textAlign = 'center';
 
       if (mammoet.leven <= 0) {
-        ctx.fillText('De mammoet is gevangen.', canvas.width / 2, canvas.height - 40);
+        ctx.fillText('De mammoet is gevangen! Je krijgt 5 punten.', canvas.width / 2, canvas.height - 40);
       } else if (oermens.klaarOmTeGooien) {
         ctx.fillText('Druk op de spatiebalk om de speer te gooien!', canvas.width / 2, canvas.height - 40);
       } else {
@@ -344,6 +352,9 @@
           sp.steekt = true;
           sp.hoek = Math.atan2(sp.vy, sp.vx);
           mammoet.leven = Math.max(0, mammoet.leven - 20);
+
+          // Was dit de laatste treffer? Dan zijn het 5 punten.
+          if (mammoet.leven === 0) punten += 5;
         } else if (sp.y > grondY) {
           // gemist: de speer valt op de grond
           sp.steekt = true;
@@ -418,6 +429,7 @@
       for (const sp of speren) tekenSpeer(sp);
       tekenLevensbalk(mammoet);
       tekenUitleg();
+      tekenPunten();
     }
 
     let vorige = performance.now();
