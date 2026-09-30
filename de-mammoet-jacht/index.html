@@ -112,6 +112,10 @@
 
     const vijandSperen = []; // de speren die hij naar jou gooit
     let levens = 3;            // raakt de tijger je, dan gaat er een leven af
+    let speerVoorraad = 6;     // zoveel speren heb je nog om te gooien
+    let stokken = 0;           // materiaal dat je onderweg oppakt
+    let stenen = 0;
+    let maakTimer = 0;         // korte pauze tussen twee wapens maken
     let melding = '';          // korte tekst die even in beeld blijft
     let meldingTijd = 0;
 
@@ -126,6 +130,26 @@
     // De vulkaan staat altijd op dezelfde plek in het landschap.
     const vulkaanX = () => canvas.width * 0.22;
     const vulkaanHoogte = 230;
+
+    // Stokken en stenen die op de grond liggen. Loop erover om ze op te pakken.
+    const spullen = [];
+
+    function nieuwePlek(spul) {
+      const grondHoogte = canvas.height - horizonY();
+      spul.x = 100 + Math.random() * Math.max(100, canvas.width - 200);
+      spul.y = horizonY() + 30 + Math.random() * Math.max(60, grondHoogte - 70);
+      spul.zichtbaar = true;
+      spul.wachtTijd = 0;
+      return spul;
+    }
+
+    function zetSpullenNeer() {
+      spullen.length = 0;
+      for (let i = 0; i < 6; i++) {
+        // om en om een stok en een steen
+        spullen.push(nieuwePlek({ soort: i % 2 === 0 ? 'stok' : 'steen' }));
+      }
+    }
 
     // Een broccoli die op de grond groeit. Pak hem op voor een extra leven.
     const broccoli = {
@@ -240,6 +264,43 @@
       ctx.beginPath();
       ctx.arc(st.x - st.r * 0.2, st.y - st.r * 0.2, st.r * 0.45, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    function tekenSpul(spul) {
+      if (spul.soort === 'stok') {
+        ctx.strokeStyle = '#7a5230';
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(spul.x - 18, spul.y + 4);
+        ctx.lineTo(spul.x + 18, spul.y - 4);
+        ctx.stroke();
+
+        // een klein zijtakje
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(spul.x + 4, spul.y - 1);
+        ctx.lineTo(spul.x + 12, spul.y - 12);
+        ctx.stroke();
+      } else {
+        // een steen met een scherpe kant, goed voor een speerpunt
+        ctx.fillStyle = '#8d8a83';
+        ctx.beginPath();
+        ctx.moveTo(spul.x - 12, spul.y + 6);
+        ctx.lineTo(spul.x - 4, spul.y - 10);
+        ctx.lineTo(spul.x + 12, spul.y - 2);
+        ctx.lineTo(spul.x + 6, spul.y + 8);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#b3afa6';
+        ctx.beginPath();
+        ctx.moveTo(spul.x - 4, spul.y - 10);
+        ctx.lineTo(spul.x + 12, spul.y - 2);
+        ctx.lineTo(spul.x + 2, spul.y - 1);
+        ctx.closePath();
+        ctx.fill();
+      }
     }
 
     function tekenBroccoli(b) {
@@ -915,6 +976,9 @@
       meldingTijd = 0;
 
       zetBroccoliNeer();
+      zetSpullenNeer();
+      speerVoorraad = 6;
+      maakTimer = 0;
 
       oermens.x = Math.max(60, canvas.width / 2 - 440);
       oermens.hoogte = 110;
@@ -934,6 +998,12 @@
       if (!oermens.klaarOmTeGooien) return;    // hij staat nog stil te sluipen
       if (oermens.worpTijd > 0) return;        // hij is nog met de vorige worp bezig
 
+      if (speerVoorraad <= 0) {
+        meld('Geen speren meer! Zoek een stok en een steen.');
+        return;
+      }
+
+      speerVoorraad -= 1;
       oermens.worpTijd = worpDuur;
 
       // De speer begint bij zijn hand en vliegt met een boogje naar rechts.
@@ -1220,6 +1290,10 @@
       tekenTekstMetRand('Punten: ' + punten, 24, 44);
       tekenTekstMetRand('Level ' + level, 24, 78);
       tekenTekstMetRand('Levens: ' + levens, 24, 112);
+      tekenTekstMetRand('Speren: ' + speerVoorraad, 24, 146);
+
+      ctx.font = 'bold 20px sans-serif';
+      tekenTekstMetRand('Stokken: ' + stokken + '   Stenen: ' + stenen, 24, 178);
     }
 
     // Witte tekst met een donkere rand eromheen, altijd goed leesbaar.
@@ -1248,6 +1322,7 @@
       else if (tijger.actief && !tijger.vlucht) tekst = 'Pas op, een sabeltandtijger! Gooi je speer naar hem toe!';
       else if (baby.stemming === 'boos') tekst = 'Pas op! De baby is boos en jaagt de jager weg!';
       else if (mammoet.leven <= 0) tekst = 'De mammoet is gevangen! Je krijgt 5 punten.';
+      else if (speerVoorraad <= 0) tekst = 'Geen speren meer! Pak een stok en een steen en loop naar de grot.';
       else if (broccoli.zichtbaar) tekst = 'Loop naar de broccoli voor een extra leven!';
       else if (oermens.klaarOmTeGooien) tekst = 'Spatiebalk om te gooien, pijltjes om te lopen.';
 
@@ -1613,6 +1688,46 @@
       }
     }
 
+    // Spullen oppakken, en bij de grot maak je er een nieuwe speer van.
+    function updateSpullen(dt) {
+      if (gameOver) return;
+
+      const voetY = oermens.y + 60;
+
+      for (const spul of spullen) {
+        if (!spul.zichtbaar) {
+          // Na een tijdje ligt er ergens anders weer een nieuwe.
+          spul.wachtTijd -= dt;
+          if (spul.wachtTijd <= 0) nieuwePlek(spul);
+          continue;
+        }
+
+        if (Math.abs(oermens.x - spul.x) < 45 && Math.abs(voetY - spul.y) < 40) {
+          spul.zichtbaar = false;
+          spul.wachtTijd = 5;
+          if (spul.soort === 'stok') {
+            stokken += 1;
+            meld('Een stok opgeraapt.');
+          } else {
+            stenen += 1;
+            meld('Een steen opgeraapt.');
+          }
+        }
+      }
+
+      // Bij de grot kun je van een stok en een steen een speer maken.
+      if (maakTimer > 0) maakTimer -= dt;
+
+      const bijDeGrot = Math.abs(oermens.x - grot.x) < 130 && oermens.hoogte < 90;
+      if (bijDeGrot && maakTimer <= 0 && stokken > 0 && stenen > 0) {
+        stokken -= 1;
+        stenen -= 1;
+        speerVoorraad += 1;
+        maakTimer = 0.8;
+        meld('In de grot een nieuwe speer gemaakt!');
+      }
+    }
+
     function updateBroccoli(dt) {
       if (gameOver) return;
 
@@ -1662,9 +1777,15 @@
         oermens.loopt = true;
       }
 
-      // Vooraan langs mag hij de mammoet voorbij, anders loopt hij tegen haar aan.
-      const rechtsGrens = oermens.hoogte > 130 ? canvas.width - 60 : mammoet.x - 200;
-      oermens.x = Math.max(40, Math.min(rechtsGrens, oermens.x));
+      oermens.x = Math.max(40, Math.min(canvas.width - 60, oermens.x));
+
+      // Hij loopt niet dwars door de mammoet heen, maar er wel omheen via de voorgrond.
+      if (oermens.hoogte < 120 && mammoet.leven > 0) {
+        const afstand = oermens.x - mammoet.x;
+        if (Math.abs(afstand) < 190) {
+          oermens.x = mammoet.x + (afstand < 0 ? -190 : 190);
+        }
+      }
 
       if (oermens.worpTijd > 0) {
         oermens.worpTijd = Math.max(0, oermens.worpTijd - dt);
@@ -1696,6 +1817,7 @@
 
       updateVulkaan(dt);
       updateEten(dt);
+      updateSpullen(dt);
       updateBroccoli(dt);
       updateBaby(dt);
       updateOermens(dt);
@@ -1719,6 +1841,9 @@
     function draw() {
       tekenAchtergrond();
       if (broccoli.zichtbaar) tekenBroccoli(broccoli);
+      for (const spul of spullen) {
+        if (spul.zichtbaar) tekenSpul(spul);
+      }
       tekenMammoet(mammoet);
       tekenMammoet(baby);
       if (baby.stemming === 'huilt') tekenTranen(baby);
