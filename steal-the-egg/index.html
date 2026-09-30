@@ -1373,6 +1373,327 @@
       }
     }
 
+
+    // ---- De vier vakken met dieren uit de prehistorie ----
+
+    // Een nest met eieren erin.
+    function tekenNest(x, vloerY, aantal) {
+      ctx.fillStyle = '#8b6b3a';
+      ctx.beginPath();
+      ctx.ellipse(x, vloerY, 46, 16, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#6b4a2a';
+      ctx.beginPath();
+      ctx.ellipse(x, vloerY - 4, 34, 11, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // de eieren
+      for (let i = 0; i < aantal; i++) {
+        const ex = x + (i - (aantal - 1) / 2) * 24;
+        ctx.fillStyle = '#f6efdc';
+        ctx.beginPath();
+        ctx.ellipse(ex, vloerY - 12, 10, 14, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(160, 130, 90, 0.5)';
+        ctx.beginPath();
+        ctx.arc(ex - 3, vloerY - 14, 2, 0, Math.PI * 2);
+        ctx.arc(ex + 3, vloerY - 8, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Een oog met een zwarte pupil, voor alle dieren hetzelfde.
+    function tekenDierOog(x, y) {
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#111';
+      ctx.beginPath();
+      ctx.arc(x, y, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // De T-rex: dik lijf, grote kop met tanden en kleine armpjes.
+    function tekenTrex(x, vloerY) {
+      ctx.fillStyle = '#7a8f4a';
+      // staart
+      ctx.beginPath();
+      ctx.moveTo(x + 20, vloerY - 60);
+      ctx.quadraticCurveTo(x + 90, vloerY - 70, x + 110, vloerY - 20);
+      ctx.quadraticCurveTo(x + 80, vloerY - 40, x + 20, vloerY - 40);
+      ctx.fill();
+      // poten
+      ctx.fillRect(x + 4, vloerY - 40, 16, 40);
+      ctx.fillRect(x + 26, vloerY - 36, 14, 36);
+      ctx.fillStyle = '#5d6e38';
+      ctx.fillRect(x - 6, vloerY - 8, 30, 8);
+      ctx.fillRect(x + 18, vloerY - 8, 28, 8);
+      // lijf
+      ctx.fillStyle = '#7a8f4a';
+      ctx.beginPath();
+      ctx.ellipse(x + 28, vloerY - 68, 40, 28, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // kop
+      ctx.beginPath();
+      ctx.moveTo(x + 4, vloerY - 96);
+      ctx.lineTo(x - 52, vloerY - 88);
+      ctx.lineTo(x - 52, vloerY - 66);
+      ctx.lineTo(x + 6, vloerY - 60);
+      ctx.closePath();
+      ctx.fill();
+      // tanden
+      ctx.fillStyle = '#ffffff';
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.moveTo(x - 50 + i * 11, vloerY - 70);
+        ctx.lineTo(x - 45 + i * 11, vloerY - 62);
+        ctx.lineTo(x - 40 + i * 11, vloerY - 70);
+        ctx.fill();
+      }
+      // armpje
+      ctx.strokeStyle = '#5d6e38';
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x, vloerY - 66);
+      ctx.lineTo(x - 12, vloerY - 56);
+      ctx.stroke();
+      tekenDierOog(x - 30, vloerY - 84);
+    }
+
+    // De triceratops: drie hoorns en een grote kraag om zijn nek.
+    function tekenTriceratops(x, vloerY) {
+      ctx.fillStyle = '#8a6f52';
+      // staart
+      ctx.beginPath();
+      ctx.moveTo(x + 30, vloerY - 56);
+      ctx.quadraticCurveTo(x + 96, vloerY - 56, x + 108, vloerY - 26);
+      ctx.quadraticCurveTo(x + 80, vloerY - 34, x + 30, vloerY - 36);
+      ctx.fill();
+      // lijf
+      ctx.beginPath();
+      ctx.ellipse(x + 30, vloerY - 52, 46, 26, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // poten
+      ctx.fillStyle = '#6f5840';
+      ctx.fillRect(x - 2, vloerY - 32, 15, 32);
+      ctx.fillRect(x + 22, vloerY - 32, 15, 32);
+      ctx.fillRect(x + 48, vloerY - 32, 15, 32);
+      // kraag
+      ctx.fillStyle = '#a08361';
+      ctx.beginPath();
+      ctx.ellipse(x - 12, vloerY - 62, 22, 30, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // kop
+      ctx.fillStyle = '#8a6f52';
+      ctx.beginPath();
+      ctx.moveTo(x - 6, vloerY - 80);
+      ctx.lineTo(x - 56, vloerY - 66);
+      ctx.lineTo(x - 50, vloerY - 44);
+      ctx.lineTo(x - 4, vloerY - 44);
+      ctx.closePath();
+      ctx.fill();
+      // drie hoorns
+      ctx.fillStyle = '#efe3cd';
+      ctx.beginPath();
+      ctx.moveTo(x - 30, vloerY - 78);
+      ctx.lineTo(x - 52, vloerY - 104);
+      ctx.lineTo(x - 22, vloerY - 80);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x - 14, vloerY - 78);
+      ctx.lineTo(x - 30, vloerY - 106);
+      ctx.lineTo(x - 6, vloerY - 78);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x - 54, vloerY - 58);
+      ctx.lineTo(x - 70, vloerY - 62);
+      ctx.lineTo(x - 54, vloerY - 50);
+      ctx.fill();
+      tekenDierOog(x - 26, vloerY - 66);
+    }
+
+    // De pterosaurus: staat op de grond met zijn vleugels half open.
+    function tekenPterosaurus(x, vloerY) {
+      ctx.fillStyle = '#b0743f';
+      // vleugels
+      ctx.beginPath();
+      ctx.moveTo(x, vloerY - 70);
+      ctx.quadraticCurveTo(x + 70, vloerY - 120, x + 96, vloerY - 40);
+      ctx.quadraticCurveTo(x + 50, vloerY - 56, x, vloerY - 50);
+      ctx.fill();
+      ctx.fillStyle = '#c98c53';
+      ctx.beginPath();
+      ctx.moveTo(x, vloerY - 70);
+      ctx.quadraticCurveTo(x - 60, vloerY - 118, x - 86, vloerY - 40);
+      ctx.quadraticCurveTo(x - 44, vloerY - 58, x, vloerY - 50);
+      ctx.fill();
+      // lijf
+      ctx.fillStyle = '#b0743f';
+      ctx.beginPath();
+      ctx.ellipse(x, vloerY - 52, 20, 28, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // poten
+      ctx.strokeStyle = '#8a5a2f';
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x - 8, vloerY - 28);
+      ctx.lineTo(x - 12, vloerY - 2);
+      ctx.moveTo(x + 8, vloerY - 28);
+      ctx.lineTo(x + 12, vloerY - 2);
+      ctx.stroke();
+      // kop met lange snavel en kam
+      ctx.fillStyle = '#c98c53';
+      ctx.beginPath();
+      ctx.ellipse(x - 4, vloerY - 86, 16, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x - 16, vloerY - 88);
+      ctx.lineTo(x - 66, vloerY - 78);
+      ctx.lineTo(x - 16, vloerY - 78);
+      ctx.fill();
+      ctx.fillStyle = '#e2231a';
+      ctx.beginPath();
+      ctx.moveTo(x + 6, vloerY - 96);
+      ctx.lineTo(x + 34, vloerY - 112);
+      ctx.lineTo(x + 8, vloerY - 82);
+      ctx.fill();
+      tekenDierOog(x - 10, vloerY - 90);
+    }
+
+    // De velociraptor: slank, met veren op zijn staart en een grote klauw.
+    function tekenVelociraptor(x, vloerY) {
+      ctx.fillStyle = '#c2703a';
+      // staart met veren
+      ctx.beginPath();
+      ctx.moveTo(x + 14, vloerY - 62);
+      ctx.quadraticCurveTo(x + 76, vloerY - 78, x + 104, vloerY - 58);
+      ctx.quadraticCurveTo(x + 70, vloerY - 58, x + 14, vloerY - 48);
+      ctx.fill();
+      ctx.strokeStyle = '#8f4a20';
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.moveTo(x + 40 + i * 14, vloerY - 66);
+        ctx.lineTo(x + 46 + i * 14, vloerY - 82);
+        ctx.stroke();
+      }
+      // lijf
+      ctx.fillStyle = '#c2703a';
+      ctx.beginPath();
+      ctx.ellipse(x + 10, vloerY - 58, 30, 20, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // poten
+      ctx.strokeStyle = '#a3541f';
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x + 4, vloerY - 46);
+      ctx.lineTo(x - 6, vloerY - 24);
+      ctx.lineTo(x + 6, vloerY - 2);
+      ctx.moveTo(x + 22, vloerY - 46);
+      ctx.lineTo(x + 14, vloerY - 24);
+      ctx.lineTo(x + 26, vloerY - 2);
+      ctx.stroke();
+      // klauw
+      ctx.strokeStyle = '#efe3cd';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(x + 4, vloerY - 8);
+      ctx.lineTo(x - 6, vloerY - 14);
+      ctx.stroke();
+      // nek en kop
+      ctx.strokeStyle = '#c2703a';
+      ctx.lineWidth = 12;
+      ctx.beginPath();
+      ctx.moveTo(x - 8, vloerY - 66);
+      ctx.lineTo(x - 26, vloerY - 86);
+      ctx.stroke();
+      ctx.fillStyle = '#c2703a';
+      ctx.beginPath();
+      ctx.ellipse(x - 34, vloerY - 90, 18, 11, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(x - 48, vloerY - 86);
+      ctx.lineTo(x - 42, vloerY - 80);
+      ctx.lineTo(x - 36, vloerY - 86);
+      ctx.fill();
+      tekenDierOog(x - 32, vloerY - 94);
+    }
+
+    // De vier vakken. Elk vak heeft een dier, een naam en een aantal eieren.
+    const vakken = [
+      { naam: 'T-rex',         teken: tekenTrex,          kleur: '#6f9a4f', eieren: 2 },
+      { naam: 'Triceratops',   teken: tekenTriceratops,   kleur: '#9aa84f', eieren: 3 },
+      { naam: 'Pterosaurus',   teken: tekenPterosaurus,   kleur: '#7fa87a', eieren: 2 },
+      { naam: 'Velociraptor',  teken: tekenVelociraptor,  kleur: '#8fa05a', eieren: 4 },
+    ];
+
+    // Een hek tussen twee vakken.
+    function tekenHek(x) {
+      ctx.strokeStyle = '#8b5a2b';
+      ctx.lineWidth = 7;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x, grondY - 90);
+      ctx.lineTo(x, grondY + 30);
+      ctx.stroke();
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(x - 26, grondY - 70);
+      ctx.lineTo(x + 26, grondY - 70);
+      ctx.moveTo(x - 26, grondY - 30);
+      ctx.lineTo(x + 26, grondY - 30);
+      ctx.stroke();
+    }
+
+    // Een bordje met de naam van het vak.
+    function tekenBordje(tekst, x, y) {
+      ctx.font = 'bold 15px sans-serif';
+      ctx.textAlign = 'center';
+      const breedte = ctx.measureText(tekst).width + 24;
+      ctx.fillStyle = '#8b5a2b';
+      ctx.fillRect(x - 3, y, 6, 34);
+      ctx.fillStyle = '#e9d9b8';
+      ctx.strokeStyle = '#8b5a2b';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(x - breedte / 2, y - 26, breedte, 28, 6);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#4a3423';
+      ctx.fillText(tekst, x, y - 6);
+      ctx.textAlign = 'left';
+    }
+
+    // Alle vier de vakken tekenen, naast elkaar over het hele scherm.
+    function tekenVakken() {
+      const vakBreedte = canvas.width / vakken.length;
+
+      // elk vak heeft zijn eigen tintje gras
+      vakken.forEach((vak, i) => {
+        ctx.fillStyle = vak.kleur;
+        ctx.fillRect(i * vakBreedte, grondY, vakBreedte, canvas.height - grondY);
+      });
+
+      // hekken tussen de vakken
+      for (let i = 1; i < vakken.length; i++) {
+        tekenHek(i * vakBreedte);
+      }
+
+      vakken.forEach((vak, i) => {
+        const midden = i * vakBreedte + vakBreedte / 2;
+        tekenBordje(vak.naam, midden, grondY - 230);
+        // het nest ligt in het midden van het vak
+        tekenNest(midden, grondY + 26, vak.eieren);
+        // het dier loopt heen en weer voor zijn nest langs
+        const dierX = midden + Math.sin(tijd * 0.5 + i * 1.7) * (vakBreedte * 0.22);
+        vak.teken(dierX, grondY + 4);
+      });
+    }
+
     // Scene 3: de prehistorie.
     function tekenPrehistorieScene() {
       // lucht
@@ -1425,6 +1746,9 @@
       ctx.fillRect(0, grondY, canvas.width, canvas.height - grondY);
       ctx.fillStyle = '#4a7a3c';
       ctx.fillRect(0, grondY, canvas.width, 10);
+
+      // de vier vakken met de dieren en hun eieren
+      tekenVakken();
 
       // varens en stenen
       tekenVaren(90, grondY + 10, 40);
