@@ -52,8 +52,28 @@
       snelheid: 90,   // pixels per seconde
       loopt: false,
       prik: 0,        // 0 = speer naast zich, 1 = speer helemaal vooruit
-      prikTimer: 0,
+      prikTijd: 0,    // loopt af tijdens een prik
+      bijMammoet: false,
     };
+
+    const prikDuur = 0.3; // seconden dat een prik duurt
+
+    // De speler prikt zelf met de speer, met de spatiebalk.
+    function prikMetSpeer() {
+      if (mammoet.leven <= 0) return;      // de mammoet is al dood
+      if (!oermens.bijMammoet) return;     // hij staat nog te ver weg
+      if (oermens.prikTijd > 0) return;    // hij is nog met de vorige prik bezig
+
+      oermens.prikTijd = prikDuur;
+      mammoet.leven = Math.max(0, mammoet.leven - 10);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault(); // anders scrollt de pagina
+        prikMetSpeer();
+      }
+    });
 
     function tekenMammoet(m) {
       const s = m.grootte / 200; // schaal: bij grootte 200 is s gelijk aan 1
@@ -233,6 +253,23 @@
       ctx.fillText('Oeeeh!', b.x - 20, b.y - 70 + Math.sin(tijd * 6) * 3);
     }
 
+    // Korte uitleg onderaan het scherm.
+    function tekenUitleg() {
+      ctx.fillStyle = '#111';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.textAlign = 'center';
+
+      if (mammoet.leven <= 0) {
+        ctx.fillText('De mammoet is gevangen.', canvas.width / 2, canvas.height - 40);
+      } else if (oermens.bijMammoet) {
+        ctx.fillText('Druk op de spatiebalk om te prikken!', canvas.width / 2, canvas.height - 40);
+      } else {
+        ctx.fillText('De jager sluipt naar de mammoet toe...', canvas.width / 2, canvas.height - 40);
+      }
+
+      ctx.textAlign = 'left'; // weer terugzetten voor de andere tekst
+    }
+
     function tekenLevensbalk(m) {
       const breedte = 200;
       const x = m.x - breedte / 2;
@@ -259,19 +296,22 @@
 
       if (oermens.x < doelX) {
         oermens.loopt = true;
+        oermens.bijMammoet = false;
         oermens.x += oermens.snelheid * dt;
         return;
       }
 
-      // Bij de mammoet aangekomen: elke seconde een prik met de speer.
+      // Bij de mammoet aangekomen: nu kan de speler prikken met de spatiebalk.
       oermens.loopt = false;
-      oermens.prikTimer += dt;
-      if (oermens.prikTimer > 1) {
-        oermens.prikTimer = 0;
-        mammoet.leven = Math.max(0, mammoet.leven - 10);
+      oermens.bijMammoet = true;
+
+      if (oermens.prikTijd > 0) {
+        oermens.prikTijd = Math.max(0, oermens.prikTijd - dt);
+        // De speer schiet vooruit en komt daarna weer terug.
+        oermens.prik = Math.sin((1 - oermens.prikTijd / prikDuur) * Math.PI);
+      } else {
+        oermens.prik = 0;
       }
-      // De speer schiet vooruit aan het begin van de prik en komt dan terug.
-      oermens.prik = Math.max(0, Math.sin(oermens.prikTimer * Math.PI * 4));
     }
 
     function update(dt) {
@@ -306,6 +346,7 @@
       if (baby.huilt) tekenTranen(baby);
       tekenOermens(oermens);
       tekenLevensbalk(mammoet);
+      tekenUitleg();
     }
 
     let vorige = performance.now();
