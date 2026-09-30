@@ -203,11 +203,6 @@
       ctx.roundRect(x - 20, voetY - 46, 40, 18, 4);
       ctx.fill();
 
-      // armen
-      ctx.fillStyle = '#e8b892';
-      ctx.fillRect(x - 27, voetY - 78, 8, 30);
-      ctx.fillRect(x + 19, voetY - 78, 8, 30);
-
       // PSV-shirt: rood met witte strepen
       ctx.fillStyle = '#e2231a';
       ctx.beginPath();
@@ -220,10 +215,33 @@
         ctx.fillRect(x + i * 15 - 3, voetY - 82, 6, 40);
       }
       ctx.restore();
-      // mouwtjes
-      ctx.fillStyle = '#e2231a';
-      ctx.fillRect(x - 28, voetY - 80, 8, 14);
-      ctx.fillRect(x + 20, voetY - 80, 8, 14);
+
+      // Stan steekt zijn handen in de lucht: zijn armen lopen schuin omhoog
+      // vanaf zijn schouders, met een mouwtje over het bovenste stuk.
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#e8b892';
+      ctx.lineWidth = 9;
+      ctx.beginPath();
+      ctx.moveTo(x - 19, voetY - 78);
+      ctx.lineTo(x - 34, voetY - 116);
+      ctx.moveTo(x + 19, voetY - 78);
+      ctx.lineTo(x + 34, voetY - 116);
+      ctx.stroke();
+      // mouwtjes over het bovenste stuk van de arm
+      ctx.strokeStyle = '#e2231a';
+      ctx.lineWidth = 11;
+      ctx.beginPath();
+      ctx.moveTo(x - 19, voetY - 79);
+      ctx.lineTo(x - 24, voetY - 92);
+      ctx.moveTo(x + 19, voetY - 79);
+      ctx.lineTo(x + 24, voetY - 92);
+      ctx.stroke();
+      // handen
+      ctx.fillStyle = '#e8b892';
+      ctx.beginPath();
+      ctx.arc(x - 35, voetY - 119, 6, 0, Math.PI * 2);
+      ctx.arc(x + 35, voetY - 119, 6, 0, Math.PI * 2);
+      ctx.fill();
 
       // nek
       ctx.fillStyle = '#e8b892';
