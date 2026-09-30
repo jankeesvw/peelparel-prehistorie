@@ -21,7 +21,10 @@
       canvas.height = window.innerHeight;
     }
     pasGrootteAan();
-    window.addEventListener('resize', pasGrootteAan);
+    window.addEventListener('resize', () => {
+      pasGrootteAan();
+      maakLandschap();
+    });
 
     let tijd = 0;   // seconden sinds de start, handig voor animaties
     let punten = 0; // je krijgt 5 punten als je de mammoet raakt tot hij neergaat
@@ -62,6 +65,201 @@
 
     // Alle speren die gegooid zijn staan in deze lijst.
     const speren = [];
+
+    // ---- Het landschap ----------------------------------------------------
+
+    // De horizon: hier staan de dieren met hun voeten op de grond.
+    function horizonY() {
+      return canvas.height / 2 + 90;
+    }
+
+    const bomen = [];
+    const varens = [];
+    const keien = [];
+
+    // Het bos wordt één keer uitgedeeld over de breedte van het scherm.
+    function maakLandschap() {
+      bomen.length = 0;
+      varens.length = 0;
+      keien.length = 0;
+
+      for (let x = -60; x < canvas.width + 120; x += 72) {
+        bomen.push({
+          x: x + Math.random() * 40,
+          hoogte: 120 + Math.random() * 110,
+          soort: Math.random() < 0.65 ? 'naaldboom' : 'varenboom',
+        });
+      }
+      for (let i = 0; i < 30; i++) {
+        varens.push({ x: Math.random() * canvas.width, diepte: Math.random() });
+      }
+      for (let i = 0; i < 12; i++) {
+        keien.push({ x: Math.random() * canvas.width, diepte: Math.random(), breedte: 16 + Math.random() * 28 });
+      }
+    }
+
+    function tekenNaaldboom(x, voetY, hoogte) {
+      // stam
+      ctx.fillStyle = '#5b4632';
+      ctx.fillRect(x - hoogte * 0.035, voetY - hoogte * 0.32, hoogte * 0.07, hoogte * 0.32);
+
+      // drie driehoeken boven elkaar maken de takken
+      ctx.fillStyle = '#2f6b3f';
+      for (let i = 0; i < 3; i++) {
+        const top = voetY - hoogte + i * hoogte * 0.24;
+        const breedte = hoogte * (0.30 + i * 0.09);
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x - breedte, top + hoogte * 0.44);
+        ctx.lineTo(x + breedte, top + hoogte * 0.44);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    function tekenVarenboom(x, voetY, hoogte) {
+      // stam
+      ctx.strokeStyle = '#6b5336';
+      ctx.lineWidth = hoogte * 0.08;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x, voetY);
+      ctx.lineTo(x, voetY - hoogte * 0.68);
+      ctx.stroke();
+
+      // een kroon van gebogen bladen
+      ctx.strokeStyle = '#3d7d4a';
+      ctx.lineWidth = hoogte * 0.045;
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(x, voetY - hoogte * 0.68);
+        ctx.quadraticCurveTo(
+          x + i * hoogte * 0.13, voetY - hoogte,
+          x + i * hoogte * 0.27, voetY - hoogte * 0.76
+        );
+        ctx.stroke();
+      }
+    }
+
+    function tekenVaren(x, y, grootte) {
+      ctx.strokeStyle = '#3f7a3c';
+      ctx.lineWidth = 3;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.quadraticCurveTo(x + i * grootte * 0.5, y - grootte, x + i * grootte, y - grootte * 0.2);
+        ctx.stroke();
+      }
+    }
+
+    function tekenBergen(hy) {
+      // twee bergen in de verte
+      ctx.fillStyle = '#8d9aa8';
+      for (const b of [{ x: canvas.width * 0.6, h: 190 }, { x: canvas.width * 0.85, h: 150 }]) {
+        ctx.beginPath();
+        ctx.moveTo(b.x - b.h, hy);
+        ctx.lineTo(b.x, hy - b.h);
+        ctx.lineTo(b.x + b.h, hy);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // de vulkaan
+      const vx = canvas.width * 0.22;
+      const vh = 230;
+      ctx.fillStyle = '#6f7580';
+      ctx.beginPath();
+      ctx.moveTo(vx - 170, hy);
+      ctx.lineTo(vx, hy - vh);
+      ctx.lineTo(vx + 170, hy);
+      ctx.closePath();
+      ctx.fill();
+
+      // gloeiende krater
+      ctx.fillStyle = '#d4552e';
+      ctx.beginPath();
+      ctx.moveTo(vx - 20, hy - vh + 4);
+      ctx.lineTo(vx + 20, hy - vh + 4);
+      ctx.lineTo(vx + 9, hy - vh + 30);
+      ctx.lineTo(vx - 9, hy - vh + 30);
+      ctx.closePath();
+      ctx.fill();
+
+      // rookpluim: vijf bollen die steeds omhoog stijgen en opnieuw beginnen
+      ctx.fillStyle = 'rgba(210, 210, 205, 0.5)';
+      for (let i = 0; i < 5; i++) {
+        const stijg = (tijd * 0.2 + i * 0.2) % 1;
+        ctx.beginPath();
+        ctx.arc(vx + stijg * 40 + Math.sin(tijd + i) * 10, hy - vh - stijg * 150, 14 + stijg * 26, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function tekenVerreBosrand(hy) {
+      ctx.fillStyle = '#3f6b4a';
+      for (let x = -20; x < canvas.width + 40; x += 26) {
+        const hoogte = 40 + Math.sin(x * 0.7) * 14;
+        ctx.beginPath();
+        ctx.moveTo(x, hy);
+        ctx.lineTo(x + 13, hy - hoogte);
+        ctx.lineTo(x + 26, hy);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // een sluier van nevel maakt de verte waziger
+      ctx.fillStyle = 'rgba(240, 240, 230, 0.35)';
+      ctx.fillRect(0, hy - 60, canvas.width, 60);
+    }
+
+    function tekenAchtergrond() {
+      const hy = horizonY();
+
+      // lucht, van blauw bovenaan naar warm geel bij de horizon
+      const lucht = ctx.createLinearGradient(0, 0, 0, hy);
+      lucht.addColorStop(0, '#7fb8d4');
+      lucht.addColorStop(0.7, '#cfe3e8');
+      lucht.addColorStop(1, '#f2e2b8');
+      ctx.fillStyle = lucht;
+      ctx.fillRect(0, 0, canvas.width, hy);
+
+      // zon
+      ctx.fillStyle = 'rgba(255, 244, 210, 0.9)';
+      ctx.beginPath();
+      ctx.arc(canvas.width * 0.75, hy * 0.35, 48, 0, Math.PI * 2);
+      ctx.fill();
+
+      tekenBergen(hy);
+      tekenVerreBosrand(hy);
+
+      // de grond
+      const grond = ctx.createLinearGradient(0, hy, 0, canvas.height);
+      grond.addColorStop(0, '#7aa354');
+      grond.addColorStop(1, '#4d7434');
+      ctx.fillStyle = grond;
+      ctx.fillRect(0, hy, canvas.width, canvas.height - hy);
+
+      // het bos staat op de horizon, achter de dieren
+      for (const b of bomen) {
+        if (b.soort === 'naaldboom') tekenNaaldboom(b.x, hy + 6, b.hoogte);
+        else tekenVarenboom(b.x, hy + 6, b.hoogte);
+      }
+
+      // keien op de grond
+      for (const k of keien) {
+        const y = hy + 20 + k.diepte * (canvas.height - hy - 20);
+        ctx.fillStyle = '#9b9384';
+        ctx.beginPath();
+        ctx.ellipse(k.x, y, k.breedte, k.breedte * 0.6, 0, Math.PI, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // varens op de grond
+      for (const v of varens) {
+        const y = hy + 10 + v.diepte * (canvas.height - hy - 10);
+        tekenVaren(v.x, y, 18 + v.diepte * 24);
+      }
+    }
 
     // De speler gooit de speer met de spatiebalk.
     function gooiSpeer() {
@@ -296,25 +494,29 @@
 
     // De puntenteller linksboven.
     function tekenPunten() {
-      ctx.fillStyle = '#111';
       ctx.font = 'bold 26px sans-serif';
-      ctx.fillText('Punten: ' + punten, 24, 44);
+      tekenTekstMetRand('Punten: ' + punten, 24, 44);
+    }
+
+    // Witte tekst met een donkere rand eromheen, altijd goed leesbaar.
+    function tekenTekstMetRand(tekst, x, y) {
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = '#1e2a16';
+      ctx.strokeText(tekst, x, y);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(tekst, x, y);
     }
 
     // Korte uitleg onderaan het scherm.
     function tekenUitleg() {
-      ctx.fillStyle = '#111';
       ctx.font = 'bold 20px sans-serif';
       ctx.textAlign = 'center';
 
-      if (mammoet.leven <= 0) {
-        ctx.fillText('De mammoet is gevangen! Je krijgt 5 punten.', canvas.width / 2, canvas.height - 40);
-      } else if (oermens.klaarOmTeGooien) {
-        ctx.fillText('Druk op de spatiebalk om de speer te gooien!', canvas.width / 2, canvas.height - 40);
-      } else {
-        ctx.fillText('De jager sluipt naar de mammoet toe...', canvas.width / 2, canvas.height - 40);
-      }
+      let tekst = 'De jager sluipt naar de mammoet toe...';
+      if (mammoet.leven <= 0) tekst = 'De mammoet is gevangen! Je krijgt 5 punten.';
+      else if (oermens.klaarOmTeGooien) tekst = 'Druk op de spatiebalk om de speer te gooien!';
 
+      tekenTekstMetRand(tekst, canvas.width / 2, canvas.height - 40);
       ctx.textAlign = 'left'; // weer terugzetten voor de andere tekst
     }
 
@@ -421,7 +623,7 @@
     }
 
     function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      tekenAchtergrond();
       tekenMammoet(mammoet);
       tekenMammoet(baby);
       if (baby.huilt) tekenTranen(baby);
@@ -431,6 +633,8 @@
       tekenUitleg();
       tekenPunten();
     }
+
+    maakLandschap();
 
     let vorige = performance.now();
     function loop(nu) {
