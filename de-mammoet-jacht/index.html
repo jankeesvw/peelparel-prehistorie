@@ -34,6 +34,15 @@
       kantel: 0, // 0 = staat overeind, 1 = helemaal omgevallen
     };
 
+    // De baby-mammoet loopt naast zijn moeder. Zelfde vorm, maar kleiner.
+    const baby = {
+      x: 0,
+      y: 0,
+      grootte: 90,
+      leven: 100,
+      kantel: 0,
+    };
+
     // De oermens komt van links aanlopen met een speer.
     const oermens = {
       x: 80,
@@ -252,6 +261,10 @@
       mammoet.y = canvas.height / 2;
       oermens.y = mammoet.y + 30;
 
+      // De baby staat naast zijn moeder en wipt een beetje op en neer.
+      baby.x = mammoet.x + 165;
+      baby.y = mammoet.y + 50 + Math.sin(tijd * 3) * 4;
+
       updateOermens(dt);
 
       // Is de mammoet dood, dan valt hij langzaam om.
@@ -263,6 +276,7 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       tekenMammoet(mammoet);
+      tekenMammoet(baby);
       tekenOermens(oermens);
       tekenLevensbalk(mammoet);
     }
