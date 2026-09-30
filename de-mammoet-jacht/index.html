@@ -1459,7 +1459,11 @@
 
     let vorige = performance.now();
     function loop(nu) {
-      update((nu - vorige) / 1000);
+      // dt is de tijd sinds het vorige plaatje, in seconden.
+      // Nooit negatief (dat kan bij het allereerste plaatje) en nooit groter dan
+      // een twintigste seconde, anders springt alles als je even weg bent geweest.
+      const dt = Math.min(0.05, Math.max(0, (nu - vorige) / 1000));
+      update(dt);
       vorige = nu;
       draw();
       requestAnimationFrame(loop);
