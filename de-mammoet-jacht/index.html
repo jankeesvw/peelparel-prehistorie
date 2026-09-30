@@ -35,7 +35,9 @@
       y: 0,
       grootte: 200,
       leven: 100,
-      kantel: 0, // 0 = staat overeind, 1 = helemaal omgevallen
+      kantel: 0,          // 0 = staat overeind, 1 = helemaal omgevallen
+      kleur: '#8b5e3c',   // kleur van het lijf
+      donker: '#6b4a2f',  // kleur van de benen, het oor en de staart
     };
 
     // De baby-mammoet loopt naast zijn moeder. Zelfde vorm, maar kleiner.
@@ -45,7 +47,10 @@
       grootte: 90,
       leven: 100,
       kantel: 0,
-      huilt: false,
+      kleur: '#8b5e3c',
+      donker: '#6b4a2f',
+      stemming: 'blij',   // blij, huilt of boos
+      rouwTijd: 0,        // seconden sinds mama neerging
     };
 
     // De oermens komt van links aanlopen met een speer.
@@ -55,6 +60,7 @@
       grootte: 120,
       snelheid: 90,   // pixels per seconde
       loopt: false,
+      vlucht: false,  // true als de boze baby hem wegjaagt
       worp: 0,        // 0 = speer naast zich, 1 = arm helemaal vooruit
       worpTijd: 0,    // loopt af tijdens een worp
       klaarOmTeGooien: false,
@@ -295,14 +301,14 @@
       ctx.scale(s, s);
 
       // benen
-      ctx.fillStyle = '#6b4a2f';
+      ctx.fillStyle = m.donker;
       ctx.fillRect(-60, 30, 26, 60);
       ctx.fillRect(-20, 30, 26, 60);
       ctx.fillRect(20, 30, 26, 60);
       ctx.fillRect(55, 30, 26, 60);
 
       // lijf
-      ctx.fillStyle = '#8b5e3c';
+      ctx.fillStyle = m.kleur;
       ctx.beginPath();
       ctx.ellipse(10, 0, 90, 55, 0, 0, Math.PI * 2);
       ctx.fill();
@@ -313,13 +319,13 @@
       ctx.fill();
 
       // oor
-      ctx.fillStyle = '#6b4a2f';
+      ctx.fillStyle = m.donker;
       ctx.beginPath();
       ctx.ellipse(-65, -20, 22, 28, 0, 0, Math.PI * 2);
       ctx.fill();
 
       // slurf
-      ctx.strokeStyle = '#8b5e3c';
+      ctx.strokeStyle = m.kleur;
       ctx.lineWidth = 22;
       ctx.lineCap = 'round';
       ctx.beginPath();
@@ -357,7 +363,7 @@
       }
 
       // staart
-      ctx.strokeStyle = '#6b4a2f';
+      ctx.strokeStyle = m.donker;
       ctx.lineWidth = 8;
       ctx.beginPath();
       ctx.moveTo(98, -10);
@@ -374,6 +380,7 @@
 
       ctx.save();
       ctx.translate(o.x, o.y);
+      if (o.vlucht) ctx.scale(-1, 1); // hij kijkt de andere kant op
       ctx.scale(s, s);
 
       // benen
@@ -459,9 +466,38 @@
         ctx.fill();
       }
 
-      ctx.fillStyle = '#111';
       ctx.font = 'bold 22px sans-serif';
-      ctx.fillText('Oeeeh!', b.x - 20, b.y - 70 + Math.sin(tijd * 6) * 3);
+      ctx.textAlign = 'center';
+      tekenTekstMetRand('Oeeeh!', b.x, b.y - 70 + Math.sin(tijd * 6) * 3);
+      ctx.textAlign = 'left';
+    }
+
+    // Een boze baby: dikke wenkbrauw, stoom uit zijn kop en een grauw.
+    function tekenBoosheid(b) {
+      const s = b.grootte / 200;
+      const oogX = b.x - 95 * s;
+      const oogY = b.y - 25 * s;
+
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(oogX - 14, oogY - 16);
+      ctx.lineTo(oogX + 10, oogY - 6);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(235, 235, 235, 0.75)';
+      for (let i = 0; i < 3; i++) {
+        const stijg = (tijd * 1.2 + i * 0.33) % 1;
+        ctx.beginPath();
+        ctx.arc(b.x - 30 * s + i * 26 * s, b.y - 55 * s - stijg * 55, 6 + stijg * 11, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.font = 'bold 28px sans-serif';
+      ctx.textAlign = 'center';
+      tekenTekstMetRand('GRRR!', b.x, b.y - 95 + Math.sin(tijd * 10) * 3);
+      ctx.textAlign = 'left';
     }
 
     // Een gegooide speer: de punt wijst in de richting waarin hij vliegt.
@@ -513,7 +549,8 @@
       ctx.textAlign = 'center';
 
       let tekst = 'De jager sluipt naar de mammoet toe...';
-      if (mammoet.leven <= 0) tekst = 'De mammoet is gevangen! Je krijgt 5 punten.';
+      if (baby.stemming === 'boos') tekst = 'Pas op! De baby is boos en jaagt de jager weg!';
+      else if (mammoet.leven <= 0) tekst = 'De mammoet is gevangen! Je krijgt 5 punten.';
       else if (oermens.klaarOmTeGooien) tekst = 'Druk op de spatiebalk om de speer te gooien!';
 
       tekenTekstMetRand(tekst, canvas.width / 2, canvas.height - 40);
@@ -566,8 +603,52 @@
       }
     }
 
+    function updateBaby(dt) {
+      if (mammoet.leven > 0) {
+        // Mama leeft: de baby staat blij naast haar en wipt op en neer.
+        baby.stemming = 'blij';
+        baby.x = mammoet.x + 165;
+        baby.y = mammoet.y + 50 + Math.sin(tijd * 3) * 4;
+        return;
+      }
+
+      baby.rouwTijd += dt;
+
+      if (baby.rouwTijd < 3) {
+        // Eerst huilt hij bij zijn moeder.
+        baby.stemming = 'huilt';
+        baby.x = mammoet.x + 130;
+        baby.y = mammoet.y + 50 + Math.sin(tijd * 14) * 3;
+        return;
+      }
+
+      // Daarna wordt hij boos en gaat hij de jager achterna.
+      baby.stemming = 'boos';
+      baby.kleur = '#b5503a';
+      baby.donker = '#8e3a28';
+
+      const doelX = oermens.x + 130; // hij stopt net naast de jager
+      if (!oermens.vlucht && baby.x > doelX) {
+        baby.x -= 230 * dt;
+        baby.y = mammoet.y + 50 + Math.sin(tijd * 16) * 6; // stampend rennen
+      } else {
+        // De baby heeft hem bereikt: de jager maakt dat hij wegkomt.
+        oermens.vlucht = true;
+        baby.y = mammoet.y + 50 + Math.sin(tijd * 10) * 3;
+      }
+    }
+
     function updateOermens(dt) {
       const doelX = mammoet.x - 440; // op gooiafstand blijven staan
+
+      if (oermens.vlucht) {
+        // Wegrennen naar links, de boze baby achter zich latend.
+        oermens.loopt = true;
+        oermens.klaarOmTeGooien = false;
+        if (oermens.x > -120) oermens.x -= 260 * dt;
+        else oermens.loopt = false; // hij is het scherm uit en blijft daar
+        return;
+      }
 
       if (mammoet.leven <= 0) {
         // De mammoet is dood: de oermens blijft staan en laat zijn arm zakken.
@@ -604,15 +685,7 @@
       mammoet.y = canvas.height / 2;
       oermens.y = mammoet.y + 30;
 
-      // Zodra mama dood is, gaat de baby huilen.
-      baby.huilt = mammoet.leven <= 0;
-
-      // De baby staat naast zijn moeder en wipt een beetje op en neer.
-      // Als hij huilt schuift hij dichter naar haar toe en snikt hij mee.
-      const snik = baby.huilt ? Math.sin(tijd * 14) * 3 : 0;
-      baby.x = mammoet.x + (baby.huilt ? 130 : 165);
-      baby.y = mammoet.y + 50 + Math.sin(tijd * 3) * 4 + snik;
-
+      updateBaby(dt);
       updateOermens(dt);
       updateSperen(dt);
 
@@ -626,7 +699,8 @@
       tekenAchtergrond();
       tekenMammoet(mammoet);
       tekenMammoet(baby);
-      if (baby.huilt) tekenTranen(baby);
+      if (baby.stemming === 'huilt') tekenTranen(baby);
+      if (baby.stemming === 'boos') tekenBoosheid(baby);
       tekenOermens(oermens);
       for (const sp of speren) tekenSpeer(sp);
       tekenLevensbalk(mammoet);
