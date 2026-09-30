@@ -51,27 +51,39 @@
       grootte: 120,
       snelheid: 90,   // pixels per seconde
       loopt: false,
-      prik: 0,        // 0 = speer naast zich, 1 = speer helemaal vooruit
-      prikTijd: 0,    // loopt af tijdens een prik
-      bijMammoet: false,
+      worp: 0,        // 0 = speer naast zich, 1 = arm helemaal vooruit
+      worpTijd: 0,    // loopt af tijdens een worp
+      klaarOmTeGooien: false,
     };
 
-    const prikDuur = 0.3; // seconden dat een prik duurt
+    const worpDuur = 0.3;      // seconden dat de worp-beweging duurt
+    const zwaartekracht = 320; // hoe snel een speer naar beneden valt
 
-    // De speler prikt zelf met de speer, met de spatiebalk.
-    function prikMetSpeer() {
-      if (mammoet.leven <= 0) return;      // de mammoet is al dood
-      if (!oermens.bijMammoet) return;     // hij staat nog te ver weg
-      if (oermens.prikTijd > 0) return;    // hij is nog met de vorige prik bezig
+    // Alle speren die gegooid zijn staan in deze lijst.
+    const speren = [];
 
-      oermens.prikTijd = prikDuur;
-      mammoet.leven = Math.max(0, mammoet.leven - 10);
+    // De speler gooit de speer met de spatiebalk.
+    function gooiSpeer() {
+      if (mammoet.leven <= 0) return;          // de mammoet is al dood
+      if (!oermens.klaarOmTeGooien) return;    // hij staat nog stil te sluipen
+      if (oermens.worpTijd > 0) return;        // hij is nog met de vorige worp bezig
+
+      oermens.worpTijd = worpDuur;
+
+      // De speer begint bij zijn hand en vliegt met een boogje naar rechts.
+      speren.push({
+        x: oermens.x + 45,
+        y: oermens.y - 30,
+        vx: 620,
+        vy: -170,
+        steekt: false, // true als hij in de mammoet of in de grond zit
+      });
     }
 
     document.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault(); // anders scrollt de pagina
-        prikMetSpeer();
+        gooiSpeer();
       }
     });
 
@@ -204,8 +216,8 @@
       ctx.arc(7, -46, 2.5, 0, Math.PI * 2);
       ctx.fill();
 
-      // arm die de speer vasthoudt, schiet vooruit bij een prik
-      const handX = 14 + o.prik * 26;
+      // arm die de speer vasthoudt, schiet vooruit bij een worp
+      const handX = 14 + o.worp * 26;
       ctx.strokeStyle = '#c98c5a';
       ctx.lineWidth = 8;
       ctx.beginPath();
@@ -253,6 +265,34 @@
       ctx.fillText('Oeeeh!', b.x - 20, b.y - 70 + Math.sin(tijd * 6) * 3);
     }
 
+    // Een gegooide speer: de punt wijst in de richting waarin hij vliegt.
+    function tekenSpeer(sp) {
+      const hoek = sp.steekt ? sp.hoek : Math.atan2(sp.vy, sp.vx);
+
+      ctx.save();
+      ctx.translate(sp.x, sp.y);
+      ctx.rotate(hoek);
+
+      ctx.strokeStyle = '#7a5230';
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-70, 0);
+      ctx.lineTo(0, 0);
+      ctx.stroke();
+
+      // stenen punt
+      ctx.fillStyle = '#9aa0a6';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-14, -6);
+      ctx.lineTo(-14, 6);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+    }
+
     // Korte uitleg onderaan het scherm.
     function tekenUitleg() {
       ctx.fillStyle = '#111';
@@ -261,8 +301,8 @@
 
       if (mammoet.leven <= 0) {
         ctx.fillText('De mammoet is gevangen.', canvas.width / 2, canvas.height - 40);
-      } else if (oermens.bijMammoet) {
-        ctx.fillText('Druk op de spatiebalk om te prikken!', canvas.width / 2, canvas.height - 40);
+      } else if (oermens.klaarOmTeGooien) {
+        ctx.fillText('Druk op de spatiebalk om de speer te gooien!', canvas.width / 2, canvas.height - 40);
       } else {
         ctx.fillText('De jager sluipt naar de mammoet toe...', canvas.width / 2, canvas.height - 40);
       }
@@ -284,33 +324,62 @@
       ctx.strokeRect(x, y, breedte, 14);
     }
 
+    // Zit dit punt in het lijf van de mammoet?
+    function raaktMammoet(sp) {
+      return Math.abs(sp.x - (mammoet.x + 10)) < 100 && Math.abs(sp.y - mammoet.y) < 60;
+    }
+
+    function updateSperen(dt) {
+      const grondY = mammoet.y + 90;
+
+      for (const sp of speren) {
+        if (sp.steekt) continue; // deze speer ligt of zit al stil
+
+        // De speer vliegt vooruit en valt tegelijk een beetje naar beneden.
+        sp.x += sp.vx * dt;
+        sp.y += sp.vy * dt;
+        sp.vy += zwaartekracht * dt;
+
+        if (mammoet.leven > 0 && raaktMammoet(sp)) {
+          sp.steekt = true;
+          sp.hoek = Math.atan2(sp.vy, sp.vx);
+          mammoet.leven = Math.max(0, mammoet.leven - 20);
+        } else if (sp.y > grondY) {
+          // gemist: de speer valt op de grond
+          sp.steekt = true;
+          sp.hoek = 1.2;
+          sp.y = grondY;
+        }
+      }
+    }
+
     function updateOermens(dt) {
-      const doelX = mammoet.x - 210; // net buiten het bereik van de slagtanden
+      const doelX = mammoet.x - 440; // op gooiafstand blijven staan
 
       if (mammoet.leven <= 0) {
-        // De mammoet is dood: de oermens blijft staan en laat de speer zakken.
+        // De mammoet is dood: de oermens blijft staan en laat zijn arm zakken.
         oermens.loopt = false;
-        oermens.prik = Math.max(0, oermens.prik - dt * 3);
+        oermens.worp = Math.max(0, oermens.worp - dt * 3);
         return;
       }
 
       if (oermens.x < doelX) {
         oermens.loopt = true;
-        oermens.bijMammoet = false;
+        oermens.klaarOmTeGooien = false;
         oermens.x += oermens.snelheid * dt;
         return;
       }
 
-      // Bij de mammoet aangekomen: nu kan de speler prikken met de spatiebalk.
+      // Op gooiafstand aangekomen: nu kan de speler gooien met de spatiebalk.
       oermens.loopt = false;
-      oermens.bijMammoet = true;
+      oermens.klaarOmTeGooien = true;
 
-      if (oermens.prikTijd > 0) {
-        oermens.prikTijd = Math.max(0, oermens.prikTijd - dt);
-        // De speer schiet vooruit en komt daarna weer terug.
-        oermens.prik = Math.sin((1 - oermens.prikTijd / prikDuur) * Math.PI);
+      if (oermens.worpTijd > 0) {
+        oermens.worpTijd = Math.max(0, oermens.worpTijd - dt);
+        // De arm schiet vooruit en komt daarna weer terug.
+        oermens.worp = Math.sin((1 - oermens.worpTijd / worpDuur) * Math.PI);
       } else {
-        oermens.prik = 0;
+        oermens.worp = 0;
       }
     }
 
@@ -332,6 +401,7 @@
       baby.y = mammoet.y + 50 + Math.sin(tijd * 3) * 4 + snik;
 
       updateOermens(dt);
+      updateSperen(dt);
 
       // Is de mammoet dood, dan valt hij langzaam om.
       if (mammoet.leven <= 0 && mammoet.kantel < 1) {
@@ -345,6 +415,7 @@
       tekenMammoet(baby);
       if (baby.huilt) tekenTranen(baby);
       tekenOermens(oermens);
+      for (const sp of speren) tekenSpeer(sp);
       tekenLevensbalk(mammoet);
       tekenUitleg();
     }
