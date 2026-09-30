@@ -98,7 +98,14 @@
     };
 
     let gameOver = false;
-    let levens = 3; // raakt de tijger je, dan gaat er een leven af
+    let levens = 3;            // raakt de tijger je, dan gaat er een leven af
+    let uitbarsting = false;   // vanaf level 6 barst de vulkaan uit
+    let steenTimer = 0;        // seconden tot de volgende vuursteen
+    const vuurstenen = [];     // de brokken die door de lucht vliegen
+
+    // De vulkaan staat altijd op dezelfde plek in het landschap.
+    const vulkaanX = () => canvas.width * 0.22;
+    const vulkaanHoogte = 230;
 
     // Een broccoli die op de grond groeit. Pak hem op voor een extra leven.
     const broccoli = {
@@ -195,6 +202,24 @@
       ctx.fill();
 
       ctx.restore();
+    }
+
+    // Een gloeiende brok die uit de vulkaan is geschoten.
+    function tekenVuursteen(st) {
+      ctx.fillStyle = 'rgba(240, 120, 40, 0.35)';
+      ctx.beginPath();
+      ctx.arc(st.x, st.y, st.r * 1.9, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#d2431c';
+      ctx.beginPath();
+      ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffd35e';
+      ctx.beginPath();
+      ctx.arc(st.x - st.r * 0.2, st.y - st.r * 0.2, st.r * 0.45, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     function tekenBroccoli(b) {
@@ -413,8 +438,8 @@
       }
 
       // de vulkaan
-      const vx = canvas.width * 0.22;
-      const vh = 230;
+      const vx = vulkaanX();
+      const vh = vulkaanHoogte;
       ctx.fillStyle = '#6f7580';
       ctx.beginPath();
       ctx.moveTo(vx - 170, hy);
@@ -433,12 +458,35 @@
       ctx.closePath();
       ctx.fill();
 
+      if (uitbarsting) {
+        // een fontein van lava boven de krater
+        ctx.fillStyle = '#f5a623';
+        for (let i = 0; i < 7; i++) {
+          const hoog = 40 + Math.abs(Math.sin(tijd * 2 + i)) * 90;
+          ctx.beginPath();
+          ctx.arc(vx - 24 + i * 8, hy - vh - hoog, 9, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // twee lavastromen langs de flank naar beneden
+        ctx.strokeStyle = '#e2521f';
+        ctx.lineWidth = 10;
+        ctx.lineCap = 'round';
+        for (const kant of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(vx + kant * 8, hy - vh + 20);
+          ctx.quadraticCurveTo(vx + kant * 80, hy - vh * 0.5, vx + kant * 110, hy);
+          ctx.stroke();
+        }
+      }
+
       // rookpluim: vijf bollen die steeds omhoog stijgen en opnieuw beginnen
-      ctx.fillStyle = 'rgba(210, 210, 205, 0.5)';
+      ctx.fillStyle = uitbarsting ? 'rgba(90, 80, 78, 0.6)' : 'rgba(210, 210, 205, 0.5)';
       for (let i = 0; i < 5; i++) {
         const stijg = (tijd * 0.2 + i * 0.2) % 1;
+        const grootte = uitbarsting ? 26 + stijg * 46 : 14 + stijg * 26;
         ctx.beginPath();
-        ctx.arc(vx + stijg * 40 + Math.sin(tijd + i) * 10, hy - vh - stijg * 150, 14 + stijg * 26, 0, Math.PI * 2);
+        ctx.arc(vx + stijg * 40 + Math.sin(tijd + i) * 10, hy - vh - stijg * 150, grootte, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -476,6 +524,12 @@
       ctx.beginPath();
       ctx.arc(canvas.width * 0.75, hy * 0.35, 48, 0, Math.PI * 2);
       ctx.fill();
+
+      // tijdens een uitbarsting kleurt de hele lucht rood
+      if (uitbarsting) {
+        ctx.fillStyle = 'rgba(190, 60, 25, 0.22)';
+        ctx.fillRect(0, 0, canvas.width, hy);
+      }
 
       tekenBergen(hy);
       tekenVerreBosrand(hy);
@@ -533,6 +587,10 @@
       tijger.fase = 'sluipt';
       tijger.sprong = 0;
       tijger.raakte = false;
+
+      uitbarsting = nummer >= 6;
+      vuurstenen.length = 0;
+      steenTimer = 0.8;
 
       zetBroccoliNeer();
 
@@ -859,6 +917,7 @@
       let tekst = 'Loop met de pijltjes, gooi met de spatiebalk.';
       if (gameOver) tekst = 'Al je levens zijn op! Druk op Enter om opnieuw te beginnen.';
       else if (levelGehaald) tekst = 'Level ' + level + ' gehaald! Druk op Enter voor level ' + (level + 1) + '.';
+      else if (uitbarsting && vuurstenen.length > 0) tekst = 'De vulkaan barst uit! Pas op voor de vuurstenen!';
       else if (tijger.actief && !tijger.vlucht && tijger.fase === 'springt') tekst = 'De sabeltandtijger springt! Duik weg met de pijltjes!';
       else if (tijger.actief && !tijger.vlucht && tijger.fase === 'herstelt' && tijger.raakte) tekst = 'Au! Je bent een leven kwijt.';
       else if (tijger.actief && !tijger.vlucht && tijger.fase === 'herstelt') tekst = 'Gemist! Hij komt terug.';
@@ -1060,6 +1119,51 @@
       }
     }
 
+    function updateVulkaan(dt) {
+      if (!uitbarsting || gameOver) return;
+
+      // Elke keer dat de teller afloopt schiet er een nieuwe brok de lucht in.
+      steenTimer -= dt;
+      if (steenTimer <= 0) {
+        steenTimer = 1;
+        vuurstenen.push({
+          x: vulkaanX(),
+          y: horizonY() - vulkaanHoogte,
+          vx: 120 + Math.random() * 400,
+          vy: -340 - Math.random() * 130,
+          r: 8 + Math.random() * 10,
+        });
+      }
+
+      // Ze vliegen in een boog, net als de speren.
+      for (const st of vuurstenen) {
+        st.x += st.vx * dt;
+        st.y += st.vy * dt;
+        st.vy += zwaartekracht * dt;
+      }
+
+      // Van achteren naar voren weglopen, dan klopt het verwijderen uit de lijst.
+      for (let i = vuurstenen.length - 1; i >= 0; i--) {
+        const st = vuurstenen[i];
+
+        // Raakt de brok de jager? Dan kost dat een leven.
+        if (Math.abs(st.x - oermens.x) < 42 && Math.abs(st.y - (oermens.y - 10)) < 60) {
+          levens -= 1;
+          vuurstenen.splice(i, 1);
+          if (levens <= 0) {
+            gameOver = true;
+            oermens.omver = true;
+          }
+          continue;
+        }
+
+        // Op de grond of het scherm uit: weg met de brok.
+        if (st.y > canvas.height || st.x > canvas.width + 80) {
+          vuurstenen.splice(i, 1);
+        }
+      }
+    }
+
     function updateBroccoli(dt) {
       if (gameOver) return;
 
@@ -1138,6 +1242,7 @@
       }
       oermens.y = mammoet.y + 30 + oermens.hoogte;
 
+      updateVulkaan(dt);
       updateBroccoli(dt);
       updateBaby(dt);
       updateOermens(dt);
@@ -1168,6 +1273,7 @@
       if (tijger.actief) tekenTijger(tijger);
       for (const sp of speren) tekenSpeer(sp);
       tekenLevensbalk(mammoet);
+      for (const st of vuurstenen) tekenVuursteen(st);
       tekenUitleg();
       tekenPunten();
     }
