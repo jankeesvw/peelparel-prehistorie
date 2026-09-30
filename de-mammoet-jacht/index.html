@@ -62,7 +62,7 @@
       x: 80,
       y: 0,
       grootte: 120,
-      snelheid: 90,   // pixels per seconde
+      snelheid: 300,  // pixels per seconde
       loopt: false,
       vlucht: false,  // true als de boze baby hem wegjaagt
       omver: false,   // true als de sabeltandtijger hem gepakt heeft
@@ -495,8 +495,8 @@
       tijger.fase = 'sluipt';
       tijger.sprong = 0;
 
-      oermens.x = 80;
-      oermens.hoogte = 0;
+      oermens.x = Math.max(60, canvas.width / 2 - 440);
+      oermens.hoogte = 110;
       oermens.omver = false;
       oermens.vlucht = false;
       oermens.klaarOmTeGooien = false;
@@ -535,7 +535,8 @@
     document.addEventListener('keydown', (e) => {
       toetsen[e.code] = true;
 
-      if (e.code === 'ArrowUp' || e.code === 'ArrowDown') {
+      if (e.code === 'ArrowUp' || e.code === 'ArrowDown' ||
+          e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
         e.preventDefault(); // anders scrollt de pagina mee
       }
       if (e.code === 'Space') {
@@ -812,7 +813,7 @@
       ctx.font = 'bold 20px sans-serif';
       ctx.textAlign = 'center';
 
-      let tekst = 'De jager sluipt naar de mammoet toe...';
+      let tekst = 'Loop met de pijltjes, gooi met de spatiebalk.';
       if (gameOver) tekst = 'De sabeltandtijger heeft de jager gepakt! Druk op Enter om opnieuw te beginnen.';
       else if (levelGehaald) tekst = 'Level ' + level + ' gehaald! Druk op Enter voor level ' + (level + 1) + '.';
       else if (tijger.actief && !tijger.vlucht && tijger.fase === 'springt') tekst = 'De sabeltandtijger springt! Duik weg met de pijltjes!';
@@ -820,7 +821,7 @@
       else if (tijger.actief && !tijger.vlucht) tekst = 'Pas op, een sabeltandtijger! Gooi je speer naar hem toe!';
       else if (baby.stemming === 'boos') tekst = 'Pas op! De baby is boos en jaagt de jager weg!';
       else if (mammoet.leven <= 0) tekst = 'De mammoet is gevangen! Je krijgt 5 punten.';
-      else if (oermens.klaarOmTeGooien) tekst = 'Spatiebalk om te gooien, pijltjes omhoog en omlaag om te bewegen.';
+      else if (oermens.klaarOmTeGooien) tekst = 'Spatiebalk om te gooien, pijltjes om te lopen.';
 
       tekenTekstMetRand(tekst, canvas.width / 2, canvas.height - 40);
       ctx.textAlign = 'left'; // weer terugzetten voor de andere tekst
@@ -842,7 +843,9 @@
 
     // Zit dit punt in het lijf van de mammoet?
     function raaktMammoet(sp) {
-      return Math.abs(sp.x - (mammoet.x + 10)) < 100 && Math.abs(sp.y - mammoet.y) < 60;
+      // Van zijn rug tot onder zijn buik, dus je kunt ook van onderaf raken.
+      return Math.abs(sp.x - (mammoet.x + 10)) < 100 &&
+             sp.y > mammoet.y - 70 && sp.y < mammoet.y + 100;
     }
 
     // Zit dit punt op de sabeltandtijger?
@@ -926,7 +929,7 @@
 
     function updateWolf(dt) {
       // Hij loopt een stukje achter de oermens, op dezelfde grond.
-      const doelX = oermens.x - 95;
+      const doelX = Math.max(oermens.x - 95, 45);
       const verschil = doelX - wolf.x;
 
       // Hoe verder hij achterloopt, hoe sneller hij bijkomt.
@@ -1006,8 +1009,6 @@
     }
 
     function updateOermens(dt) {
-      const doelX = mammoet.x - 440; // op gooiafstand blijven staan
-
       if (gameOver) {
         oermens.loopt = false;
         oermens.klaarOmTeGooien = false;
@@ -1023,23 +1024,21 @@
         return;
       }
 
-      if (mammoet.leven <= 0) {
-        // De mammoet is dood: de oermens blijft staan en laat zijn arm zakken.
-        oermens.loopt = false;
-        oermens.worp = Math.max(0, oermens.worp - dt * 3);
-        return;
-      }
-
-      if (oermens.x < doelX) {
-        oermens.loopt = true;
-        oermens.klaarOmTeGooien = false;
-        oermens.x += oermens.snelheid * dt;
-        return;
-      }
-
-      // Op gooiafstand aangekomen: nu kan de speler gooien met de spatiebalk.
+      // Met de pijltjes links en rechts loopt de speler zelf.
       oermens.loopt = false;
       oermens.klaarOmTeGooien = true;
+
+      if (toetsen['ArrowLeft']) {
+        oermens.x -= oermens.snelheid * dt;
+        oermens.loopt = true;
+      }
+      if (toetsen['ArrowRight']) {
+        oermens.x += oermens.snelheid * dt;
+        oermens.loopt = true;
+      }
+
+      // Hij blijft op het scherm en loopt niet tegen de mammoet aan.
+      oermens.x = Math.max(40, Math.min(mammoet.x - 200, oermens.x));
 
       if (oermens.worpTijd > 0) {
         oermens.worpTijd = Math.max(0, oermens.worpTijd - dt);
@@ -1063,7 +1062,8 @@
       if (!gameOver) {
         if (toetsen['ArrowUp']) oermens.hoogte -= 300 * dt;
         if (toetsen['ArrowDown']) oermens.hoogte += 300 * dt;
-        oermens.hoogte = Math.max(-110, Math.min(220, oermens.hoogte));
+        // Bij hoogte 0 staat hij precies voor de bomen, lager is dichter bij je.
+        oermens.hoogte = Math.max(0, Math.min(240, oermens.hoogte));
       }
       oermens.y = mammoet.y + 30 + oermens.hoogte;
 
