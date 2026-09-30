@@ -91,6 +91,9 @@
     const zwaarEiPrijs = 30;
     const zwaardereEierenPrijs = 50;
 
+    // De dieren die achter je aan komen als je een ei pakt.
+    const boosDieren = [];
+
     // De nesten, de eieren die erin liggen en de potten in je tuin.
     const nesten = [];
     const eieren = [];
@@ -1059,6 +1062,7 @@
     function maakWereld() {
       nesten.length = 0;
       eieren.length = 0;
+      boosDieren.length = 0;
       const gebied = canvas.width - tuinBreedte;
 
       if (level === 1) {
@@ -1174,6 +1178,8 @@
             ei.weg = true;
             ei.terug = 8;
             potInHand.ei = ei.soort;
+            // de eigenaar van het ei komt meteen achter je aan
+            spawnDier(ei.x);
             break;
           }
         }
@@ -1193,6 +1199,40 @@
         geld -= zwaardereEierenPrijs;
         level = 2;
         maakWereld();
+      }
+    }
+
+    // Er komt een dier uit het nest tevoorschijn zodra jij een ei pakt.
+    function spawnDier(x) {
+      const soort = vakken[Math.floor(Math.random() * vakken.length)];
+      boosDieren.push({
+        x: x + (Math.random() < 0.5 ? -90 : 90),
+        teken: soort.teken,
+        naam: soort.naam,
+        snelheid: 110 + Math.random() * 60,
+        leven: 14,
+        kant: -1,
+      });
+    }
+
+    // De boze dieren lopen naar je toe. In je tuin ben je veilig.
+    function jaagDieren(dt) {
+      for (let i = boosDieren.length - 1; i >= 0; i--) {
+        const dier = boosDieren[i];
+        dier.leven -= dt;
+
+        // hij loopt jouw kant op, maar komt niet voorbij het hek van je tuin
+        const doel = Math.max(tuinBreedte + 30, gekozen.x);
+        dier.kant = doel > dier.x ? 1 : -1;
+        dier.x += dier.kant * dier.snelheid * dt;
+
+        // raakt hij je, dan ben je je ei kwijt
+        if (!inDeTuin() && Math.abs(dier.x - gekozen.x) < 45 && diepte < 40) {
+          if (potInHand && potInHand.ei) potInHand.ei = null;
+          dier.leven = 0;
+        }
+
+        if (dier.leven <= 0) boosDieren.splice(i, 1);
       }
     }
 
@@ -1244,6 +1284,7 @@
         pakPotOp();
         gebruikPot();
         winkel();
+        jaagDieren(dt);
         eierenTerug(dt);
       }
 
@@ -1818,6 +1859,15 @@
       });
     }
 
+    // Een boos dier tekenen. Loopt hij naar rechts, dan draaien we hem om.
+    function tekenBoosDier(dier) {
+      ctx.save();
+      ctx.translate(dier.x, 0);
+      if (dier.kant === 1) ctx.scale(-1, 1);
+      dier.teken(0, grondY + 4);
+      ctx.restore();
+    }
+
     // Een loopband in je tuin.
     function tekenLoopband(x, y) {
       ctx.fillStyle = '#2b2b2b';
@@ -1965,6 +2015,11 @@
       ctx.quadraticCurveTo(vogelX, 180 + Math.sin(tijd * 6) * 12, vogelX + 18, 180);
       ctx.stroke();
 
+      // de dieren die achter je aan zitten
+      for (const dier of boosDieren) {
+        tekenBoosDier(dier);
+      }
+
       // het gat waar je in staat
       tekenGat();
 
@@ -2002,6 +2057,9 @@
         tip = 'Loop naar een nest en druk op e om er een ei in te doen';
       } else if (inDeTuin()) {
         tip = 'Koop iets met 1 of 2, of loop naar rechts om eieren te halen';
+      }
+      if (boosDieren.length > 0 && !inDeTuin()) {
+        tip = 'Rennen! Er zit een dier achter je aan, in je tuin ben je veilig';
       }
       tekenTip(tip, canvas.width / 2, canvas.height - 30);
     }
