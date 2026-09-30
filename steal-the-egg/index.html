@@ -52,7 +52,11 @@
 
     // Welke toetsen op dit moment ingedrukt zijn.
     const toetsen = {};
+    // Welke toetsen net dit moment zijn ingedrukt. Handig voor dingen die je
+    // één keer per druk wilt doen, zoals een pot oppakken.
+    const netGedrukt = {};
     window.addEventListener('keydown', (e) => {
+      if (!toetsen[e.key]) netGedrukt[e.key] = true;
       toetsen[e.key] = true;
       if (e.key === ' ') e.preventDefault();
     });
@@ -66,8 +70,12 @@
 
     // Wat je verzameld en gemaakt hebt.
     let aarde = 0;
-    let potten = 0;
     let verzamelTijd = 0;
+
+    // De potten die op de grond staan, elk met zijn eigen plek.
+    const potLijst = [];
+    // Draag je op dit moment een pot in je handen?
+    let potInHand = false;
 
     // Een pot maken duurt potDuur seconden en kost potKosten aarde.
     let potBezig = false;
@@ -1047,9 +1055,37 @@
         potTijd += dt;
         if (potTijd >= potDuur) {
           aarde -= potKosten;
-          potten += 1;
+          // de nieuwe pot komt naast je op de grond te staan
+          potLijst.push({ x: gekozen.x + 60 });
           potBezig = false;
         }
+      }
+    }
+
+    // Met de k pak je de pot op die het dichtst bij je staat.
+    // Heb je er al een in je handen, dan zet je hem met de k weer neer.
+    function pakPotOp() {
+      if (!netGedrukt['k']) return;
+
+      if (potInHand) {
+        potLijst.push({ x: gekozen.x });
+        potInHand = false;
+        return;
+      }
+
+      // zoek de pot die het dichtst bij staat
+      let dichtstbij = -1;
+      let kortste = 90;
+      potLijst.forEach((pot, i) => {
+        const afstand = Math.abs(pot.x - gekozen.x);
+        if (afstand < kortste) {
+          kortste = afstand;
+          dichtstbij = i;
+        }
+      });
+      if (dichtstbij >= 0) {
+        potLijst.splice(dichtstbij, 1);
+        potInHand = true;
       }
     }
 
@@ -1087,7 +1123,11 @@
         graven(dt);
         verzamelAarde(dt);
         maakPot(dt);
+        pakPotOp();
       }
+
+      // De 'net ingedrukt'-toetsen gelden maar één frame.
+      for (const toets in netGedrukt) netGedrukt[toets] = false;
     }
 
     // De naam onder een poppetje.
@@ -1308,7 +1348,7 @@
       ctx.fillStyle = '#111';
       ctx.font = 'bold 16px sans-serif';
       ctx.fillText('Aarde: ' + aarde, 36, 46);
-      ctx.fillText('Potten: ' + potten, 36, 70);
+      ctx.fillText('Potten: ' + (potLijst.length + (potInHand ? 1 : 0)), 36, 70);
       tekenPot(180, 70, 30);
 
       if (potBezig) {
@@ -1408,14 +1448,19 @@
       // het gat waar je in staat
       tekenGat();
 
-      // de potten die je al gemaakt hebt staan op een rijtje
-      for (let i = 0; i < potten; i++) {
-        tekenPot(120 + i * 34, grondY + 30, 30);
+      // de potten die je gemaakt hebt staan op de grond
+      for (const pot of potLijst) {
+        tekenPot(pot.x, grondY + 30, 30);
       }
 
       // jij, in je eentje in de prehistorie
       gekozen.teken(gekozen.x, gekozen.y, true);
       tekenNaam(gekozen);
+
+      // draag je een pot? Dan houd je hem boven je hoofd.
+      if (potInHand) {
+        tekenPot(gekozen.x, gekozen.y - 118, 30);
+      }
 
       ctx.fillStyle = '#1c1c1c';
       ctx.font = 'bold 28px sans-serif';
@@ -1424,7 +1469,7 @@
       ctx.textAlign = 'left';
 
       tekenSpullen();
-      tekenTip('pijltjes: lopen en graven  ·  spatie: aarde scheppen  ·  p: pot maken',
+      tekenTip('pijltjes: lopen en graven  ·  spatie: aarde  ·  p: pot maken  ·  k: pot oppakken',
                canvas.width / 2, canvas.height - 30);
     }
 
