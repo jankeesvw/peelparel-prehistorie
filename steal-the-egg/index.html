@@ -114,8 +114,48 @@
       ctx.stroke();
     }
 
+    // De armen van een poppetje. Ben jij dit poppetje, dan gaan de handen omhoog.
+    // mouwKleur is de kleur van het shirt, mouwLengte hoe ver de mouw over de arm valt.
+    function tekenArmen(x, voetY, omhoog, mouwKleur, mouwLengte = 14) {
+      if (omhoog) {
+        ctx.lineCap = 'round';
+        // de arm loopt schuin omhoog van de schouder naar de hand
+        ctx.strokeStyle = '#e8b892';
+        ctx.lineWidth = 9;
+        ctx.beginPath();
+        ctx.moveTo(x - 19, voetY - 78);
+        ctx.lineTo(x - 34, voetY - 116);
+        ctx.moveTo(x + 19, voetY - 78);
+        ctx.lineTo(x + 34, voetY - 116);
+        ctx.stroke();
+        // mouw over het bovenste stuk van de arm
+        ctx.strokeStyle = mouwKleur;
+        ctx.lineWidth = 11;
+        ctx.beginPath();
+        ctx.moveTo(x - 19, voetY - 79);
+        ctx.lineTo(x - 23, voetY - 79 - mouwLengte);
+        ctx.moveTo(x + 19, voetY - 79);
+        ctx.lineTo(x + 23, voetY - 79 - mouwLengte);
+        ctx.stroke();
+        // handen
+        ctx.fillStyle = '#e8b892';
+        ctx.beginPath();
+        ctx.arc(x - 35, voetY - 119, 6, 0, Math.PI * 2);
+        ctx.arc(x + 35, voetY - 119, 6, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // armen hangen gewoon langs het lijf
+        ctx.fillStyle = '#e8b892';
+        ctx.fillRect(x - 27, voetY - 78, 8, 30);
+        ctx.fillRect(x + 19, voetY - 78, 8, 30);
+        ctx.fillStyle = mouwKleur;
+        ctx.fillRect(x - 28, voetY - 80, 8, mouwLengte);
+        ctx.fillRect(x + 20, voetY - 80, 8, mouwLengte);
+      }
+    }
+
     // Nine tekenen: x is haar midden, voetY is de grond onder haar schoenen.
-    function tekenNine(x, voetY) {
+    function tekenNine(x, voetY, omhoog) {
       // schoenen
       tekenSchoen(x - 20, voetY - 12, '#c9ccd2');
       tekenSchoen(x - 2, voetY - 12, '#c9ccd2');
@@ -125,19 +165,14 @@
       ctx.fillRect(x - 15, voetY - 42, 12, 30);
       ctx.fillRect(x + 3, voetY - 42, 12, 30);
 
-      // armen
-      ctx.fillStyle = '#e8b892';
-      ctx.fillRect(x - 27, voetY - 78, 8, 30);
-      ctx.fillRect(x + 19, voetY - 78, 8, 30);
-
       // grijs t-shirt
       ctx.fillStyle = '#9aa0a8';
       ctx.beginPath();
       ctx.roundRect(x - 22, voetY - 82, 44, 42, 6);
       ctx.fill();
-      // mouwtjes
-      ctx.fillRect(x - 28, voetY - 80, 8, 14);
-      ctx.fillRect(x + 20, voetY - 80, 8, 14);
+
+      // armen
+      tekenArmen(x, voetY, omhoog, '#9aa0a8');
 
       // bloemen op het shirt
       tekenBloem(x - 11, voetY - 70, '#e86a8f');
@@ -187,7 +222,7 @@
     }
 
     // Stan tekenen: PSV-shirt, zwart PSV-broekje en zwarte New Balance schoenen.
-    function tekenStan(x, voetY) {
+    function tekenStan(x, voetY, omhoog) {
       // schoenen
       tekenSchoen(x - 20, voetY - 12, '#1c1c1c');
       tekenSchoen(x - 2, voetY - 12, '#1c1c1c');
@@ -216,32 +251,8 @@
       }
       ctx.restore();
 
-      // Stan steekt zijn handen in de lucht: zijn armen lopen schuin omhoog
-      // vanaf zijn schouders, met een mouwtje over het bovenste stuk.
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = '#e8b892';
-      ctx.lineWidth = 9;
-      ctx.beginPath();
-      ctx.moveTo(x - 19, voetY - 78);
-      ctx.lineTo(x - 34, voetY - 116);
-      ctx.moveTo(x + 19, voetY - 78);
-      ctx.lineTo(x + 34, voetY - 116);
-      ctx.stroke();
-      // mouwtjes over het bovenste stuk van de arm
-      ctx.strokeStyle = '#e2231a';
-      ctx.lineWidth = 11;
-      ctx.beginPath();
-      ctx.moveTo(x - 19, voetY - 79);
-      ctx.lineTo(x - 24, voetY - 92);
-      ctx.moveTo(x + 19, voetY - 79);
-      ctx.lineTo(x + 24, voetY - 92);
-      ctx.stroke();
-      // handen
-      ctx.fillStyle = '#e8b892';
-      ctx.beginPath();
-      ctx.arc(x - 35, voetY - 119, 6, 0, Math.PI * 2);
-      ctx.arc(x + 35, voetY - 119, 6, 0, Math.PI * 2);
-      ctx.fill();
+      // armen
+      tekenArmen(x, voetY, omhoog, '#e2231a');
 
       // nek
       ctx.fillStyle = '#e8b892';
@@ -281,7 +292,7 @@
 
     // Loek tekenen: oranje shirt van het Nederlands elftal, blauw vestje erover,
     // korte broek, kort blond haar en witte Asics.
-    function tekenLoek(x, voetY) {
+    function tekenLoek(x, voetY, omhoog) {
       // schoenen
       tekenAsics(x - 20, voetY - 12);
       tekenAsics(x - 2, voetY - 12);
@@ -297,11 +308,6 @@
       ctx.roundRect(x - 20, voetY - 46, 40, 18, 4);
       ctx.fill();
 
-      // armen
-      ctx.fillStyle = '#e8b892';
-      ctx.fillRect(x - 27, voetY - 78, 8, 30);
-      ctx.fillRect(x + 19, voetY - 78, 8, 30);
-
       // oranje shirt van het Nederlands elftal
       ctx.fillStyle = '#ff7a00';
       ctx.beginPath();
@@ -316,9 +322,9 @@
       ctx.beginPath();
       ctx.roundRect(x + 8, voetY - 82, 15, 42, 5);
       ctx.fill();
-      // mouwen van het vestje
-      ctx.fillRect(x - 28, voetY - 80, 8, 20);
-      ctx.fillRect(x + 20, voetY - 80, 8, 20);
+
+      // armen
+      tekenArmen(x, voetY, omhoog, '#1b4aa8', 20);
 
       // nek
       ctx.fillStyle = '#e8b892';
@@ -357,7 +363,7 @@
     }
 
     // Elise tekenen: lang bruin haar, paars shirt, zwarte korte broek en bruine cowboylaarzen.
-    function tekenElise(x, voetY) {
+    function tekenElise(x, voetY, omhoog) {
       // cowboylaarzen
       tekenCowboylaars(x - 20, voetY - 12);
       tekenCowboylaars(x - 2, voetY - 12);
@@ -373,19 +379,14 @@
       ctx.roundRect(x - 20, voetY - 48, 40, 18, 4);
       ctx.fill();
 
-      // armen
-      ctx.fillStyle = '#e8b892';
-      ctx.fillRect(x - 27, voetY - 78, 8, 30);
-      ctx.fillRect(x + 19, voetY - 78, 8, 30);
-
       // paars shirt
       ctx.fillStyle = '#8b46c8';
       ctx.beginPath();
       ctx.roundRect(x - 22, voetY - 82, 44, 40, 6);
       ctx.fill();
-      // mouwtjes
-      ctx.fillRect(x - 28, voetY - 80, 8, 14);
-      ctx.fillRect(x + 20, voetY - 80, 8, 14);
+
+      // armen
+      tekenArmen(x, voetY, omhoog, '#8b46c8');
 
       // nek
       ctx.fillStyle = '#e8b892';
@@ -430,7 +431,7 @@
 
     // Fenne tekenen: lang bruin krullend haar, lichtblauw shirt,
     // donkerblauwe korte broek en zwarte New Balance schoenen.
-    function tekenFenne(x, voetY) {
+    function tekenFenne(x, voetY, omhoog) {
       // schoenen
       tekenSchoen(x - 20, voetY - 12, '#1c1c1c');
       tekenSchoen(x - 2, voetY - 12, '#1c1c1c');
@@ -446,19 +447,14 @@
       ctx.roundRect(x - 20, voetY - 48, 40, 18, 4);
       ctx.fill();
 
-      // armen
-      ctx.fillStyle = '#e8b892';
-      ctx.fillRect(x - 27, voetY - 78, 8, 30);
-      ctx.fillRect(x + 19, voetY - 78, 8, 30);
-
       // lichtblauw shirt
       ctx.fillStyle = '#7fc7e8';
       ctx.beginPath();
       ctx.roundRect(x - 22, voetY - 82, 44, 40, 6);
       ctx.fill();
-      // mouwtjes
-      ctx.fillRect(x - 28, voetY - 80, 8, 14);
-      ctx.fillRect(x + 20, voetY - 80, 8, 14);
+
+      // armen
+      tekenArmen(x, voetY, omhoog, '#7fc7e8');
 
       // nek
       ctx.fillStyle = '#e8b892';
@@ -539,7 +535,7 @@
 
     // Jankees tekenen: krullen, bril, horloge, lange spijkerbroek en een baby in zijn arm.
     // Hij is een volwassene, dus alles wordt 1.3 keer zo groot getekend.
-    function tekenJankees(x, voetY) {
+    function tekenJankees(x, voetY, omhoog) {
       ctx.save();
       ctx.translate(x, voetY);
       ctx.scale(1.3, 1.3);
@@ -553,9 +549,23 @@
       ctx.fillRect(-16, -48, 13, 36);
       ctx.fillRect(3, -48, 13, 36);
 
-      // linkerarm hangt langs zijn lijf
+      // linkerarm: omhoog als jij Jankees bent, anders langs zijn lijf.
+      // Zijn andere arm houdt de baby vast, die kan dus niet omhoog.
       ctx.fillStyle = '#e8b892';
-      ctx.fillRect(-27, -78, 8, 30);
+      if (omhoog) {
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#e8b892';
+        ctx.lineWidth = 9;
+        ctx.beginPath();
+        ctx.moveTo(-19, -78);
+        ctx.lineTo(-34, -116);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(-35, -119, 6, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillRect(-27, -78, 8, 30);
+      }
 
       // rechterarm steekt vooruit om de baby vast te houden
       ctx.fillRect(19, -72, 26, 9);
@@ -566,7 +576,17 @@
       ctx.roundRect(-22, -84, 44, 40, 6);
       ctx.fill();
       // mouwen
-      ctx.fillRect(-28, -82, 8, 16);
+      ctx.fillStyle = '#3f7d6b';
+      if (omhoog) {
+        ctx.strokeStyle = '#3f7d6b';
+        ctx.lineWidth = 11;
+        ctx.beginPath();
+        ctx.moveTo(-19, -79);
+        ctx.lineTo(-24, -95);
+        ctx.stroke();
+      } else {
+        ctx.fillRect(-28, -82, 8, 16);
+      }
       ctx.fillRect(20, -78, 8, 16);
 
       // horloge om zijn rechterpols
@@ -724,7 +744,7 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       tekenGekozenVlek(gekozen);
       for (const poppetje of poppetjes) {
-        poppetje.teken(poppetje.x, poppetje.y);
+        poppetje.teken(poppetje.x, poppetje.y, poppetje === gekozen);
         tekenNaam(poppetje);
       }
       tekenKeuzevak();
