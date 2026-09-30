@@ -1777,15 +1777,8 @@
         oermens.loopt = true;
       }
 
-      oermens.x = Math.max(40, Math.min(canvas.width - 60, oermens.x));
-
-      // Hij loopt niet dwars door de mammoet heen, maar er wel omheen via de voorgrond.
-      if (oermens.hoogte < 120 && mammoet.leven > 0) {
-        const afstand = oermens.x - mammoet.x;
-        if (Math.abs(afstand) < 190) {
-          oermens.x = mammoet.x + (afstand < 0 ? -190 : 190);
-        }
-      }
+      // Hij loopt over het hele veld, van de linkerrand tot de rechterrand.
+      oermens.x = Math.max(30, Math.min(canvas.width - 30, oermens.x));
 
       if (oermens.worpTijd > 0) {
         oermens.worpTijd = Math.max(0, oermens.worpTijd - dt);
@@ -1810,8 +1803,9 @@
       if (!gameOver) {
         if (toetsen['ArrowUp']) oermens.hoogte -= 300 * dt;
         if (toetsen['ArrowDown']) oermens.hoogte += 300 * dt;
-        // Bij hoogte 0 staat hij precies voor de bomen, lager is dichter bij je.
-        oermens.hoogte = Math.max(0, Math.min(240, oermens.hoogte));
+        // Bij hoogte 0 staat hij voor de bomen, en hij mag tot onderaan het scherm.
+        const laagste = canvas.height - horizonY() - 55;
+        oermens.hoogte = Math.max(0, Math.min(laagste, oermens.hoogte));
       }
       oermens.y = mammoet.y + 30 + oermens.hoogte;
 
