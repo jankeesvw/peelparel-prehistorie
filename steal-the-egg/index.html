@@ -40,6 +40,12 @@
     // De vakjes om op te klikken, worden bij het tekenen bijgewerkt.
     const knoppen = [];
 
+    // De hoogte waarop iedereen staat, wordt in update berekend.
+    let grondY = 0;
+
+    // Hoe lang de game al loopt, voor dingen die knipperen of bewegen.
+    let tijd = 0;
+
     // Hoe lang Jankees al aan het gooien is. Eén worp duurt gooiDuur seconden.
     let gooiTijd = 0;
     const gooiDuur = 1.2;
@@ -683,7 +689,251 @@
       ctx.restore();
     }
 
+    // De juf voor de klas: haar in een knot, bril, blouse en een lange rok.
+    function tekenJuf(x, vloerY) {
+      // schoenen
+      ctx.fillStyle = '#5c3a1c';
+      ctx.beginPath();
+      ctx.roundRect(x - 18, vloerY - 10, 16, 10, 4);
+      ctx.roundRect(x + 2, vloerY - 10, 16, 10, 4);
+      ctx.fill();
+
+      // lange rok
+      ctx.fillStyle = '#7a4a7a';
+      ctx.beginPath();
+      ctx.moveTo(x - 14, vloerY - 54);
+      ctx.lineTo(x + 14, vloerY - 54);
+      ctx.lineTo(x + 22, vloerY - 10);
+      ctx.lineTo(x - 22, vloerY - 10);
+      ctx.closePath();
+      ctx.fill();
+
+      // armen, de rechter wijst naar het bord
+      ctx.strokeStyle = '#e8b892';
+      ctx.lineCap = 'round';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(x - 18, vloerY - 78);
+      ctx.lineTo(x - 24, vloerY - 50);
+      ctx.moveTo(x + 18, vloerY - 78);
+      ctx.lineTo(x + 40, vloerY - 92);
+      ctx.stroke();
+
+      // aanwijsstok
+      ctx.strokeStyle = '#8b5a2b';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(x + 38, vloerY - 90);
+      ctx.lineTo(x + 78, vloerY - 130);
+      ctx.stroke();
+
+      // blouse
+      ctx.fillStyle = '#e9e2d0';
+      ctx.beginPath();
+      ctx.roundRect(x - 20, vloerY - 84, 40, 34, 6);
+      ctx.fill();
+
+      // nek en hoofd
+      ctx.fillStyle = '#e8b892';
+      ctx.fillRect(x - 5, vloerY - 92, 10, 10);
+      ctx.beginPath();
+      ctx.arc(x, vloerY - 104, 17, 0, Math.PI * 2);
+      ctx.fill();
+
+      // haar met een knot achterop
+      ctx.fillStyle = '#4a3423';
+      ctx.beginPath();
+      ctx.arc(x, vloerY - 106, 18, Math.PI, 0);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x - 20, vloerY - 116, 9, 0, Math.PI * 2);
+      ctx.fill();
+
+      // bril en gezicht
+      ctx.fillStyle = '#5a3a1a';
+      ctx.beginPath();
+      ctx.arc(x - 6, vloerY - 104, 2, 0, Math.PI * 2);
+      ctx.arc(x + 6, vloerY - 104, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#2b2b2b';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(x - 12, vloerY - 110, 11, 11, 3);
+      ctx.roundRect(x + 1, vloerY - 110, 11, 11, 3);
+      ctx.stroke();
+      ctx.strokeStyle = '#a8543f';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, vloerY - 98, 4, 0.2 * Math.PI, 0.8 * Math.PI);
+      ctx.stroke();
+    }
+
+    // De tijdmachine achter in het lokaal: een cabine met een glazen koepel,
+    // knipperende lampjes en een grote hendel.
+    function tekenTijdmachine(x, vloerY) {
+      // voetstuk
+      ctx.fillStyle = '#4a4f57';
+      ctx.beginPath();
+      ctx.roundRect(x - 60, vloerY - 26, 120, 26, 6);
+      ctx.fill();
+
+      // cabine
+      ctx.fillStyle = '#6f7680';
+      ctx.beginPath();
+      ctx.roundRect(x - 48, vloerY - 150, 96, 128, 10);
+      ctx.fill();
+      ctx.strokeStyle = '#3a3f46';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // glazen koepel
+      ctx.fillStyle = 'rgba(140, 220, 255, 0.55)';
+      ctx.beginPath();
+      ctx.arc(x, vloerY - 150, 48, Math.PI, 0);
+      ctx.fill();
+      ctx.strokeStyle = '#3a3f46';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // deur met een rond raampje
+      ctx.fillStyle = '#8d949e';
+      ctx.beginPath();
+      ctx.roundRect(x - 30, vloerY - 120, 60, 96, 8);
+      ctx.fill();
+      ctx.fillStyle = '#bfe9ff';
+      ctx.beginPath();
+      ctx.arc(x, vloerY - 96, 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#3a3f46';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // lampjes die om de beurt aangaan
+      for (let i = 0; i < 3; i++) {
+        const aan = Math.floor(tijd * 3) % 3 === i;
+        ctx.fillStyle = aan ? '#ffd23f' : '#6b5a20';
+        ctx.beginPath();
+        ctx.arc(x - 20 + i * 20, vloerY - 132, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // hendel aan de zijkant
+      ctx.strokeStyle = '#3a3f46';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(x + 48, vloerY - 90);
+      ctx.lineTo(x + 70, vloerY - 110);
+      ctx.stroke();
+      ctx.fillStyle = '#e2231a';
+      ctx.beginPath();
+      ctx.arc(x + 72, vloerY - 112, 7, 0, Math.PI * 2);
+      ctx.fill();
+
+      // jaartal op de cabine
+      ctx.fillStyle = '#1c1c1c';
+      ctx.beginPath();
+      ctx.roundRect(x - 34, vloerY - 146, 68, 20, 4);
+      ctx.fill();
+      ctx.fillStyle = '#3ef08a';
+      ctx.font = 'bold 15px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('10000 v.C.', x, vloerY - 131);
+      ctx.textAlign = 'left';
+    }
+
+    // Het klaslokaal: muur, vloer, schoolbord, raam, klok en een paar tafeltjes.
+    function tekenKlaslokaal(vloerY) {
+      // muur
+      ctx.fillStyle = '#f1e7d6';
+      ctx.fillRect(0, 0, canvas.width, vloerY);
+      // vloer
+      ctx.fillStyle = '#c99a62';
+      ctx.fillRect(0, vloerY, canvas.width, canvas.height - vloerY);
+      // plint tussen muur en vloer
+      ctx.fillStyle = '#9b7444';
+      ctx.fillRect(0, vloerY - 10, canvas.width, 10);
+      // planken in de vloer
+      ctx.strokeStyle = 'rgba(120, 80, 40, 0.35)';
+      ctx.lineWidth = 2;
+      for (let i = 1; i < 8; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, vloerY + i * 22);
+        ctx.lineTo(canvas.width, vloerY + i * 22);
+        ctx.stroke();
+      }
+
+      const midden = canvas.width / 2;
+
+      // schoolbord met een houten lijst
+      const bordX = midden - 330;
+      const bordY = vloerY - 320;
+      ctx.fillStyle = '#8b5a2b';
+      ctx.beginPath();
+      ctx.roundRect(bordX - 8, bordY - 8, 316, 156, 6);
+      ctx.fill();
+      ctx.fillStyle = '#2f4f3f';
+      ctx.fillRect(bordX, bordY, 300, 140);
+      ctx.fillStyle = '#eaf3ec';
+      ctx.font = 'bold 26px sans-serif';
+      ctx.fillText('Prehistorie', bordX + 20, bordY + 42);
+      ctx.font = '18px sans-serif';
+      ctx.fillText('Vandaag: het ei stelen', bordX + 20, bordY + 76);
+      // krijtjes op de rand
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(bordX + 16, bordY + 142, 18, 5);
+      ctx.fillStyle = '#ffd23f';
+      ctx.fillRect(bordX + 40, bordY + 142, 18, 5);
+
+      // raam met kruis
+      const raamX = midden + 30;
+      const raamY = vloerY - 300;
+      ctx.fillStyle = '#bfe9ff';
+      ctx.fillRect(raamX, raamY, 160, 120);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 6;
+      ctx.strokeRect(raamX, raamY, 160, 120);
+      ctx.beginPath();
+      ctx.moveTo(raamX + 80, raamY);
+      ctx.lineTo(raamX + 80, raamY + 120);
+      ctx.moveTo(raamX, raamY + 60);
+      ctx.lineTo(raamX + 160, raamY + 60);
+      ctx.stroke();
+
+      // klok boven het raam
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(midden - 60, vloerY - 330, 22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#1c1c1c';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(midden - 60, vloerY - 330);
+      ctx.lineTo(midden - 60, vloerY - 344);
+      ctx.moveTo(midden - 60, vloerY - 330);
+      ctx.lineTo(midden - 48, vloerY - 330);
+      ctx.stroke();
+    }
+
+    // Een tafeltje met een stoel, achter in de klas.
+    function tekenTafeltje(x, vloerY) {
+      ctx.fillStyle = '#d8a86a';
+      ctx.fillRect(x - 34, vloerY - 40, 68, 8);
+      ctx.fillStyle = '#9b7444';
+      ctx.fillRect(x - 30, vloerY - 32, 6, 32);
+      ctx.fillRect(x + 24, vloerY - 32, 6, 32);
+      // stoel
+      ctx.fillStyle = '#b8762f';
+      ctx.fillRect(x - 12, vloerY - 22, 26, 6);
+      ctx.fillRect(x - 12, vloerY - 44, 6, 22);
+      ctx.fillStyle = '#9b7444';
+      ctx.fillRect(x - 10, vloerY - 16, 5, 16);
+      ctx.fillRect(x + 9, vloerY - 16, 5, 16);
+    }
+
     function update(dt) {
+      tijd += dt;
+
       // Alleen als Jankees gekozen is, is hij aan het gooien.
       if (gekozen.naam === 'Jankees') {
         gooiTijd += dt;
@@ -692,6 +942,7 @@
       }
 
       const grond = canvas.height / 2 + 90;
+      grondY = grond;
       const midden = canvas.width / 2;
       const afstand = 105;
       // De poppetjes netjes naast elkaar, gelijk verdeeld rond het midden.
@@ -703,10 +954,16 @@
 
     // De naam onder een poppetje.
     function tekenNaam(poppetje) {
-      ctx.fillStyle = '#111';
       ctx.font = 'bold 15px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(poppetje.naam, poppetje.x, poppetje.y + 24);
+      // wit bordje achter de naam, anders verdwijnt hij in de vloer
+      const breedte = ctx.measureText(poppetje.naam).width + 16;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(poppetje.x - breedte / 2, poppetje.y + 10, breedte, 20, 6);
+      ctx.fill();
+      ctx.fillStyle = '#111';
+      ctx.fillText(poppetje.naam, poppetje.x, poppetje.y + 25);
       ctx.textAlign = 'left';
     }
 
@@ -778,6 +1035,15 @@
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // eerst het lokaal, dan de dingen die erin staan, dan pas de poppetjes
+      tekenKlaslokaal(grondY);
+      tekenTafeltje(canvas.width / 2 - 250, grondY - 8);
+      tekenTafeltje(canvas.width / 2 - 130, grondY - 8);
+      // links de juf, rechts de tijdmachine, allebei netjes binnen het scherm
+      tekenTijdmachine(Math.min(canvas.width - 110, canvas.width / 2 + 330), grondY - 8);
+      tekenJuf(Math.max(120, canvas.width / 2 - 400), grondY - 8);
+
       tekenGekozenVlek(gekozen);
       for (const poppetje of poppetjes) {
         poppetje.teken(poppetje.x, poppetje.y, poppetje === gekozen);
