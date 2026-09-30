@@ -99,6 +99,13 @@
 
     let gameOver = false;
     let levens = 3;            // raakt de tijger je, dan gaat er een leven af
+    let melding = '';          // korte tekst die even in beeld blijft
+    let meldingTijd = 0;
+
+    function meld(tekst) {
+      melding = tekst;
+      meldingTijd = 1.8;
+    }
     let uitbarsting = false;   // vanaf level 6 barst de vulkaan uit
     let steenTimer = 0;        // seconden tot de volgende vuursteen
     const vuurstenen = [];     // de brokken die door de lucht vliegen
@@ -349,6 +356,8 @@
     const bomen = [];
     const varens = [];
     const keien = [];
+    const bramen = [];
+    const vijver = { x: 0, y: 0, breedte: 150 };
 
     // Het bos wordt één keer uitgedeeld over de breedte van het scherm.
     function maakLandschap() {
@@ -369,6 +378,122 @@
       for (let i = 0; i < 12; i++) {
         keien.push({ x: Math.random() * canvas.width, diepte: Math.random(), breedte: 16 + Math.random() * 28 });
       }
+
+      // De visvijver ligt rechts op de voorgrond.
+      const grondHoogte = canvas.height - horizonY();
+      vijver.x = canvas.width * 0.74;
+      vijver.y = horizonY() + grondHoogte * 0.62;
+      vijver.breedte = Math.min(170, canvas.width * 0.14);
+      vijver.vis = true;      // er zwemt een vis die je kunt vangen
+      vijver.wachtTijd = 0;
+
+      // Vier bramenstruiken, verdeeld over het veld.
+      bramen.length = 0;
+      for (const plek of [0.08, 0.3, 0.56, 0.9]) {
+        bramen.push({
+          x: canvas.width * plek,
+          y: horizonY() + 100 + Math.random() * Math.max(40, grondHoogte * 0.45),
+          grootte: 0.9 + Math.random() * 0.4,
+          rijp: true,      // false als je de bramen net hebt opgegeten
+          wachtTijd: 0,    // seconden tot er weer nieuwe bramen zijn
+        });
+      }
+    }
+
+    function tekenVijver(v) {
+      // zanderige rand rond het water
+      ctx.fillStyle = '#c2b184';
+      ctx.beginPath();
+      ctx.ellipse(v.x, v.y, v.breedte + 14, v.breedte * 0.42 + 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // het water, van licht aan de rand naar diepblauw in het midden
+      const water = ctx.createRadialGradient(v.x, v.y, 10, v.x, v.y, v.breedte);
+      water.addColorStop(0, '#2f7fb5');
+      water.addColorStop(1, '#7fc3dd');
+      ctx.fillStyle = water;
+      ctx.beginPath();
+      ctx.ellipse(v.x, v.y, v.breedte, v.breedte * 0.42, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // rimpels die steeds naar buiten groeien
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        const groei = (tijd * 0.4 + i * 0.33) % 1;
+        ctx.beginPath();
+        ctx.ellipse(v.x, v.y, v.breedte * groei, v.breedte * 0.42 * groei, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // drie visjes die heen en weer zwemmen
+      if (!v.vis) return;
+      for (let i = 0; i < 3; i++) {
+        const heen = Math.sin(tijd * (0.7 + i * 0.2) + i * 2);
+        const visX = v.x + heen * v.breedte * 0.6;
+        const visY = v.y - 14 + i * 14;
+        const naarRechts = Math.cos(tijd * (0.7 + i * 0.2) + i * 2) > 0;
+
+        ctx.fillStyle = '#e8a33d';
+        ctx.beginPath();
+        ctx.ellipse(visX, visY, 9, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // staartje aan de achterkant
+        const staartX = naarRechts ? visX - 9 : visX + 9;
+        const punt = naarRechts ? staartX - 8 : staartX + 8;
+        ctx.beginPath();
+        ctx.moveTo(staartX, visY);
+        ctx.lineTo(punt, visY - 5);
+        ctx.lineTo(punt, visY + 5);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    function tekenBraamstruik(b) {
+      const s = b.grootte;
+
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.scale(s, s);
+
+      // takjes
+      ctx.strokeStyle = '#6b4a2f';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      for (const kant of [-1, 0, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(kant * 16, -30);
+        ctx.stroke();
+      }
+
+      // bladeren
+      ctx.fillStyle = '#356d33';
+      for (const blad of [{ x: -20, y: -28 }, { x: 0, y: -40 }, { x: 20, y: -28 }, { x: -9, y: -20 }, { x: 11, y: -20 }]) {
+        ctx.beginPath();
+        ctx.ellipse(blad.x, blad.y, 15, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // de bramen zelf, alleen als de struik weer vol hangt
+      if (b.rijp) {
+        for (const braam of [{ x: -16, y: -18 }, { x: -4, y: -30 }, { x: 9, y: -34 }, { x: 16, y: -16 }, { x: 2, y: -12 }]) {
+          ctx.fillStyle = '#3b1b45';
+          ctx.beginPath();
+          ctx.arc(braam.x, braam.y, 5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // een lichte glans op elke braam
+          ctx.fillStyle = '#6a3273';
+          ctx.beginPath();
+          ctx.arc(braam.x - 1.5, braam.y - 1.5, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.restore();
     }
 
     function tekenNaaldboom(x, voetY, hoogte) {
@@ -547,6 +672,10 @@
         else tekenVarenboom(b.x, hy + 6, b.hoogte);
       }
 
+      tekenVijver(vijver);
+
+      for (const b of bramen) tekenBraamstruik(b);
+
       // keien op de grond
       for (const k of keien) {
         const y = hy + 20 + k.diepte * (canvas.height - hy - 20);
@@ -591,6 +720,10 @@
       uitbarsting = nummer >= 6;
       vuurstenen.length = 0;
       steenTimer = 0.8;
+
+      for (const b of bramen) b.rijp = true;
+      vijver.vis = true;
+      meldingTijd = 0;
 
       zetBroccoliNeer();
 
@@ -915,7 +1048,8 @@
       ctx.textAlign = 'center';
 
       let tekst = 'Loop met de pijltjes, gooi met de spatiebalk.';
-      if (gameOver) tekst = 'Al je levens zijn op! Druk op Enter om opnieuw te beginnen.';
+      if (meldingTijd > 0) tekst = melding;
+      else if (gameOver) tekst = 'Al je levens zijn op! Druk op Enter om opnieuw te beginnen.';
       else if (levelGehaald) tekst = 'Level ' + level + ' gehaald! Druk op Enter voor level ' + (level + 1) + '.';
       else if (uitbarsting && vuurstenen.length > 0) tekst = 'De vulkaan barst uit! Pas op voor de vuurstenen!';
       else if (tijger.actief && !tijger.vlucht && tijger.fase === 'springt') tekst = 'De sabeltandtijger springt! Duik weg met de pijltjes!';
@@ -1164,6 +1298,44 @@
       }
     }
 
+    // Eten dat je onderweg kunt oppakken: bramen en een vis uit de vijver.
+    function updateEten(dt) {
+      if (gameOver) return;
+
+      const voetY = oermens.y + 60;
+
+      for (const b of bramen) {
+        if (!b.rijp) {
+          // De struik hangt na een tijdje weer vol.
+          b.wachtTijd -= dt;
+          if (b.wachtTijd <= 0) b.rijp = true;
+          continue;
+        }
+        if (Math.abs(oermens.x - b.x) < 55 && Math.abs(voetY - b.y) < 45) {
+          b.rijp = false;
+          b.wachtTijd = 8;
+          levens += 1;
+          meld('Bramen gegeten! Een leven erbij.');
+        }
+      }
+
+      if (!vijver.vis) {
+        // Na een tijdje zwemt er weer een nieuwe vis.
+        vijver.wachtTijd -= dt;
+        if (vijver.wachtTijd <= 0) vijver.vis = true;
+        return;
+      }
+
+      // Sta je met je voeten in de vijver? Dan vang je de vis.
+      if (Math.abs(oermens.x - vijver.x) < vijver.breedte + 10 &&
+          Math.abs(voetY - vijver.y) < vijver.breedte * 0.42 + 25) {
+        vijver.vis = false;
+        vijver.wachtTijd = 10;
+        levens += 1;
+        meld('Vis gevangen! Een leven erbij.');
+      }
+    }
+
     function updateBroccoli(dt) {
       if (gameOver) return;
 
@@ -1180,6 +1352,7 @@
         broccoli.zichtbaar = false;
         broccoli.wachtTijd = 6;
         levens += 1;
+        meld('Broccoli gegeten! Een leven erbij.');
       }
     }
 
@@ -1212,8 +1385,9 @@
         oermens.loopt = true;
       }
 
-      // Hij blijft op het scherm en loopt niet tegen de mammoet aan.
-      oermens.x = Math.max(40, Math.min(mammoet.x - 200, oermens.x));
+      // Vooraan langs mag hij de mammoet voorbij, anders loopt hij tegen haar aan.
+      const rechtsGrens = oermens.hoogte > 130 ? canvas.width - 60 : mammoet.x - 200;
+      oermens.x = Math.max(40, Math.min(rechtsGrens, oermens.x));
 
       if (oermens.worpTijd > 0) {
         oermens.worpTijd = Math.max(0, oermens.worpTijd - dt);
@@ -1226,6 +1400,7 @@
 
     function update(dt) {
       tijd += dt;
+      if (meldingTijd > 0) meldingTijd -= dt;
 
       // Vanaf level 2 loopt de mammoet heen en weer, en per level gaat dat sneller.
       if (mammoet.leven > 0 && level >= 2) {
@@ -1243,6 +1418,7 @@
       oermens.y = mammoet.y + 30 + oermens.hoogte;
 
       updateVulkaan(dt);
+      updateEten(dt);
       updateBroccoli(dt);
       updateBaby(dt);
       updateOermens(dt);
