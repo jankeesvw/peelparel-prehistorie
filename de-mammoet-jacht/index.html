@@ -98,6 +98,22 @@
     };
 
     let gameOver = false;
+    let levens = 3; // raakt de tijger je, dan gaat er een leven af
+
+    // Een broccoli die op de grond groeit. Pak hem op voor een extra leven.
+    const broccoli = {
+      x: 0,
+      y: 0,
+      zichtbaar: false,
+      wachtTijd: 0, // seconden tot er een nieuwe opkomt
+    };
+
+    // De broccoli komt op een willekeurige plek op de grond te staan.
+    function zetBroccoliNeer() {
+      broccoli.x = 150 + Math.random() * Math.max(100, canvas.width - 300);
+      broccoli.y = horizonY() + 50 + Math.random() * Math.max(60, canvas.height - horizonY() - 110);
+      broccoli.zichtbaar = true;
+    }
 
     const worpDuur = 0.3;      // seconden dat de worp-beweging duurt
     const zwaartekracht = 320; // hoe snel een speer naar beneden valt
@@ -179,6 +195,28 @@
       ctx.fill();
 
       ctx.restore();
+    }
+
+    function tekenBroccoli(b) {
+      // steel
+      ctx.fillStyle = '#8fbf5a';
+      ctx.fillRect(b.x - 5, b.y - 14, 10, 18);
+
+      // kroon: een paar bollen tegen elkaar
+      ctx.fillStyle = '#2e7d3a';
+      for (const bol of [{ x: -11, y: -20, r: 11 }, { x: 11, y: -20, r: 11 }, { x: 0, y: -30, r: 13 }]) {
+        ctx.beginPath();
+        ctx.arc(b.x + bol.x, b.y + bol.y, bol.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // lichte plekjes, dan lijkt hij op een echte broccoli
+      ctx.fillStyle = '#4da555';
+      for (const stip of [{ x: -12, y: -24 }, { x: 8, y: -25 }, { x: -2, y: -34 }]) {
+        ctx.beginPath();
+        ctx.arc(b.x + stip.x, b.y + stip.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     function tekenTijger(t) {
@@ -494,6 +532,9 @@
       tijger.vlucht = false;
       tijger.fase = 'sluipt';
       tijger.sprong = 0;
+      tijger.raakte = false;
+
+      zetBroccoliNeer();
 
       oermens.x = Math.max(60, canvas.width / 2 - 440);
       oermens.hoogte = 110;
@@ -548,6 +589,7 @@
       }
       if (e.code === 'Enter' && gameOver) {
         punten = 0; // helemaal opnieuw beginnen
+        levens = 3;
         startLevel(1);
       }
     });
@@ -797,6 +839,7 @@
       ctx.font = 'bold 26px sans-serif';
       tekenTekstMetRand('Punten: ' + punten, 24, 44);
       tekenTekstMetRand('Level ' + level, 24, 78);
+      tekenTekstMetRand('Levens: ' + levens, 24, 112);
     }
 
     // Witte tekst met een donkere rand eromheen, altijd goed leesbaar.
@@ -814,13 +857,15 @@
       ctx.textAlign = 'center';
 
       let tekst = 'Loop met de pijltjes, gooi met de spatiebalk.';
-      if (gameOver) tekst = 'De sabeltandtijger heeft de jager gepakt! Druk op Enter om opnieuw te beginnen.';
+      if (gameOver) tekst = 'Al je levens zijn op! Druk op Enter om opnieuw te beginnen.';
       else if (levelGehaald) tekst = 'Level ' + level + ' gehaald! Druk op Enter voor level ' + (level + 1) + '.';
       else if (tijger.actief && !tijger.vlucht && tijger.fase === 'springt') tekst = 'De sabeltandtijger springt! Duik weg met de pijltjes!';
+      else if (tijger.actief && !tijger.vlucht && tijger.fase === 'herstelt' && tijger.raakte) tekst = 'Au! Je bent een leven kwijt.';
       else if (tijger.actief && !tijger.vlucht && tijger.fase === 'herstelt') tekst = 'Gemist! Hij komt terug.';
       else if (tijger.actief && !tijger.vlucht) tekst = 'Pas op, een sabeltandtijger! Gooi je speer naar hem toe!';
       else if (baby.stemming === 'boos') tekst = 'Pas op! De baby is boos en jaagt de jager weg!';
       else if (mammoet.leven <= 0) tekst = 'De mammoet is gevangen! Je krijgt 5 punten.';
+      else if (broccoli.zichtbaar) tekst = 'Loop naar de broccoli voor een extra leven!';
       else if (oermens.klaarOmTeGooien) tekst = 'Spatiebalk om te gooien, pijltjes om te lopen.';
 
       tekenTekstMetRand(tekst, canvas.width / 2, canvas.height - 40);
@@ -976,9 +1021,16 @@
         if (tijger.sprong >= 1) {
           // Staat de jager nog waar de tijger naartoe sprong?
           if (Math.abs(oermens.y - tijger.doelY) < 70) {
-            gameOver = true;
-            oermens.omver = true;
+            levens -= 1;
+            tijger.raakte = true;
+            if (levens <= 0) {
+              gameOver = true;
+              oermens.omver = true;
+            } else {
+              tijger.fase = 'herstelt'; // hij wordt teruggeslagen en probeert het opnieuw
+            }
           } else {
+            tijger.raakte = false;
             tijger.fase = 'herstelt'; // gemist, hij moet opnieuw aanlopen
           }
         }
@@ -1005,6 +1057,25 @@
         tijger.sprongStartX = tijger.x;
         tijger.doelX = oermens.x + 55; // hierheen springt hij
         tijger.doelY = oermens.y;      // en op deze hoogte stond de jager
+      }
+    }
+
+    function updateBroccoli(dt) {
+      if (gameOver) return;
+
+      if (!broccoli.zichtbaar) {
+        // Na een tijdje groeit er ergens anders een nieuwe.
+        broccoli.wachtTijd -= dt;
+        if (broccoli.wachtTijd <= 0) zetBroccoliNeer();
+        return;
+      }
+
+      // Staat de jager met zijn voeten bij de broccoli? Dan pakt hij hem op.
+      const voetY = oermens.y + 60;
+      if (Math.abs(oermens.x - broccoli.x) < 55 && Math.abs(voetY - broccoli.y) < 45) {
+        broccoli.zichtbaar = false;
+        broccoli.wachtTijd = 6;
+        levens += 1;
       }
     }
 
@@ -1067,6 +1138,7 @@
       }
       oermens.y = mammoet.y + 30 + oermens.hoogte;
 
+      updateBroccoli(dt);
       updateBaby(dt);
       updateOermens(dt);
       updateWolf(dt);
@@ -1086,6 +1158,7 @@
 
     function draw() {
       tekenAchtergrond();
+      if (broccoli.zichtbaar) tekenBroccoli(broccoli);
       tekenMammoet(mammoet);
       tekenMammoet(baby);
       if (baby.stemming === 'huilt') tekenTranen(baby);
@@ -1100,7 +1173,7 @@
     }
 
     maakLandschap();
-    wolf.x = oermens.x - 95;
+    startLevel(1);
 
     let vorige = performance.now();
     function loop(nu) {
