@@ -40,6 +40,10 @@
     // De vakjes om op te klikken, worden bij het tekenen bijgewerkt.
     const knoppen = [];
 
+    // Hoe lang Jankees al aan het gooien is. Eén worp duurt gooiDuur seconden.
+    let gooiTijd = 0;
+    const gooiDuur = 1.2;
+
     // Eén bloemetje op haar t-shirt.
     function tekenBloem(x, y, kleur) {
       ctx.fillStyle = kleur;
@@ -549,8 +553,13 @@
       ctx.fillRect(-16, -48, 13, 36);
       ctx.fillRect(3, -48, 13, 36);
 
-      // linkerarm: omhoog als jij Jankees bent, anders langs zijn lijf.
-      // Zijn andere arm houdt de baby vast, die kan dus niet omhoog.
+      // Gooit hij? Dan gaan allebei zijn armen omhoog en vliegt de baby los.
+      // deelVanDeWorp loopt van 0 (net losgelaten) naar 1 (weer opgevangen).
+      const deelVanDeWorp = (gooiTijd % gooiDuur) / gooiDuur;
+      // Een boogje: op de helft van de worp is de baby op zijn hoogst.
+      const babyHoogte = omhoog ? 4 * 70 * deelVanDeWorp * (1 - deelVanDeWorp) : 0;
+
+      // armen
       ctx.fillStyle = '#e8b892';
       if (omhoog) {
         ctx.lineCap = 'round';
@@ -559,44 +568,64 @@
         ctx.beginPath();
         ctx.moveTo(-19, -78);
         ctx.lineTo(-34, -116);
+        ctx.moveTo(19, -78);
+        ctx.lineTo(34, -116);
         ctx.stroke();
         ctx.beginPath();
         ctx.arc(-35, -119, 6, 0, Math.PI * 2);
+        ctx.arc(35, -119, 6, 0, Math.PI * 2);
         ctx.fill();
       } else {
         ctx.fillRect(-27, -78, 8, 30);
+        // rechterarm steekt vooruit om de baby vast te houden
+        ctx.fillRect(19, -72, 26, 9);
       }
-
-      // rechterarm steekt vooruit om de baby vast te houden
-      ctx.fillRect(19, -72, 26, 9);
 
       // trui
       ctx.fillStyle = '#3f7d6b';
       ctx.beginPath();
       ctx.roundRect(-22, -84, 44, 40, 6);
       ctx.fill();
+
       // mouwen
-      ctx.fillStyle = '#3f7d6b';
       if (omhoog) {
         ctx.strokeStyle = '#3f7d6b';
         ctx.lineWidth = 11;
         ctx.beginPath();
         ctx.moveTo(-19, -79);
         ctx.lineTo(-24, -95);
+        ctx.moveTo(19, -79);
+        ctx.lineTo(24, -95);
         ctx.stroke();
       } else {
+        ctx.fillStyle = '#3f7d6b';
         ctx.fillRect(-28, -82, 8, 16);
+        ctx.fillRect(20, -78, 8, 16);
       }
-      ctx.fillRect(20, -78, 8, 16);
 
-      // horloge om zijn rechterpols
+      // horloge om zijn pols
       ctx.fillStyle = '#2b2b2b';
-      ctx.fillRect(36, -73, 6, 11);
-      ctx.fillStyle = '#d8dee6';
-      ctx.fillRect(37, -71, 4, 6);
+      if (omhoog) {
+        ctx.fillRect(28, -104, 11, 6);
+        ctx.fillStyle = '#d8dee6';
+        ctx.fillRect(30, -103, 6, 4);
+      } else {
+        ctx.fillRect(36, -73, 6, 11);
+        ctx.fillStyle = '#d8dee6';
+        ctx.fillRect(37, -71, 4, 6);
+      }
 
-      // de baby ligt op zijn arm
-      tekenBaby(46, -76);
+      // de baby: vliegend door de lucht, of gewoon op zijn arm
+      if (omhoog) {
+        ctx.save();
+        ctx.translate(8, -120 - babyHoogte);
+        // tijdens de vlucht draait de baby één keer helemaal rond
+        ctx.rotate(deelVanDeWorp * Math.PI * 2);
+        tekenBaby(8, 0);
+        ctx.restore();
+      } else {
+        tekenBaby(46, -76);
+      }
 
       // nek
       ctx.fillStyle = '#e8b892';
@@ -655,6 +684,13 @@
     }
 
     function update(dt) {
+      // Alleen als Jankees gekozen is, is hij aan het gooien.
+      if (gekozen.naam === 'Jankees') {
+        gooiTijd += dt;
+      } else {
+        gooiTijd = 0;
+      }
+
       const grond = canvas.height / 2 + 90;
       const midden = canvas.width / 2;
       const afstand = 105;
