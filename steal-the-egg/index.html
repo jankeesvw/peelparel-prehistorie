@@ -39,6 +39,11 @@
       y: 0,
     };
 
+    const elise = {
+      x: 0,
+      y: 0,
+    };
+
     // Eén bloemetje op haar t-shirt.
     function tekenBloem(x, y, kleur) {
       ctx.fillStyle = kleur;
@@ -88,6 +93,29 @@
         ctx.lineTo(x + 12 + i * 4, y + 2);
         ctx.stroke();
       }
+    }
+
+    // Een bruine cowboylaars: hoge schacht met een hak eronder.
+    function tekenCowboylaars(x, y) {
+      ctx.fillStyle = '#8b5a2b';
+      // schacht tot boven de enkel
+      ctx.beginPath();
+      ctx.roundRect(x + 3, y - 20, 15, 24, 3);
+      ctx.fill();
+      // voet
+      ctx.beginPath();
+      ctx.roundRect(x, y - 2, 22, 10, 4);
+      ctx.fill();
+      // donkere hak
+      ctx.fillStyle = '#5c3a1c';
+      ctx.fillRect(x + 13, y + 6, 8, 6);
+      // stiksel op de schacht
+      ctx.strokeStyle = '#e4b97a';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x + 4, y - 14);
+      ctx.lineTo(x + 17, y - 14);
+      ctx.stroke();
     }
 
     // Nine tekenen: x is haar midden, voetY is de grond onder haar schoenen.
@@ -314,14 +342,88 @@
       ctx.stroke();
     }
 
+    // Elise tekenen: lang bruin haar, paars shirt, zwarte korte broek en bruine cowboylaarzen.
+    function tekenElise(x, voetY) {
+      // cowboylaarzen
+      tekenCowboylaars(x - 20, voetY - 12);
+      tekenCowboylaars(x - 2, voetY - 12);
+
+      // blote benen boven de laarzen
+      ctx.fillStyle = '#e8b892';
+      ctx.fillRect(x - 15, voetY - 34, 12, 12);
+      ctx.fillRect(x + 3, voetY - 34, 12, 12);
+
+      // zwarte korte broek
+      ctx.fillStyle = '#1c1c1c';
+      ctx.beginPath();
+      ctx.roundRect(x - 20, voetY - 48, 40, 18, 4);
+      ctx.fill();
+
+      // armen
+      ctx.fillStyle = '#e8b892';
+      ctx.fillRect(x - 27, voetY - 78, 8, 30);
+      ctx.fillRect(x + 19, voetY - 78, 8, 30);
+
+      // paars shirt
+      ctx.fillStyle = '#8b46c8';
+      ctx.beginPath();
+      ctx.roundRect(x - 22, voetY - 82, 44, 40, 6);
+      ctx.fill();
+      // mouwtjes
+      ctx.fillRect(x - 28, voetY - 80, 8, 14);
+      ctx.fillRect(x + 20, voetY - 80, 8, 14);
+
+      // nek
+      ctx.fillStyle = '#e8b892';
+      ctx.fillRect(x - 5, voetY - 90, 10, 10);
+
+      // hoofd
+      ctx.beginPath();
+      ctx.arc(x, voetY - 102, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // lang bruin haar: een kapje plus twee lange lokken tot op haar shirt
+      ctx.fillStyle = '#6b4226';
+      ctx.beginPath();
+      ctx.arc(x, voetY - 104, 19, Math.PI, 0);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.roundRect(x - 22, voetY - 110, 10, 52, 5);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.roundRect(x + 12, voetY - 110, 10, 52, 5);
+      ctx.fill();
+
+      // bruine ogen
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x - 6, voetY - 102, 4, 0, Math.PI * 2);
+      ctx.arc(x + 6, voetY - 102, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#5a3a1a';
+      ctx.beginPath();
+      ctx.arc(x - 6, voetY - 102, 2.2, 0, Math.PI * 2);
+      ctx.arc(x + 6, voetY - 102, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // mond
+      ctx.strokeStyle = '#a8543f';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, voetY - 95, 5, 0.2 * Math.PI, 0.8 * Math.PI);
+      ctx.stroke();
+    }
+
     function update(dt) {
       const grond = canvas.height / 2 + 60;
-      nine.x = canvas.width / 2 - 120;
+      nine.x = canvas.width / 2 - 180;
       nine.y = grond;
-      stan.x = canvas.width / 2;
+      stan.x = canvas.width / 2 - 60;
       stan.y = grond;
-      loek.x = canvas.width / 2 + 120;
+      loek.x = canvas.width / 2 + 60;
       loek.y = grond;
+      elise.x = canvas.width / 2 + 180;
+      elise.y = grond;
     }
 
     function draw() {
@@ -329,6 +431,7 @@
       tekenNine(nine.x, nine.y);
       tekenStan(stan.x, stan.y);
       tekenLoek(loek.x, loek.y);
+      tekenElise(elise.x, elise.y);
     }
 
     let vorige = performance.now();
