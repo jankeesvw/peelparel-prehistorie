@@ -73,9 +73,29 @@
     let verzamelTijd = 0;
 
     // De potten die op de grond staan, elk met zijn eigen plek.
+    // In een pot past precies één ei.
     const potLijst = [];
-    // Draag je op dit moment een pot in je handen?
-    let potInHand = false;
+    // De pot die je in je handen hebt, of null als je er geen draagt.
+    let potInHand = null;
+
+    // In welk level je bent. In level 1 is het rustig, in level 2 staan de
+    // dieren bij hun nesten en zijn de eieren zwaarder en meer waard.
+    let level = 1;
+
+    // Je geld, en hoeveel loopbanden je gekocht hebt.
+    let geld = 0;
+    let loopbanden = 0;
+
+    // Wat de dingen kosten en opleveren.
+    const gewoonEiPrijs = 10;
+    const zwaarEiPrijs = 30;
+    const zwaardereEierenPrijs = 50;
+
+    // De nesten, de eieren die erin liggen en de potten in je tuin.
+    const nesten = [];
+    const eieren = [];
+    const tuinPotten = [];
+    const tuinBreedte = 200;
 
     // Een pot maken duurt potDuur seconden en kost potKosten aarde.
     let potBezig = false;
@@ -1004,11 +1024,55 @@
 
     // Lopen met de pijltjestoetsen. Je blijft altijd binnen het scherm.
     function loopRond(dt) {
-      const snelheid = 220;
+      // Elke loopband die je koopt maakt je sneller.
+      const snelheid = 220 + loopbanden * 120;
       if (toetsen['ArrowLeft']) gekozen.x -= snelheid * dt;
       if (toetsen['ArrowRight']) gekozen.x += snelheid * dt;
       gekozen.x = Math.max(60, Math.min(canvas.width - 60, gekozen.x));
       gekozen.y = grondY;
+    }
+
+    // Sta je in je eigen tuin, helemaal links?
+    function inDeTuin() {
+      return gekozen.x < tuinBreedte;
+    }
+
+    // Wat de volgende loopband kost. Elke volgende is duurder.
+    function loopbandPrijs() {
+      return 30 * (loopbanden + 1);
+    }
+
+    // Een nest met eieren erin neerzetten.
+    function maakNest(x, aantal, soort) {
+      nesten.push({ x: x });
+      for (let i = 0; i < aantal; i++) {
+        eieren.push({
+          x: x + (i - (aantal - 1) / 2) * 24,
+          soort: soort,
+          weg: false,
+          terug: 0,
+        });
+      }
+    }
+
+    // De nesten voor dit level neerzetten.
+    function maakWereld() {
+      nesten.length = 0;
+      eieren.length = 0;
+      const gebied = canvas.width - tuinBreedte;
+
+      if (level === 1) {
+        // een rustige weide, nog zonder dieren
+        [0.25, 0.55, 0.85].forEach((deel) => {
+          maakNest(tuinBreedte + gebied * deel, 2, 'gewoon');
+        });
+      } else {
+        // in elk vak een nest, bewaakt door zijn eigen dier
+        const vakBreedte = gebied / vakken.length;
+        vakken.forEach((vak, i) => {
+          maakNest(tuinBreedte + vakBreedte * (i + 0.5), vak.eieren, 'zwaar');
+        });
+      }
     }
 
     // Graven met pijltje omlaag, omhoog klimmen met pijltje omhoog.
@@ -1055,8 +1119,8 @@
         potTijd += dt;
         if (potTijd >= potDuur) {
           aarde -= potKosten;
-          // de nieuwe pot komt naast je op de grond te staan
-          potLijst.push({ x: gekozen.x + 60 });
+          // de nieuwe pot komt leeg naast je op de grond te staan
+          potLijst.push({ x: gekozen.x + 60, ei: null });
           potBezig = false;
         }
       }
@@ -1068,8 +1132,9 @@
       if (!netGedrukt['k']) return;
 
       if (potInHand) {
-        potLijst.push({ x: gekozen.x });
-        potInHand = false;
+        potInHand.x = gekozen.x;
+        potLijst.push(potInHand);
+        potInHand = null;
         return;
       }
 
@@ -1084,8 +1149,60 @@
         }
       });
       if (dichtstbij >= 0) {
-        potLijst.splice(dichtstbij, 1);
-        potInHand = true;
+        potInHand = potLijst.splice(dichtstbij, 1)[0];
+      }
+    }
+
+    // Met de e doe je een ei in je pot, of zet je je volle pot in je tuin.
+    function gebruikPot() {
+      if (!netGedrukt['e'] || !potInHand) return;
+
+      // In je tuin lever je de pot met het ei in, en dat levert geld op.
+      if (inDeTuin()) {
+        if (potInHand.ei) {
+          geld += potInHand.ei === 'zwaar' ? zwaarEiPrijs : gewoonEiPrijs;
+          tuinPotten.push({ x: 34 + (tuinPotten.length % 5) * 34, soort: potInHand.ei });
+          potInHand = null;
+        }
+        return;
+      }
+
+      // Buiten de tuin schep je een ei uit een nest in je lege pot.
+      if (!potInHand.ei) {
+        for (const ei of eieren) {
+          if (!ei.weg && Math.abs(ei.x - gekozen.x) < 70) {
+            ei.weg = true;
+            ei.terug = 8;
+            potInHand.ei = ei.soort;
+            break;
+          }
+        }
+      }
+    }
+
+    // De winkel in je tuin: met 1 koop je een loopband, met 2 zwaardere eieren.
+    function winkel() {
+      if (!inDeTuin()) return;
+
+      if (netGedrukt['1'] && geld >= loopbandPrijs()) {
+        geld -= loopbandPrijs();
+        loopbanden += 1;
+      }
+
+      if (netGedrukt['2'] && level === 1 && geld >= zwaardereEierenPrijs) {
+        geld -= zwaardereEierenPrijs;
+        level = 2;
+        maakWereld();
+      }
+    }
+
+    // De eieren die je gepakt hebt komen na een tijdje weer terug in het nest.
+    function eierenTerug(dt) {
+      for (const ei of eieren) {
+        if (ei.weg) {
+          ei.terug -= dt;
+          if (ei.terug <= 0) ei.weg = false;
+        }
       }
     }
 
@@ -1115,7 +1232,8 @@
         }
         if (reisTijd >= reisDuur) {
           scene = 'prehistorie';
-          gekozen.x = canvas.width / 2;
+          maakWereld();
+          gekozen.x = tuinBreedte + 140;
         }
       } else {
         // In de prehistorie kun je alleen lopen als je niet in je gat staat.
@@ -1124,6 +1242,9 @@
         verzamelAarde(dt);
         maakPot(dt);
         pakPotOp();
+        gebruikPot();
+        winkel();
+        eierenTerug(dt);
       }
 
       // De 'net ingedrukt'-toetsen gelden maar één frame.
@@ -1342,14 +1463,16 @@
       ctx.strokeStyle = '#111';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.roundRect(20, 20, 190, 60, 10);
+      ctx.roundRect(20, 20, 300, 60, 10);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = '#111';
       ctx.font = 'bold 16px sans-serif';
       ctx.fillText('Aarde: ' + aarde, 36, 46);
       ctx.fillText('Potten: ' + (potLijst.length + (potInHand ? 1 : 0)), 36, 70);
-      tekenPot(180, 70, 30);
+      ctx.fillText('Geld: ' + geld, 150, 46);
+      ctx.fillText('Loopbanden: ' + loopbanden, 150, 70);
+      tekenPot(292, 70, 30);
 
       if (potBezig) {
         const deel = potTijd / potDuur;
@@ -1376,8 +1499,8 @@
 
     // ---- De vier vakken met dieren uit de prehistorie ----
 
-    // Een nest met eieren erin.
-    function tekenNest(x, vloerY, aantal) {
+    // Een leeg nest. De eieren worden er los in getekend.
+    function tekenNest(x, vloerY) {
       ctx.fillStyle = '#8b6b3a';
       ctx.beginPath();
       ctx.ellipse(x, vloerY, 46, 16, 0, 0, Math.PI * 2);
@@ -1386,19 +1509,21 @@
       ctx.beginPath();
       ctx.ellipse(x, vloerY - 4, 34, 11, 0, 0, Math.PI * 2);
       ctx.fill();
-      // de eieren
-      for (let i = 0; i < aantal; i++) {
-        const ex = x + (i - (aantal - 1) / 2) * 24;
-        ctx.fillStyle = '#f6efdc';
-        ctx.beginPath();
-        ctx.ellipse(ex, vloerY - 12, 10, 14, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = 'rgba(160, 130, 90, 0.5)';
-        ctx.beginPath();
-        ctx.arc(ex - 3, vloerY - 14, 2, 0, Math.PI * 2);
-        ctx.arc(ex + 3, vloerY - 8, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    }
+
+    // Eén ei. Een zwaar ei is groter en donkerder dan een gewoon ei.
+    function tekenEi(x, y, soort) {
+      const groot = soort === 'zwaar';
+      ctx.fillStyle = groot ? '#e7d3a1' : '#f6efdc';
+      ctx.beginPath();
+      ctx.ellipse(x, y, groot ? 13 : 10, groot ? 18 : 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(140, 110, 70, 0.55)';
+      ctx.beginPath();
+      ctx.arc(x - 3, y - 4, 2, 0, Math.PI * 2);
+      ctx.arc(x + 3, y + 2, 2.5, 0, Math.PI * 2);
+      if (groot) ctx.arc(x - 1, y + 7, 2.5, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     // Een oog met een zwarte pupil, voor alle dieren hetzelfde.
@@ -1668,30 +1793,92 @@
       ctx.textAlign = 'left';
     }
 
-    // Alle vier de vakken tekenen, naast elkaar over het hele scherm.
+    // Alle vier de vakken tekenen, rechts van je tuin.
     function tekenVakken() {
-      const vakBreedte = canvas.width / vakken.length;
+      const gebied = canvas.width - tuinBreedte;
+      const vakBreedte = gebied / vakken.length;
 
       // elk vak heeft zijn eigen tintje gras
       vakken.forEach((vak, i) => {
         ctx.fillStyle = vak.kleur;
-        ctx.fillRect(i * vakBreedte, grondY, vakBreedte, canvas.height - grondY);
+        ctx.fillRect(tuinBreedte + i * vakBreedte, grondY, vakBreedte, canvas.height - grondY);
       });
 
       // hekken tussen de vakken
       for (let i = 1; i < vakken.length; i++) {
-        tekenHek(i * vakBreedte);
+        tekenHek(tuinBreedte + i * vakBreedte);
       }
 
       vakken.forEach((vak, i) => {
-        const midden = i * vakBreedte + vakBreedte / 2;
+        const midden = tuinBreedte + vakBreedte * (i + 0.5);
         tekenBordje(vak.naam, midden, grondY - 230);
-        // het nest ligt in het midden van het vak
-        tekenNest(midden, grondY + 26, vak.eieren);
         // het dier loopt heen en weer voor zijn nest langs
         const dierX = midden + Math.sin(tijd * 0.5 + i * 1.7) * (vakBreedte * 0.22);
         vak.teken(dierX, grondY + 4);
       });
+    }
+
+    // Een loopband in je tuin.
+    function tekenLoopband(x, y) {
+      ctx.fillStyle = '#2b2b2b';
+      ctx.beginPath();
+      ctx.roundRect(x, y - 10, 48, 12, 6);
+      ctx.fill();
+      ctx.strokeStyle = '#8d949e';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(x + 42, y - 10);
+      ctx.lineTo(x + 46, y - 34);
+      ctx.lineTo(x + 30, y - 34);
+      ctx.stroke();
+    }
+
+    // Je eigen tuin, helemaal links, met een hek en een bordje.
+    function tekenTuin() {
+      ctx.fillStyle = '#7fb069';
+      ctx.fillRect(0, grondY, tuinBreedte, canvas.height - grondY);
+      ctx.fillStyle = '#6a9857';
+      ctx.fillRect(0, grondY, tuinBreedte, 10);
+      tekenHek(tuinBreedte);
+      tekenBordje('Jouw tuin', tuinBreedte / 2, grondY - 230);
+
+      // de potten die je ingeleverd hebt
+      for (const pot of tuinPotten) {
+        tekenPot(pot.x, grondY + 44, pot.soort === 'zwaar' ? 32 : 26);
+      }
+      // en je loopbanden
+      for (let i = 0; i < loopbanden; i++) {
+        tekenLoopband(20 + i * 58, grondY + 84);
+      }
+    }
+
+    // Het winkelbordje, alleen te zien als je in je tuin staat.
+    function tekenWinkel() {
+      const x = 20;
+      const y = 100;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(x, y, 300, 104, 10);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#111';
+      ctx.font = 'bold 17px sans-serif';
+      ctx.fillText('Winkel', x + 16, y + 26);
+      ctx.font = '15px sans-serif';
+
+      ctx.fillStyle = geld >= loopbandPrijs() ? '#111' : '#999';
+      ctx.fillText('1: loopband  (' + loopbandPrijs() + ')  sneller lopen', x + 16, y + 54);
+
+      if (level === 1) {
+        ctx.fillStyle = geld >= zwaardereEierenPrijs ? '#111' : '#999';
+        ctx.fillText('2: zwaardere eieren  (' + zwaardereEierenPrijs + ')', x + 16, y + 80);
+      } else {
+        ctx.fillStyle = '#3f7d6b';
+        ctx.fillText('zwaardere eieren: gekocht!', x + 16, y + 80);
+      }
     }
 
     // Scene 3: de prehistorie.
@@ -1747,18 +1934,27 @@
       ctx.fillStyle = '#4a7a3c';
       ctx.fillRect(0, grondY, canvas.width, 10);
 
-      // de vier vakken met de dieren en hun eieren
-      tekenVakken();
+      // in level 2 staan de dieren in hun eigen vakken
+      if (level === 2) tekenVakken();
+
+      // je eigen tuin, helemaal links
+      tekenTuin();
 
       // varens en stenen
-      tekenVaren(90, grondY + 10, 40);
       tekenVaren(canvas.width - 90, grondY + 20, 52);
-      tekenVaren(canvas.width / 2 - 320, grondY + 30, 34);
+      tekenVaren(tuinBreedte + 60, grondY + 30, 34);
       ctx.fillStyle = '#8d949e';
       ctx.beginPath();
-      ctx.arc(240, grondY + 30, 26, Math.PI, 0);
       ctx.arc(canvas.width - 260, grondY + 44, 18, Math.PI, 0);
       ctx.fill();
+
+      // de nesten met de eieren die er nog in liggen
+      for (const nest of nesten) {
+        tekenNest(nest.x, grondY + 26);
+      }
+      for (const ei of eieren) {
+        if (!ei.weg) tekenEi(ei.x, grondY + 14, ei.soort);
+      }
 
       // een pterodactyl in de verte
       const vogelX = (tijd * 60) % (canvas.width + 200) - 100;
@@ -1775,6 +1971,7 @@
       // de potten die je gemaakt hebt staan op de grond
       for (const pot of potLijst) {
         tekenPot(pot.x, grondY + 30, 30);
+        if (pot.ei) tekenEi(pot.x, grondY + 8, pot.ei);
       }
 
       // jij, in je eentje in de prehistorie
@@ -1784,17 +1981,29 @@
       // draag je een pot? Dan houd je hem boven je hoofd.
       if (potInHand) {
         tekenPot(gekozen.x, gekozen.y - 118, 30);
+        if (potInHand.ei) tekenEi(gekozen.x, gekozen.y - 140, potInHand.ei);
       }
 
       ctx.fillStyle = '#1c1c1c';
-      ctx.font = 'bold 28px sans-serif';
+      ctx.font = 'bold 26px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('Welkom in de prehistorie, ' + gekozen.naam + '!', canvas.width / 2, 60);
+      ctx.fillText(level === 1 ? 'Level 1: de weide' : 'Level 2: de dinovallei',
+                   canvas.width / 2, 48);
       ctx.textAlign = 'left';
 
       tekenSpullen();
-      tekenTip('pijltjes: lopen en graven  ·  spatie: aarde  ·  p: pot maken  ·  k: pot oppakken',
-               canvas.width / 2, canvas.height - 30);
+      if (inDeTuin()) tekenWinkel();
+
+      // De tip verandert met wat je op dat moment aan het doen bent.
+      let tip = 'pijltjes: lopen en graven  ·  spatie: aarde  ·  p: pot maken  ·  k: pot pakken';
+      if (potInHand && potInHand.ei) {
+        tip = 'Loop naar je tuin links en druk op e om de pot met het ei in te leveren';
+      } else if (potInHand) {
+        tip = 'Loop naar een nest en druk op e om er een ei in te doen';
+      } else if (inDeTuin()) {
+        tip = 'Koop iets met 1 of 2, of loop naar rechts om eieren te halen';
+      }
+      tekenTip(tip, canvas.width / 2, canvas.height - 30);
     }
 
     function draw() {
@@ -1809,7 +2018,10 @@
     }
 
     // De poppetjes op hun plek zetten, ook als het venster van grootte verandert.
-    window.addEventListener('resize', zetPoppetjesNeer);
+    window.addEventListener('resize', () => {
+      zetPoppetjesNeer();
+      if (scene === 'prehistorie') maakWereld();
+    });
     zetPoppetjesNeer();
 
     let vorige = performance.now();
