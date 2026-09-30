@@ -23,37 +23,22 @@
     pasGrootteAan();
     window.addEventListener('resize', pasGrootteAan);
 
-    // Nine is de hoofdpersoon, Stan loopt met haar mee.
-    const nine = {
-      x: 0,
-      y: 0,
-    };
+    // Alle poppetjes in één lijst. Bij elk poppetje staat welke teken-functie
+    // erbij hoort, zodat we ze met één lus kunnen neerzetten en tekenen.
+    const poppetjes = [
+      { naam: 'Nine',    teken: tekenNine,    x: 0, y: 0 },
+      { naam: 'Stan',    teken: tekenStan,    x: 0, y: 0 },
+      { naam: 'Loek',    teken: tekenLoek,    x: 0, y: 0 },
+      { naam: 'Elise',   teken: tekenElise,   x: 0, y: 0 },
+      { naam: 'Fenne',   teken: tekenFenne,   x: 0, y: 0 },
+      { naam: 'Jankees', teken: tekenJankees, x: 0, y: 0 },
+    ];
 
-    const stan = {
-      x: 0,
-      y: 0,
-    };
+    // Wie je zelf bent. Je kiest dat in het vak bovenaan.
+    let gekozen = poppetjes[0];
 
-    const loek = {
-      x: 0,
-      y: 0,
-    };
-
-    const elise = {
-      x: 0,
-      y: 0,
-    };
-
-    const fenne = {
-      x: 0,
-      y: 0,
-    };
-
-    // Jankees is een volwassene, dus hij wordt wat groter getekend.
-    const jankees = {
-      x: 0,
-      y: 0,
-    };
+    // De vakjes om op te klikken, worden bij het tekenen bijgewerkt.
+    const knoppen = [];
 
     // Eén bloemetje op haar t-shirt.
     function tekenBloem(x, y, kleur) {
@@ -632,31 +617,99 @@
     }
 
     function update(dt) {
-      const grond = canvas.height / 2 + 60;
+      const grond = canvas.height / 2 + 90;
       const midden = canvas.width / 2;
       const afstand = 105;
-      nine.x = midden - afstand * 2.5;
-      nine.y = grond;
-      stan.x = midden - afstand * 1.5;
-      stan.y = grond;
-      loek.x = midden - afstand * 0.5;
-      loek.y = grond;
-      elise.x = midden + afstand * 0.5;
-      elise.y = grond;
-      fenne.x = midden + afstand * 1.5;
-      fenne.y = grond;
-      jankees.x = midden + afstand * 2.5;
-      jankees.y = grond;
+      // De poppetjes netjes naast elkaar, gelijk verdeeld rond het midden.
+      poppetjes.forEach((poppetje, i) => {
+        poppetje.x = midden + (i - (poppetjes.length - 1) / 2) * afstand;
+        poppetje.y = grond;
+      });
     }
+
+    // De naam onder een poppetje.
+    function tekenNaam(poppetje) {
+      ctx.fillStyle = '#111';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(poppetje.naam, poppetje.x, poppetje.y + 24);
+      ctx.textAlign = 'left';
+    }
+
+    // Een lichte vlek achter het poppetje dat jij gekozen hebt.
+    function tekenGekozenVlek(poppetje) {
+      ctx.fillStyle = '#fff3c4';
+      ctx.beginPath();
+      ctx.roundRect(poppetje.x - 50, poppetje.y - 165, 100, 200, 12);
+      ctx.fill();
+      ctx.strokeStyle = '#f0b429';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    // Het keuzevak bovenaan: voor elk poppetje een knopje met zijn naam.
+    function tekenKeuzevak() {
+      knoppen.length = 0;
+      const knopBreedte = 92;
+      const knopHoogte = 34;
+      const breedte = poppetjes.length * knopBreedte + 24;
+      const hoogte = 84;
+      const x = canvas.width / 2 - breedte / 2;
+      const y = 24;
+
+      ctx.fillStyle = '#f4f4f6';
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(x, y, breedte, hoogte, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#111';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Wie wil jij zijn?', canvas.width / 2, y + 24);
+
+      poppetjes.forEach((poppetje, i) => {
+        const kx = x + 12 + i * knopBreedte;
+        const ky = y + 36;
+        const isGekozen = poppetje === gekozen;
+
+        ctx.fillStyle = isGekozen ? '#f0b429' : '#ffffff';
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(kx + 4, ky, knopBreedte - 8, knopHoogte, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#111';
+        ctx.font = (isGekozen ? 'bold ' : '') + '14px sans-serif';
+        ctx.fillText(poppetje.naam, kx + knopBreedte / 2, ky + 22);
+
+        knoppen.push({ poppetje, x: kx + 4, y: ky, breedte: knopBreedte - 8, hoogte: knopHoogte });
+      });
+      ctx.textAlign = 'left';
+    }
+
+    // Klikken in het keuzevak kiest een ander poppetje.
+    canvas.addEventListener('click', (e) => {
+      for (const knop of knoppen) {
+        if (e.offsetX >= knop.x && e.offsetX <= knop.x + knop.breedte &&
+            e.offsetY >= knop.y && e.offsetY <= knop.y + knop.hoogte) {
+          gekozen = knop.poppetje;
+        }
+      }
+    });
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      tekenNine(nine.x, nine.y);
-      tekenStan(stan.x, stan.y);
-      tekenLoek(loek.x, loek.y);
-      tekenElise(elise.x, elise.y);
-      tekenFenne(fenne.x, fenne.y);
-      tekenJankees(jankees.x, jankees.y);
+      tekenGekozenVlek(gekozen);
+      for (const poppetje of poppetjes) {
+        poppetje.teken(poppetje.x, poppetje.y);
+        tekenNaam(poppetje);
+      }
+      tekenKeuzevak();
     }
 
     let vorige = performance.now();
