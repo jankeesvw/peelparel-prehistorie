@@ -34,6 +34,11 @@
       y: 0,
     };
 
+    const loek = {
+      x: 0,
+      y: 0,
+    };
+
     // Eén bloemetje op haar t-shirt.
     function tekenBloem(x, y, kleur) {
       ctx.fillStyle = kleur;
@@ -62,6 +67,27 @@
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 9px sans-serif';
       ctx.fillText('N', x + 8, y + 8);
+    }
+
+    // Een witte Asics: witte schoen met schuine strepen op de zijkant.
+    function tekenAsics(x, y) {
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(x, y, 22, 12, 5);
+      ctx.fill();
+      ctx.strokeStyle = '#cfd3d8';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(x + 0.5, y + 0.5, 21, 11, 5);
+      ctx.stroke();
+      ctx.strokeStyle = '#2f6fd0';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(x + 7 + i * 4, y + 9);
+        ctx.lineTo(x + 12 + i * 4, y + 2);
+        ctx.stroke();
+      }
     }
 
     // Nine tekenen: x is haar midden, voetY is de grond onder haar schoenen.
@@ -211,17 +237,98 @@
       ctx.stroke();
     }
 
+    // Loek tekenen: oranje shirt van het Nederlands elftal, blauw vestje erover,
+    // korte broek, kort blond haar en witte Asics.
+    function tekenLoek(x, voetY) {
+      // schoenen
+      tekenAsics(x - 20, voetY - 12);
+      tekenAsics(x - 2, voetY - 12);
+
+      // blote benen onder de korte broek
+      ctx.fillStyle = '#e8b892';
+      ctx.fillRect(x - 15, voetY - 30, 12, 18);
+      ctx.fillRect(x + 3, voetY - 30, 12, 18);
+
+      // witte korte broek
+      ctx.fillStyle = '#f2f2f2';
+      ctx.beginPath();
+      ctx.roundRect(x - 20, voetY - 46, 40, 18, 4);
+      ctx.fill();
+
+      // armen
+      ctx.fillStyle = '#e8b892';
+      ctx.fillRect(x - 27, voetY - 78, 8, 30);
+      ctx.fillRect(x + 19, voetY - 78, 8, 30);
+
+      // oranje shirt van het Nederlands elftal
+      ctx.fillStyle = '#ff7a00';
+      ctx.beginPath();
+      ctx.roundRect(x - 22, voetY - 82, 44, 40, 6);
+      ctx.fill();
+
+      // blauw vestje er open overheen: twee panden langs de zijkanten
+      ctx.fillStyle = '#1b4aa8';
+      ctx.beginPath();
+      ctx.roundRect(x - 23, voetY - 82, 15, 42, 5);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.roundRect(x + 8, voetY - 82, 15, 42, 5);
+      ctx.fill();
+      // mouwen van het vestje
+      ctx.fillRect(x - 28, voetY - 80, 8, 20);
+      ctx.fillRect(x + 20, voetY - 80, 8, 20);
+
+      // nek
+      ctx.fillStyle = '#e8b892';
+      ctx.fillRect(x - 5, voetY - 90, 10, 10);
+
+      // hoofd
+      ctx.beginPath();
+      ctx.arc(x, voetY - 102, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // kort blond haar
+      ctx.fillStyle = '#e8c56a';
+      ctx.beginPath();
+      ctx.arc(x, voetY - 104, 19, Math.PI, 0);
+      ctx.fill();
+      ctx.fillRect(x - 19, voetY - 106, 38, 7);
+
+      // ogen
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x - 6, voetY - 100, 4, 0, Math.PI * 2);
+      ctx.arc(x + 6, voetY - 100, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#5a3a1a';
+      ctx.beginPath();
+      ctx.arc(x - 6, voetY - 100, 2.2, 0, Math.PI * 2);
+      ctx.arc(x + 6, voetY - 100, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // mond
+      ctx.strokeStyle = '#a8543f';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, voetY - 93, 5, 0.2 * Math.PI, 0.8 * Math.PI);
+      ctx.stroke();
+    }
+
     function update(dt) {
-      nine.x = canvas.width / 2 - 70;
-      nine.y = canvas.height / 2 + 60;
-      stan.x = canvas.width / 2 + 70;
-      stan.y = canvas.height / 2 + 60;
+      const grond = canvas.height / 2 + 60;
+      nine.x = canvas.width / 2 - 120;
+      nine.y = grond;
+      stan.x = canvas.width / 2;
+      stan.y = grond;
+      loek.x = canvas.width / 2 + 120;
+      loek.y = grond;
     }
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       tekenNine(nine.x, nine.y);
       tekenStan(stan.x, stan.y);
+      tekenLoek(loek.x, loek.y);
     }
 
     let vorige = performance.now();
