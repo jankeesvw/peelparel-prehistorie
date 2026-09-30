@@ -40,8 +40,33 @@
     // De vakjes om op te klikken, worden bij het tekenen bijgewerkt.
     const knoppen = [];
 
-    // De hoogte waarop iedereen staat, wordt in update berekend.
+    // De hoogte waarop iedereen staat.
     let grondY = 0;
+
+    // In welk deel van het spel je bent: 'klas', 'reis' of 'prehistorie'.
+    let scene = 'klas';
+
+    // Hoe lang de reis door de tijd al duurt. Na reisDuur seconden ben je er.
+    let reisTijd = 0;
+    const reisDuur = 10;
+
+    // Welke toetsen op dit moment ingedrukt zijn.
+    const toetsen = {};
+    window.addEventListener('keydown', (e) => {
+      toetsen[e.key] = true;
+      if (e.key === ' ') e.preventDefault();
+    });
+    window.addEventListener('keyup', (e) => { toetsen[e.key] = false; });
+
+    // De sterren die tijdens de reis langs je heen schieten.
+    const sterren = [];
+    for (let i = 0; i < 160; i++) {
+      sterren.push({
+        hoek: Math.random() * Math.PI * 2,
+        afstand: Math.random() * 500,
+        snelheid: 80 + Math.random() * 260,
+      });
+    }
 
     // Hoe lang de game al loopt, voor dingen die knipperen of bewegen.
     let tijd = 0;
@@ -768,6 +793,16 @@
       ctx.stroke();
     }
 
+    // Waar de tijdmachine staat. Update en draw gebruiken allebei deze plek.
+    function tijdmachineX() {
+      return Math.min(canvas.width - 110, canvas.width / 2 + 330);
+    }
+
+    // Sta je dicht genoeg bij de tijdmachine om in te stappen?
+    function bijTijdmachine() {
+      return Math.abs(gekozen.x - tijdmachineX()) < 75;
+    }
+
     // De tijdmachine achter in het lokaal: een cabine met een glazen koepel,
     // knipperende lampjes en een grote hendel.
     function tekenTijdmachine(x, vloerY) {
@@ -931,6 +966,26 @@
       ctx.fillRect(x + 9, vloerY - 16, 5, 16);
     }
 
+    // De poppetjes op hun startplek in de klas zetten.
+    function zetPoppetjesNeer() {
+      grondY = canvas.height / 2 + 90;
+      const midden = canvas.width / 2;
+      const afstand = 105;
+      poppetjes.forEach((poppetje, i) => {
+        poppetje.x = midden + (i - (poppetjes.length - 1) / 2) * afstand;
+        poppetje.y = grondY;
+      });
+    }
+
+    // Lopen met de pijltjestoetsen. Je blijft altijd binnen het scherm.
+    function loopRond(dt) {
+      const snelheid = 220;
+      if (toetsen['ArrowLeft']) gekozen.x -= snelheid * dt;
+      if (toetsen['ArrowRight']) gekozen.x += snelheid * dt;
+      gekozen.x = Math.max(60, Math.min(canvas.width - 60, gekozen.x));
+      gekozen.y = grondY;
+    }
+
     function update(dt) {
       tijd += dt;
 
@@ -941,15 +996,27 @@
         gooiTijd = 0;
       }
 
-      const grond = canvas.height / 2 + 90;
-      grondY = grond;
-      const midden = canvas.width / 2;
-      const afstand = 105;
-      // De poppetjes netjes naast elkaar, gelijk verdeeld rond het midden.
-      poppetjes.forEach((poppetje, i) => {
-        poppetje.x = midden + (i - (poppetjes.length - 1) / 2) * afstand;
-        poppetje.y = grond;
-      });
+      if (scene === 'klas') {
+        loopRond(dt);
+        // Bij de tijdmachine kun je met de spatiebalk instappen.
+        if (bijTijdmachine() && toetsen[' ']) {
+          scene = 'reis';
+          reisTijd = 0;
+        }
+      } else if (scene === 'reis') {
+        reisTijd += dt;
+        // de sterren vliegen naar buiten toe
+        for (const ster of sterren) {
+          ster.afstand += ster.snelheid * dt;
+          if (ster.afstand > canvas.width) ster.afstand = 0;
+        }
+        if (reisTijd >= reisDuur) {
+          scene = 'prehistorie';
+          gekozen.x = canvas.width / 2;
+        }
+      } else {
+        loopRond(dt);
+      }
     }
 
     // De naam onder een poppetje.
@@ -1025,6 +1092,7 @@
 
     // Klikken in het keuzevak kiest een ander poppetje.
     canvas.addEventListener('click', (e) => {
+      if (scene !== 'klas') return;
       for (const knop of knoppen) {
         if (e.offsetX >= knop.x && e.offsetX <= knop.x + knop.breedte &&
             e.offsetY >= knop.y && e.offsetY <= knop.y + knop.hoogte) {
@@ -1033,15 +1101,29 @@
       }
     });
 
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Een tekstballon met een tip erin.
+    function tekenTip(tekst, x, y) {
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      const breedte = ctx.measureText(tekst).width + 28;
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(x - breedte / 2, y - 16, breedte, 32, 10);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#111';
+      ctx.fillText(tekst, x, y + 6);
+      ctx.textAlign = 'left';
+    }
 
-      // eerst het lokaal, dan de dingen die erin staan, dan pas de poppetjes
+    // Scene 1: het klaslokaal.
+    function tekenKlasScene() {
       tekenKlaslokaal(grondY);
       tekenTafeltje(canvas.width / 2 - 250, grondY - 8);
       tekenTafeltje(canvas.width / 2 - 130, grondY - 8);
-      // links de juf, rechts de tijdmachine, allebei netjes binnen het scherm
-      tekenTijdmachine(Math.min(canvas.width - 110, canvas.width / 2 + 330), grondY - 8);
+      tekenTijdmachine(tijdmachineX(), grondY - 8);
       tekenJuf(Math.max(120, canvas.width / 2 - 400), grondY - 8);
 
       tekenGekozenVlek(gekozen);
@@ -1050,7 +1132,161 @@
         tekenNaam(poppetje);
       }
       tekenKeuzevak();
+
+      if (bijTijdmachine()) {
+        tekenTip('Druk op de spatiebalk om in te stappen', tijdmachineX(), grondY - 200);
+      } else {
+        tekenTip('Loop met de pijltjes naar de tijdmachine', canvas.width / 2, canvas.height - 40);
+      }
     }
+
+    // Scene 2: tien seconden door de tijd reizen.
+    function tekenReisScene() {
+      ctx.fillStyle = '#05060f';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const midden = canvas.width / 2;
+      const middenY = canvas.height / 2;
+
+      // Elke ster is een streepje dat vanuit het midden naar buiten schiet.
+      for (const ster of sterren) {
+        const x = midden + Math.cos(ster.hoek) * ster.afstand;
+        const y = middenY + Math.sin(ster.hoek) * ster.afstand;
+        const staartX = midden + Math.cos(ster.hoek) * (ster.afstand - 28);
+        const staartY = middenY + Math.sin(ster.hoek) * (ster.afstand - 28);
+        ctx.strokeStyle = 'rgba(255, 255, 255, ' + Math.min(1, ster.afstand / 300) + ')';
+        ctx.lineWidth = Math.min(3, ster.afstand / 150);
+        ctx.beginPath();
+        ctx.moveTo(staartX, staartY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      }
+
+      // jij zweeft in het midden mee
+      const zweef = Math.sin(tijd * 2) * 12;
+      gekozen.teken(midden, middenY + 120 + zweef, true);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 34px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Op reis naar de prehistorie...', midden, 90);
+      ctx.font = 'bold 24px monospace';
+      ctx.fillStyle = '#3ef08a';
+      ctx.fillText('nog ' + Math.ceil(reisDuur - reisTijd) + ' seconden', midden, 130);
+      ctx.textAlign = 'left';
+    }
+
+    // Een varen: een paar bladeren die uit één punt omhoog waaieren.
+    function tekenVaren(x, vloerY, grootte) {
+      ctx.strokeStyle = '#2f6b3a';
+      ctx.lineCap = 'round';
+      ctx.lineWidth = 5;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(x, vloerY);
+        ctx.quadraticCurveTo(x + i * grootte * 0.5, vloerY - grootte,
+                             x + i * grootte, vloerY - grootte * 0.4);
+        ctx.stroke();
+      }
+    }
+
+    // Scene 3: de prehistorie.
+    function tekenPrehistorieScene() {
+      // lucht
+      const lucht = ctx.createLinearGradient(0, 0, 0, grondY);
+      lucht.addColorStop(0, '#f6b26b');
+      lucht.addColorStop(1, '#f9e0a8');
+      ctx.fillStyle = lucht;
+      ctx.fillRect(0, 0, canvas.width, grondY);
+
+      // zon
+      ctx.fillStyle = '#ffd23f';
+      ctx.beginPath();
+      ctx.arc(canvas.width - 160, 120, 46, 0, Math.PI * 2);
+      ctx.fill();
+
+      // heuvels achter de vulkaan
+      ctx.fillStyle = '#9c7b5a';
+      ctx.beginPath();
+      ctx.moveTo(0, grondY);
+      ctx.lineTo(180, grondY - 150);
+      ctx.lineTo(360, grondY);
+      ctx.closePath();
+      ctx.fill();
+
+      // vulkaan met rook
+      ctx.fillStyle = '#6e5442';
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 2 + 60, grondY);
+      ctx.lineTo(canvas.width / 2 + 230, grondY - 260);
+      ctx.lineTo(canvas.width / 2 + 400, grondY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#e2231a';
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 2 + 205, grondY - 255);
+      ctx.lineTo(canvas.width / 2 + 230, grondY - 190);
+      ctx.lineTo(canvas.width / 2 + 255, grondY - 255);
+      ctx.closePath();
+      ctx.fill();
+      for (let i = 0; i < 4; i++) {
+        ctx.fillStyle = 'rgba(180, 180, 180, 0.5)';
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2 + 230 + Math.sin(tijd + i) * 18,
+                grondY - 290 - i * 40, 18 + i * 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // grond
+      ctx.fillStyle = '#5c8f4a';
+      ctx.fillRect(0, grondY, canvas.width, canvas.height - grondY);
+      ctx.fillStyle = '#4a7a3c';
+      ctx.fillRect(0, grondY, canvas.width, 10);
+
+      // varens en stenen
+      tekenVaren(90, grondY + 10, 40);
+      tekenVaren(canvas.width - 90, grondY + 20, 52);
+      tekenVaren(canvas.width / 2 - 320, grondY + 30, 34);
+      ctx.fillStyle = '#8d949e';
+      ctx.beginPath();
+      ctx.arc(240, grondY + 30, 26, Math.PI, 0);
+      ctx.arc(canvas.width - 260, grondY + 44, 18, Math.PI, 0);
+      ctx.fill();
+
+      // een pterodactyl in de verte
+      const vogelX = (tijd * 60) % (canvas.width + 200) - 100;
+      ctx.strokeStyle = '#4a3423';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(vogelX - 18, 180);
+      ctx.quadraticCurveTo(vogelX, 180 + Math.sin(tijd * 6) * 12, vogelX + 18, 180);
+      ctx.stroke();
+
+      // jij, in je eentje in de prehistorie
+      gekozen.teken(gekozen.x, gekozen.y, true);
+      tekenNaam(gekozen);
+
+      ctx.fillStyle = '#1c1c1c';
+      ctx.font = 'bold 28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Welkom in de prehistorie, ' + gekozen.naam + '!', canvas.width / 2, 60);
+      ctx.textAlign = 'left';
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (scene === 'klas') {
+        tekenKlasScene();
+      } else if (scene === 'reis') {
+        tekenReisScene();
+      } else {
+        tekenPrehistorieScene();
+      }
+    }
+
+    // De poppetjes op hun plek zetten, ook als het venster van grootte verandert.
+    window.addEventListener('resize', zetPoppetjesNeer);
+    zetPoppetjesNeer();
 
     let vorige = performance.now();
     function loop(nu) {
