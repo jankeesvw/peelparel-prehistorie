@@ -21,6 +21,17 @@
       canvas.height = window.innerHeight;
     }
     pasGrootteAan();
+    canvas.addEventListener('click', (e) => {
+      startMuziek();
+
+      // Klik je op het knopje rechtsboven? Dan gaat de muziek aan of uit.
+      const plek = muteKnopPlek();
+      if (e.clientX > plek.x && e.clientX < plek.x + muteKnop.breedte &&
+          e.clientY > plek.y && e.clientY < plek.y + muteKnop.hoogte) {
+        zetMuziekAanUit();
+      }
+    });
+
     window.addEventListener('resize', () => {
       pasGrootteAan();
       maakLandschap();
@@ -492,6 +503,113 @@
       ctx.fill();
 
       ctx.restore();
+    }
+
+    // ---- Muziek -----------------------------------------------------------
+    // Een arcade-deuntje zonder geluidsbestand: de browser maakt de tonen zelf.
+    let audio = null;
+    let muziekAan = true;
+    let volgendeNoot = 0; // wanneer de volgende noot moet beginnen
+    let nootNummer = 0;
+
+    // De noten in hertz, 0 is een rustje.
+    const melodie = [523, 659, 784, 659, 523, 587, 659, 0, 440, 523, 659, 523, 494, 440, 392, 0];
+    const bas = [131, 0, 131, 0, 165, 0, 165, 0, 110, 0, 110, 0, 98, 0, 98, 0];
+    const nootDuur = 0.18; // seconden per noot
+
+    // De mute-knop rechtsboven in beeld.
+    const muteKnop = { breedte: 54, hoogte: 44 };
+
+    function muteKnopPlek() {
+      return { x: canvas.width - muteKnop.breedte - 24, y: 22 };
+    }
+
+    function tekenMuteKnop() {
+      const plek = muteKnopPlek();
+
+      // knopje met een randje
+      ctx.fillStyle = 'rgba(20, 30, 20, 0.45)';
+      ctx.fillRect(plek.x, plek.y, muteKnop.breedte, muteKnop.hoogte);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(plek.x, plek.y, muteKnop.breedte, muteKnop.hoogte);
+
+      const mx = plek.x + 18;
+      const my = plek.y + muteKnop.hoogte / 2;
+
+      // luidsprekertje
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(mx - 9, my - 5, 6, 10);
+      ctx.beginPath();
+      ctx.moveTo(mx - 3, my - 5);
+      ctx.lineTo(mx + 5, my - 12);
+      ctx.lineTo(mx + 5, my + 12);
+      ctx.lineTo(mx - 3, my + 5);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2.5;
+      if (muziekAan) {
+        // geluidsgolfjes
+        for (let i = 1; i <= 2; i++) {
+          ctx.beginPath();
+          ctx.arc(mx + 6, my, 5 + i * 5, -0.8, 0.8);
+          ctx.stroke();
+        }
+      } else {
+        // een kruisje: het geluid staat uit
+        ctx.beginPath();
+        ctx.moveTo(mx + 11, my - 7);
+        ctx.lineTo(mx + 23, my + 7);
+        ctx.moveTo(mx + 23, my - 7);
+        ctx.lineTo(mx + 11, my + 7);
+        ctx.stroke();
+      }
+    }
+
+    function zetMuziekAanUit() {
+      muziekAan = !muziekAan;
+      if (audio && muziekAan) volgendeNoot = audio.currentTime + 0.1;
+    }
+
+    // De browser mag pas geluid maken nadat je een toets hebt ingedrukt.
+    function startMuziek() {
+      if (!audio) {
+        audio = new (window.AudioContext || window.webkitAudioContext)();
+        volgendeNoot = audio.currentTime + 0.1;
+      }
+      if (audio.state === 'suspended') audio.resume();
+    }
+
+    function speelToon(frequentie, start, duur, soort, volume) {
+      if (!frequentie) return; // 0 is een rustje, dan klinkt er niets
+
+      const toon = audio.createOscillator();
+      const sterkte = audio.createGain();
+      toon.type = soort;
+      toon.frequency.value = frequentie;
+
+      // De toon begint hard en sterft langzaam weg.
+      sterkte.gain.setValueAtTime(volume, start);
+      sterkte.gain.exponentialRampToValueAtTime(0.001, start + duur);
+
+      toon.connect(sterkte);
+      sterkte.connect(audio.destination);
+      toon.start(start);
+      toon.stop(start + duur);
+    }
+
+    // We zetten de noten steeds een klein stukje vooruit klaar, dan loopt het strak.
+    function updateMuziek() {
+      if (!audio || !muziekAan) return;
+
+      while (volgendeNoot < audio.currentTime + 0.25) {
+        speelToon(melodie[nootNummer % melodie.length], volgendeNoot, nootDuur * 0.9, 'square', 0.06);
+        speelToon(bas[nootNummer % bas.length], volgendeNoot, nootDuur * 1.6, 'triangle', 0.09);
+        volgendeNoot += nootDuur;
+        nootNummer += 1;
+      }
     }
 
     // ---- Het landschap ----------------------------------------------------
@@ -1025,6 +1143,9 @@
 
     document.addEventListener('keydown', (e) => {
       toetsen[e.code] = true;
+      startMuziek(); // bij de eerste toets begint het muziekje
+
+      if (e.code === 'KeyM') zetMuziekAanUit();
 
       if (e.code === 'ArrowUp' || e.code === 'ArrowDown' ||
           e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
@@ -1294,6 +1415,8 @@
 
       ctx.font = 'bold 20px sans-serif';
       tekenTekstMetRand('Stokken: ' + stokken + '   Stenen: ' + stenen, 24, 178);
+
+      tekenMuteKnop();
     }
 
     // Witte tekst met een donkere rand eromheen, altijd goed leesbaar.
@@ -1791,6 +1914,7 @@
 
     function update(dt) {
       tijd += dt;
+      updateMuziek();
       if (meldingTijd > 0) meldingTijd -= dt;
 
       // Vanaf level 2 loopt de mammoet heen en weer, en per level gaat dat sneller.
