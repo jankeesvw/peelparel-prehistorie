@@ -66,11 +66,96 @@
       klaarOmTeGooien: false,
     };
 
+    // De wolf jaagt mee met de oermens en blijft dicht bij hem in de buurt.
+    const wolf = {
+      x: 0,
+      y: 0,
+      grootte: 70,
+      loopt: false,
+      vlucht: false,
+    };
+
     const worpDuur = 0.3;      // seconden dat de worp-beweging duurt
     const zwaartekracht = 320; // hoe snel een speer naar beneden valt
 
     // Alle speren die gegooid zijn staan in deze lijst.
     const speren = [];
+
+    function tekenWolf(w) {
+      const s = w.grootte / 70;
+      // Tijdens het lopen bewegen zijn poten heen en weer.
+      const zwaai = w.loopt ? Math.sin(tijd * 12) * 7 : 0;
+
+      ctx.save();
+      ctx.translate(w.x, w.y);
+      if (w.vlucht) ctx.scale(-1, 1); // hij kijkt de andere kant op
+      ctx.scale(s, s);
+
+      // poten
+      ctx.strokeStyle = '#5d5a54';
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-18, 8);
+      ctx.lineTo(-18 - zwaai, 26);
+      ctx.moveTo(-8, 8);
+      ctx.lineTo(-8 + zwaai, 26);
+      ctx.moveTo(14, 8);
+      ctx.lineTo(14 + zwaai, 26);
+      ctx.moveTo(24, 8);
+      ctx.lineTo(24 - zwaai, 26);
+      ctx.stroke();
+
+      // staart
+      ctx.strokeStyle = '#5d5a54';
+      ctx.lineWidth = 9;
+      ctx.beginPath();
+      ctx.moveTo(-28, -2);
+      ctx.quadraticCurveTo(-44, -6, -46, -20);
+      ctx.stroke();
+
+      // lijf
+      ctx.fillStyle = '#7e7b74';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 30, 16, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // oren
+      ctx.fillStyle = '#5d5a54';
+      for (const oorX of [26, 36]) {
+        ctx.beginPath();
+        ctx.moveTo(oorX, -18);
+        ctx.lineTo(oorX + 9, -22);
+        ctx.lineTo(oorX + 4, -6);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // kop
+      ctx.fillStyle = '#7e7b74';
+      ctx.beginPath();
+      ctx.arc(32, -10, 13, 0, Math.PI * 2);
+      ctx.fill();
+
+      // snuit
+      ctx.beginPath();
+      ctx.moveTo(38, -14);
+      ctx.lineTo(56, -6);
+      ctx.lineTo(38, -2);
+      ctx.closePath();
+      ctx.fill();
+
+      // neus en oog
+      ctx.fillStyle = '#2b2925';
+      ctx.beginPath();
+      ctx.arc(55, -6, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(36, -13, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
 
     // ---- Het landschap ----------------------------------------------------
 
@@ -638,6 +723,18 @@
       }
     }
 
+    function updateWolf(dt) {
+      // Hij loopt een stukje achter de oermens, op dezelfde grond.
+      const doelX = oermens.x - 95;
+      const verschil = doelX - wolf.x;
+
+      // Hoe verder hij achterloopt, hoe sneller hij bijkomt.
+      wolf.x += verschil * dt * 3;
+      wolf.loopt = Math.abs(verschil) > 4;
+      wolf.vlucht = oermens.vlucht;
+      wolf.y = oermens.y + 34 + (wolf.loopt ? Math.sin(tijd * 12) * 2 : 0);
+    }
+
     function updateOermens(dt) {
       const doelX = mammoet.x - 440; // op gooiafstand blijven staan
 
@@ -687,6 +784,7 @@
 
       updateBaby(dt);
       updateOermens(dt);
+      updateWolf(dt);
       updateSperen(dt);
 
       // Is de mammoet dood, dan valt hij langzaam om.
@@ -702,6 +800,7 @@
       if (baby.stemming === 'huilt') tekenTranen(baby);
       if (baby.stemming === 'boos') tekenBoosheid(baby);
       tekenOermens(oermens);
+      tekenWolf(wolf);
       for (const sp of speren) tekenSpeer(sp);
       tekenLevensbalk(mammoet);
       tekenUitleg();
@@ -709,6 +808,7 @@
     }
 
     maakLandschap();
+    wolf.x = oermens.x - 95;
 
     let vorige = performance.now();
     function loop(nu) {
