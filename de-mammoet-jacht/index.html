@@ -65,6 +65,7 @@
       snelheid: 90,   // pixels per seconde
       loopt: false,
       vlucht: false,  // true als de boze baby hem wegjaagt
+      omver: false,   // true als de sabeltandtijger hem gepakt heeft
       worp: 0,        // 0 = speer naast zich, 1 = arm helemaal vooruit
       worpTijd: 0,    // loopt af tijdens een worp
       klaarOmTeGooien: false,
@@ -78,6 +79,19 @@
       loopt: false,
       vlucht: false,
     };
+
+    // Vanaf level 4 komt er een sabeltandtijger van rechts aansluipen.
+    const tijger = {
+      x: 0,
+      y: 0,
+      grootte: 110,
+      actief: false,
+      leven: 2,      // twee speren raken is genoeg
+      vlucht: false, // true als hij geraakt is en wegrent
+      loopt: false,
+    };
+
+    let gameOver = false;
 
     const worpDuur = 0.3;      // seconden dat de worp-beweging duurt
     const zwaartekracht = 320; // hoe snel een speer naar beneden valt
@@ -156,6 +170,98 @@
       ctx.fill();
       ctx.beginPath();
       ctx.arc(36, -13, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function tekenTijger(t) {
+      const s = t.grootte / 110;
+      const zwaai = t.loopt ? Math.sin(tijd * 10) * 8 : 0;
+
+      ctx.save();
+      ctx.translate(t.x, t.y);
+      if (!t.vlucht) ctx.scale(-1, 1); // aansluipen doet hij naar links
+      ctx.scale(s, s);
+
+      // poten
+      ctx.strokeStyle = '#b5762f';
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-22, 10);
+      ctx.lineTo(-22 - zwaai, 32);
+      ctx.moveTo(-10, 10);
+      ctx.lineTo(-10 + zwaai, 32);
+      ctx.moveTo(16, 10);
+      ctx.lineTo(16 + zwaai, 32);
+      ctx.moveTo(28, 10);
+      ctx.lineTo(28 - zwaai, 32);
+      ctx.stroke();
+
+      // staart
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.moveTo(-34, -2);
+      ctx.quadraticCurveTo(-56, -8, -54, -28);
+      ctx.stroke();
+
+      // lijf
+      ctx.fillStyle = '#d99a3f';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 36, 20, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // strepen op het lijf
+      ctx.strokeStyle = '#6b4520';
+      ctx.lineWidth = 4;
+      for (const streepX of [-18, -6, 6, 18]) {
+        ctx.beginPath();
+        ctx.moveTo(streepX, -17);
+        ctx.lineTo(streepX + 5, -4);
+        ctx.stroke();
+      }
+
+      // oren
+      ctx.fillStyle = '#b5762f';
+      for (const oorX of [30, 42]) {
+        ctx.beginPath();
+        ctx.moveTo(oorX, -22);
+        ctx.lineTo(oorX + 9, -30);
+        ctx.lineTo(oorX + 6, -12);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // kop
+      ctx.fillStyle = '#d99a3f';
+      ctx.beginPath();
+      ctx.arc(38, -12, 17, 0, Math.PI * 2);
+      ctx.fill();
+
+      // snuit
+      ctx.beginPath();
+      ctx.ellipse(52, -6, 11, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // de twee sabeltanden
+      ctx.fillStyle = '#f7f1e0';
+      for (const tandX of [48, 56]) {
+        ctx.beginPath();
+        ctx.moveTo(tandX, 0);
+        ctx.lineTo(tandX + 5, 0);
+        ctx.lineTo(tandX + 2, 24);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // neus en oog
+      ctx.fillStyle = '#2b2925';
+      ctx.beginPath();
+      ctx.arc(60, -8, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(43, -16, 3, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.restore();
@@ -371,7 +477,15 @@
       baby.kleur = '#8b5e3c';
       baby.donker = '#6b4a2f';
 
+      gameOver = false;
+
+      tijger.actief = nummer >= 4;
+      tijger.x = canvas.width + 140;
+      tijger.leven = 2;
+      tijger.vlucht = false;
+
       oermens.x = 80;
+      oermens.omver = false;
       oermens.vlucht = false;
       oermens.klaarOmTeGooien = false;
       oermens.worp = 0;
@@ -383,7 +497,7 @@
 
     // De speler gooit de speer met de spatiebalk.
     function gooiSpeer() {
-      if (mammoet.leven <= 0) return;          // de mammoet is al dood
+      if (gameOver) return;                    // de jager ligt op de grond
       if (!oermens.klaarOmTeGooien) return;    // hij staat nog stil te sluipen
       if (oermens.worpTijd > 0) return;        // hij is nog met de vorige worp bezig
 
@@ -406,6 +520,10 @@
       }
       if (e.code === 'Enter' && levelGehaald) {
         startLevel(level + 1);
+      }
+      if (e.code === 'Enter' && gameOver) {
+        punten = 0; // helemaal opnieuw beginnen
+        startLevel(1);
       }
     });
 
@@ -497,6 +615,10 @@
 
       ctx.save();
       ctx.translate(o.x, o.y);
+      if (o.omver) {
+        ctx.translate(0, 34);
+        ctx.rotate(1.4); // hij ligt op de grond
+      }
       if (o.vlucht) ctx.scale(-1, 1); // hij kijkt de andere kant op
       ctx.scale(s, s);
 
@@ -667,7 +789,9 @@
       ctx.textAlign = 'center';
 
       let tekst = 'De jager sluipt naar de mammoet toe...';
-      if (levelGehaald) tekst = 'Level ' + level + ' gehaald! Druk op Enter voor level ' + (level + 1) + '.';
+      if (gameOver) tekst = 'De sabeltandtijger heeft de jager gepakt! Druk op Enter om opnieuw te beginnen.';
+      else if (levelGehaald) tekst = 'Level ' + level + ' gehaald! Druk op Enter voor level ' + (level + 1) + '.';
+      else if (tijger.actief && !tijger.vlucht) tekst = 'Pas op, een sabeltandtijger! Gooi je speer naar hem toe!';
       else if (baby.stemming === 'boos') tekst = 'Pas op! De baby is boos en jaagt de jager weg!';
       else if (mammoet.leven <= 0) tekst = 'De mammoet is gevangen! Je krijgt 5 punten.';
       else if (oermens.klaarOmTeGooien) tekst = 'Druk op de spatiebalk om de speer te gooien!';
@@ -695,6 +819,13 @@
       return Math.abs(sp.x - (mammoet.x + 10)) < 100 && Math.abs(sp.y - mammoet.y) < 60;
     }
 
+    // Zit dit punt op de sabeltandtijger?
+    function raaktTijger(sp) {
+      if (!tijger.actief || tijger.vlucht) return false;
+      // De speer komt van boven aanvliegen, dus we kijken royaal boven hem mee.
+      return Math.abs(sp.x - tijger.x) < 55 && sp.y > tijger.y - 100 && sp.y < tijger.y + 40;
+    }
+
     function updateSperen(dt) {
       const grondY = mammoet.y + 90;
 
@@ -706,7 +837,17 @@
         sp.y += sp.vy * dt;
         sp.vy += zwaartekracht * dt;
 
-        if (mammoet.leven > 0 && raaktMammoet(sp)) {
+        if (raaktTijger(sp)) {
+          sp.steekt = true;
+          sp.hoek = Math.atan2(sp.vy, sp.vx);
+          tijger.leven -= 1;
+
+          // Twee treffers en hij vlucht: dat is 3 punten.
+          if (tijger.leven <= 0) {
+            tijger.vlucht = true;
+            punten += 3;
+          }
+        } else if (mammoet.leven > 0 && raaktMammoet(sp)) {
           sp.steekt = true;
           sp.hoek = Math.atan2(sp.vy, sp.vx);
           mammoet.leven = Math.max(0, mammoet.leven - 20);
@@ -769,8 +910,38 @@
       wolf.y = oermens.y + 34 + (wolf.loopt ? Math.sin(tijd * 12) * 2 : 0);
     }
 
+    function updateTijger(dt) {
+      if (!tijger.actief) return;
+
+      tijger.y = oermens.y + 28;
+
+      if (tijger.vlucht) {
+        // Geraakt: hij rent er weer vandoor naar rechts.
+        tijger.loopt = true;
+        tijger.x += 340 * dt;
+        return;
+      }
+
+      const doelX = oermens.x + 120; // zo dicht durft hij te komen
+      if (tijger.x > doelX) {
+        tijger.loopt = true;
+        tijger.x -= 110 * dt; // hij sluipt langzaam dichterbij
+      } else {
+        // Hij heeft de jager bereikt.
+        tijger.loopt = false;
+        gameOver = true;
+        oermens.omver = true;
+      }
+    }
+
     function updateOermens(dt) {
       const doelX = mammoet.x - 440; // op gooiafstand blijven staan
+
+      if (gameOver) {
+        oermens.loopt = false;
+        oermens.klaarOmTeGooien = false;
+        return;
+      }
 
       if (oermens.vlucht) {
         // Wegrennen naar links, de boze baby achter zich latend.
@@ -822,6 +993,7 @@
       updateBaby(dt);
       updateOermens(dt);
       updateWolf(dt);
+      updateTijger(dt);
       updateSperen(dt);
 
       // Is de mammoet dood, dan valt hij langzaam om.
@@ -830,7 +1002,7 @@
       }
 
       // De jager is het scherm uit gejaagd: het level is klaar.
-      if (oermens.vlucht && oermens.x <= -120) {
+      if (!gameOver && oermens.vlucht && oermens.x <= -120) {
         levelGehaald = true;
       }
     }
@@ -843,6 +1015,7 @@
       if (baby.stemming === 'boos') tekenBoosheid(baby);
       tekenOermens(oermens);
       tekenWolf(wolf);
+      if (tijger.actief) tekenTijger(tijger);
       for (const sp of speren) tekenSpeer(sp);
       tekenLevensbalk(mammoet);
       tekenUitleg();
