@@ -58,6 +58,23 @@
     });
     window.addEventListener('keyup', (e) => { toetsen[e.key] = false; });
 
+    // Graven in de prehistorie: hoe diep jij staat en waar het gat zit.
+    let diepte = 0;
+    let gatX = 0;
+    let gatDiepte = 0;
+    const maxDiepte = 130;
+
+    // Wat je verzameld en gemaakt hebt.
+    let aarde = 0;
+    let potten = 0;
+    let verzamelTijd = 0;
+
+    // Een pot maken duurt potDuur seconden en kost potKosten aarde.
+    let potBezig = false;
+    let potTijd = 0;
+    const potDuur = 3;
+    const potKosten = 3;
+
     // De sterren die tijdens de reis langs je heen schieten.
     const sterren = [];
     for (let i = 0; i < 160; i++) {
@@ -986,6 +1003,56 @@
       gekozen.y = grondY;
     }
 
+    // Graven met pijltje omlaag, omhoog klimmen met pijltje omhoog.
+    function graven(dt) {
+      const graafSnelheid = 70;
+
+      if (toetsen['ArrowDown'] && diepte < maxDiepte) {
+        // Sta je nog bovenop de grond? Dan begin je hier een nieuw gat.
+        if (diepte === 0) {
+          gatX = gekozen.x;
+          gatDiepte = 0;
+        }
+        diepte = Math.min(maxDiepte, diepte + graafSnelheid * dt);
+        gatDiepte = Math.max(gatDiepte, diepte);
+      }
+
+      if (toetsen['ArrowUp'] && diepte > 0) {
+        diepte = Math.max(0, diepte - graafSnelheid * dt);
+      }
+
+      gekozen.y = grondY + diepte;
+    }
+
+    // In het gat verzamel je met de spatiebalk aarde, elke halve seconde een schep.
+    function verzamelAarde(dt) {
+      if (toetsen[' '] && diepte > 5) {
+        verzamelTijd += dt;
+        if (verzamelTijd >= 0.5) {
+          aarde += 1;
+          verzamelTijd = 0;
+        }
+      } else {
+        verzamelTijd = 0;
+      }
+    }
+
+    // Met de p maak je een pot van je aarde. Dat duurt drie seconden.
+    function maakPot(dt) {
+      if (toetsen['p'] && !potBezig && aarde >= potKosten) {
+        potBezig = true;
+        potTijd = 0;
+      }
+      if (potBezig) {
+        potTijd += dt;
+        if (potTijd >= potDuur) {
+          aarde -= potKosten;
+          potten += 1;
+          potBezig = false;
+        }
+      }
+    }
+
     function update(dt) {
       tijd += dt;
 
@@ -1015,7 +1082,11 @@
           gekozen.x = canvas.width / 2;
         }
       } else {
-        loopRond(dt);
+        // In de prehistorie kun je alleen lopen als je niet in je gat staat.
+        if (diepte === 0) loopRond(dt);
+        graven(dt);
+        verzamelAarde(dt);
+        maakPot(dt);
       }
     }
 
@@ -1190,6 +1261,78 @@
       }
     }
 
+    // Een kleipot.
+    function tekenPot(x, y, grootte) {
+      ctx.fillStyle = '#b5623a';
+      ctx.beginPath();
+      ctx.ellipse(x, y - grootte * 0.5, grootte * 0.55, grootte * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.roundRect(x - grootte * 0.35, y - grootte * 1.15, grootte * 0.7, grootte * 0.45, 3);
+      ctx.fill();
+      ctx.strokeStyle = '#8d4426';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(x, y - grootte * 1.1, grootte * 0.36, grootte * 0.14, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Het gat dat je gegraven hebt.
+    function tekenGat() {
+      if (gatDiepte <= 0) return;
+      ctx.fillStyle = '#6b4a2a';
+      ctx.beginPath();
+      ctx.roundRect(gatX - 48, grondY - 4, 96, gatDiepte + 40, 8);
+      ctx.fill();
+      // donkere bodem, zodat het gat diep lijkt
+      ctx.fillStyle = '#4a3423';
+      ctx.beginPath();
+      ctx.roundRect(gatX - 48, grondY + gatDiepte + 14, 96, 22, 8);
+      ctx.fill();
+      // hoopje aarde naast het gat
+      ctx.fillStyle = '#7a5532';
+      ctx.beginPath();
+      ctx.arc(gatX + 66, grondY + 6, 18, Math.PI, 0);
+      ctx.fill();
+    }
+
+    // Het kastje met je aarde en je potten, plus de balk als je aan het pottenbakken bent.
+    function tekenSpullen() {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(20, 20, 190, 60, 10);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#111';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText('Aarde: ' + aarde, 36, 46);
+      ctx.fillText('Potten: ' + potten, 36, 70);
+      tekenPot(180, 70, 30);
+
+      if (potBezig) {
+        const deel = potTijd / potDuur;
+        const x = gekozen.x - 60;
+        const y = gekozen.y - 170;
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#111';
+        ctx.beginPath();
+        ctx.roundRect(x, y, 120, 26, 8);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#b5623a';
+        ctx.beginPath();
+        ctx.roundRect(x + 3, y + 3, 114 * deel, 20, 6);
+        ctx.fill();
+        ctx.fillStyle = '#111';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('pot maken...', x + 60, y + 18);
+        ctx.textAlign = 'left';
+      }
+    }
+
     // Scene 3: de prehistorie.
     function tekenPrehistorieScene() {
       // lucht
@@ -1262,6 +1405,14 @@
       ctx.quadraticCurveTo(vogelX, 180 + Math.sin(tijd * 6) * 12, vogelX + 18, 180);
       ctx.stroke();
 
+      // het gat waar je in staat
+      tekenGat();
+
+      // de potten die je al gemaakt hebt staan op een rijtje
+      for (let i = 0; i < potten; i++) {
+        tekenPot(120 + i * 34, grondY + 30, 30);
+      }
+
       // jij, in je eentje in de prehistorie
       gekozen.teken(gekozen.x, gekozen.y, true);
       tekenNaam(gekozen);
@@ -1271,6 +1422,10 @@
       ctx.textAlign = 'center';
       ctx.fillText('Welkom in de prehistorie, ' + gekozen.naam + '!', canvas.width / 2, 60);
       ctx.textAlign = 'left';
+
+      tekenSpullen();
+      tekenTip('pijltjes: lopen en graven  ·  spatie: aarde scheppen  ·  p: pot maken',
+               canvas.width / 2, canvas.height - 30);
     }
 
     function draw() {
