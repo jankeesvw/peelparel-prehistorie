@@ -28,6 +28,9 @@
 
     let tijd = 0;   // seconden sinds de start, handig voor animaties
     let punten = 0; // je krijgt 5 punten als je de mammoet raakt tot hij neergaat
+    let level = 1;
+    let levelGehaald = false; // true als je op Enter mag drukken voor het volgende level
+    let levelStart = 0;       // op welk moment het level begon
 
     // De mammoet staat in het midden van het scherm.
     const mammoet = {
@@ -38,6 +41,7 @@
       kantel: 0,          // 0 = staat overeind, 1 = helemaal omgevallen
       kleur: '#8b5e3c',   // kleur van het lijf
       donker: '#6b4a2f',  // kleur van de benen, het oor en de staart
+      zwerf: 0,           // hoe ver hij van het midden vandaan is gelopen
     };
 
     // De baby-mammoet loopt naast zijn moeder. Zelfde vorm, maar kleiner.
@@ -352,6 +356,31 @@
       }
     }
 
+    // Een level starten: alles terug naar het begin, maar je punten blijven staan.
+    function startLevel(nummer) {
+      level = nummer;
+      levelGehaald = false;
+      levelStart = tijd;
+
+      mammoet.leven = 100;
+      mammoet.kantel = 0;
+      mammoet.zwerf = 0;
+
+      baby.stemming = 'blij';
+      baby.rouwTijd = 0;
+      baby.kleur = '#8b5e3c';
+      baby.donker = '#6b4a2f';
+
+      oermens.x = 80;
+      oermens.vlucht = false;
+      oermens.klaarOmTeGooien = false;
+      oermens.worp = 0;
+      oermens.worpTijd = 0;
+
+      wolf.x = oermens.x - 95;
+      speren.length = 0;
+    }
+
     // De speler gooit de speer met de spatiebalk.
     function gooiSpeer() {
       if (mammoet.leven <= 0) return;          // de mammoet is al dood
@@ -374,6 +403,9 @@
       if (e.code === 'Space') {
         e.preventDefault(); // anders scrollt de pagina
         gooiSpeer();
+      }
+      if (e.code === 'Enter' && levelGehaald) {
+        startLevel(level + 1);
       }
     });
 
@@ -617,6 +649,7 @@
     function tekenPunten() {
       ctx.font = 'bold 26px sans-serif';
       tekenTekstMetRand('Punten: ' + punten, 24, 44);
+      tekenTekstMetRand('Level ' + level, 24, 78);
     }
 
     // Witte tekst met een donkere rand eromheen, altijd goed leesbaar.
@@ -634,7 +667,8 @@
       ctx.textAlign = 'center';
 
       let tekst = 'De jager sluipt naar de mammoet toe...';
-      if (baby.stemming === 'boos') tekst = 'Pas op! De baby is boos en jaagt de jager weg!';
+      if (levelGehaald) tekst = 'Level ' + level + ' gehaald! Druk op Enter voor level ' + (level + 1) + '.';
+      else if (baby.stemming === 'boos') tekst = 'Pas op! De baby is boos en jaagt de jager weg!';
       else if (mammoet.leven <= 0) tekst = 'De mammoet is gevangen! Je krijgt 5 punten.';
       else if (oermens.klaarOmTeGooien) tekst = 'Druk op de spatiebalk om de speer te gooien!';
 
@@ -777,8 +811,11 @@
     function update(dt) {
       tijd += dt;
 
-      // De mammoet blijft midden op het scherm staan.
-      mammoet.x = canvas.width / 2;
+      // Vanaf level 2 loopt de mammoet heen en weer, en per level gaat dat sneller.
+      if (mammoet.leven > 0 && level >= 2) {
+        mammoet.zwerf = Math.sin((tijd - levelStart) * (0.3 + level * 0.15)) * 180;
+      }
+      mammoet.x = canvas.width / 2 + mammoet.zwerf;
       mammoet.y = canvas.height / 2;
       oermens.y = mammoet.y + 30;
 
@@ -790,6 +827,11 @@
       // Is de mammoet dood, dan valt hij langzaam om.
       if (mammoet.leven <= 0 && mammoet.kantel < 1) {
         mammoet.kantel = Math.min(1, mammoet.kantel + dt);
+      }
+
+      // De jager is het scherm uit gejaagd: het level is klaar.
+      if (oermens.vlucht && oermens.x <= -120) {
+        levelGehaald = true;
       }
     }
 
