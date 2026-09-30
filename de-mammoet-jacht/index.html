@@ -98,6 +98,19 @@
     };
 
     let gameOver = false;
+
+    // Vanaf level 7 komt er een ruiter op een grote wolf, die speren naar je gooit.
+    const rijwolf = { x: 0, y: 0, grootte: 150, loopt: false, kijktLinks: true };
+    const ruiter = {
+      x: 0,
+      y: 0,
+      actief: false,
+      leven: 3,      // drie speren en hij geeft op
+      vlucht: false,
+      gooiTimer: 0,  // seconden tot zijn volgende worp
+    };
+
+    const vijandSperen = []; // de speren die hij naar jou gooit
     let levens = 3;            // raakt de tijger je, dan gaat er een leven af
     let melding = '';          // korte tekst die even in beeld blijft
     let meldingTijd = 0;
@@ -142,7 +155,7 @@
 
       ctx.save();
       ctx.translate(w.x, w.y);
-      if (w.vlucht) ctx.scale(-1, 1); // hij kijkt de andere kant op
+      if (w.kijktLinks) ctx.scale(-1, 1); // hij kijkt de andere kant op
       ctx.scale(s, s);
 
       // poten
@@ -249,6 +262,80 @@
         ctx.arc(b.x + stip.x, b.y + stip.y, 4, 0, Math.PI * 2);
         ctx.fill();
       }
+    }
+
+    // De ruiter zit op de rug van de grote wolf, met zijn speer naar voren.
+    function tekenRuiter(r) {
+      ctx.save();
+      ctx.translate(r.x, r.y);
+      if (r.vlucht) ctx.scale(-1, 1); // vluchten doet hij de andere kant op
+      ctx.translate(-22, 0); // hij zit voorop, richting de nek van de wolf
+
+      // zadel met franje
+      ctx.fillStyle = '#8b5e3c';
+      ctx.fillRect(-30, -44, 60, 18);
+      ctx.fillStyle = '#5a4630';
+      for (let i = -26; i <= 26; i += 9) {
+        ctx.fillRect(i, -28, 5, 9);
+      }
+
+      // benen langs het zadel
+      ctx.strokeStyle = '#3b2b1a';
+      ctx.lineWidth = 9;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-6, -50);
+      ctx.lineTo(-26, -20);
+      ctx.stroke();
+
+      // lijf
+      ctx.fillStyle = '#c98c5a';
+      ctx.beginPath();
+      ctx.ellipse(0, -62, 14, 24, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // berenvel
+      ctx.fillStyle = '#5a4630';
+      ctx.fillRect(-15, -54, 30, 14);
+
+      // hoofd met haar
+      ctx.fillStyle = '#c98c5a';
+      ctx.beginPath();
+      ctx.arc(-2, -96, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#2b2018';
+      ctx.beginPath();
+      ctx.arc(-2, -100, 14, Math.PI, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#111';
+      ctx.beginPath();
+      ctx.arc(-10, -96, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // arm naar voren met een speer erin
+      ctx.strokeStyle = '#c98c5a';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(-4, -70);
+      ctx.lineTo(-24, -76);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#7a5230';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(10, -66);
+      ctx.lineTo(-56, -84);
+      ctx.stroke();
+
+      ctx.fillStyle = '#9aa0a6';
+      ctx.beginPath();
+      ctx.moveTo(-56, -84);
+      ctx.lineTo(-44, -90);
+      ctx.lineTo(-45, -77);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
     }
 
     function tekenTijger(t) {
@@ -812,6 +899,13 @@
       tijger.sprong = 0;
       tijger.raakte = false;
 
+      ruiter.actief = nummer >= 7;
+      ruiter.x = canvas.width + 200;
+      ruiter.leven = 3;
+      ruiter.vlucht = false;
+      ruiter.gooiTimer = 2.5;
+      vijandSperen.length = 0;
+
       uitbarsting = nummer >= 6;
       vuurstenen.length = 0;
       steenTimer = 0.8;
@@ -1146,6 +1240,7 @@
       if (meldingTijd > 0) tekst = melding;
       else if (gameOver) tekst = 'Al je levens zijn op! Druk op Enter om opnieuw te beginnen.';
       else if (levelGehaald) tekst = 'Level ' + level + ' gehaald! Druk op Enter voor level ' + (level + 1) + '.';
+      else if (ruiter.actief && !ruiter.vlucht) tekst = 'Een ruiter op een wolf! Raak hem drie keer met je speer.';
       else if (uitbarsting && vuurstenen.length > 0) tekst = 'De vulkaan barst uit! Pas op voor de vuurstenen!';
       else if (tijger.actief && !tijger.vlucht && tijger.fase === 'springt') tekst = 'De sabeltandtijger springt! Duik weg met de pijltjes!';
       else if (tijger.actief && !tijger.vlucht && tijger.fase === 'herstelt' && tijger.raakte) tekst = 'Au! Je bent een leven kwijt.';
@@ -1188,6 +1283,12 @@
       return Math.abs(sp.x - tijger.x) < 75 && sp.y > tijger.y - 110 && sp.y < tijger.y + 50;
     }
 
+    // Zit dit punt op de ruiter of zijn wolf?
+    function raaktRuiter(sp) {
+      if (!ruiter.actief || ruiter.vlucht) return false;
+      return Math.abs(sp.x - ruiter.x) < 60 && sp.y > ruiter.y - 120 && sp.y < ruiter.y + 40;
+    }
+
     function updateSperen(dt) {
       const grondY = mammoet.y + 90;
 
@@ -1199,7 +1300,18 @@
         sp.y += sp.vy * dt;
         sp.vy += zwaartekracht * dt;
 
-        if (raaktTijger(sp)) {
+        if (raaktRuiter(sp)) {
+          sp.steekt = true;
+          sp.hoek = Math.atan2(sp.vy, sp.vx);
+          ruiter.leven -= 1;
+
+          // Na drie treffers geeft hij op: dat levert 5 punten op.
+          if (ruiter.leven <= 0) {
+            ruiter.vlucht = true;
+            punten += 5;
+            meld('De ruiter vlucht! 5 punten erbij.');
+          }
+        } else if (raaktTijger(sp)) {
           sp.steekt = true;
           sp.hoek = Math.atan2(sp.vy, sp.vx);
           tijger.leven -= 1;
@@ -1269,12 +1381,82 @@
       wolf.x += verschil * dt * 3;
       wolf.loopt = Math.abs(verschil) > 4;
       wolf.vlucht = oermens.vlucht;
+      wolf.kijktLinks = oermens.vlucht; // meevluchten doet hij naar links
       wolf.y = oermens.y + 34 + (wolf.loopt ? Math.sin(tijd * 12) * 2 : 0);
     }
 
     // Op welke hoogte de tijger staat als de jager op hoogte jagerY is.
     function tijgerStaY(jagerY) {
       return jagerY + 60 - 32 * (tijger.grootte / 110);
+    }
+
+    function updateRuiter(dt) {
+      if (!ruiter.actief) return;
+
+      // De grote wolf staat met zijn poten op dezelfde grond als de jager.
+      const staY = oermens.y + 60 - 26 * (rijwolf.grootte / 70);
+
+      if (ruiter.vlucht) {
+        ruiter.x += 320 * dt;
+        ruiter.y = staY;
+      } else if (gameOver) {
+        rijwolf.loopt = false;
+      } else {
+        ruiter.y = staY;
+
+        // Hij houdt afstand: te ver weg rijdt hij dichterbij, te dichtbij wijkt hij.
+        const doelX = oermens.x + 430;
+        if (ruiter.x > doelX + 10) {
+          ruiter.x -= 230 * dt;
+          rijwolf.loopt = true;
+        } else if (ruiter.x < doelX - 10) {
+          ruiter.x += 230 * dt;
+          rijwolf.loopt = true;
+        } else {
+          rijwolf.loopt = false;
+        }
+
+        // En ondertussen gooit hij speren naar jou.
+        ruiter.gooiTimer -= dt;
+        if (ruiter.gooiTimer <= 0) {
+          ruiter.gooiTimer = 2.2;
+          vijandSperen.push({
+            x: ruiter.x - 50,
+            y: ruiter.y - 80,
+            vx: -540,
+            vy: -150,
+            steekt: false,
+          });
+        }
+      }
+
+      // De wolf van de ruiter volgt hem natuurlijk precies.
+      rijwolf.x = ruiter.x;
+      rijwolf.y = ruiter.y;
+      rijwolf.kijktLinks = !ruiter.vlucht;
+    }
+
+    // De speren van de ruiter vliegen naar links, naar de jager toe.
+    function updateVijandSperen(dt) {
+      for (let i = vijandSperen.length - 1; i >= 0; i--) {
+        const sp = vijandSperen[i];
+        sp.x += sp.vx * dt;
+        sp.y += sp.vy * dt;
+        sp.vy += zwaartekracht * dt;
+
+        if (!gameOver && Math.abs(sp.x - oermens.x) < 40 && Math.abs(sp.y - (oermens.y - 20)) < 60) {
+          levens -= 1;
+          meld('Au! De ruiter raakte je.');
+          vijandSperen.splice(i, 1);
+          if (levens <= 0) {
+            gameOver = true;
+            oermens.omver = true;
+          }
+          continue;
+        }
+
+        if (sp.y > canvas.height || sp.x < -80) vijandSperen.splice(i, 1);
+      }
     }
 
     function updateTijger(dt) {
@@ -1519,6 +1701,8 @@
       updateOermens(dt);
       updateWolf(dt);
       updateTijger(dt);
+      updateRuiter(dt);
+      updateVijandSperen(dt);
       updateSperen(dt);
 
       // Is de mammoet dood, dan valt hij langzaam om.
@@ -1542,6 +1726,11 @@
       tekenOermens(oermens);
       tekenWolf(wolf);
       if (tijger.actief) tekenTijger(tijger);
+      if (ruiter.actief) {
+        tekenWolf(rijwolf);
+        tekenRuiter(ruiter);
+      }
+      for (const sp of vijandSperen) tekenSpeer(sp);
       for (const sp of speren) tekenSpeer(sp);
       tekenLevensbalk(mammoet);
       for (const st of vuurstenen) tekenVuursteen(st);
