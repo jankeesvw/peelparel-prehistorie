@@ -358,6 +358,8 @@
     const keien = [];
     const bramen = [];
     const vijver = { x: 0, y: 0, breedte: 150 };
+    const grot = { x: 0, breedte: 150 };
+    const kampvuur = { x: 0, y: 0 };
 
     // Het bos wordt één keer uitgedeeld over de breedte van het scherm.
     function maakLandschap() {
@@ -379,6 +381,12 @@
         keien.push({ x: Math.random() * canvas.width, diepte: Math.random(), breedte: 16 + Math.random() * 28 });
       }
 
+      // De grot zit rechts in de rotsen, met een kampvuur ervoor.
+      grot.x = canvas.width * 0.9;
+      grot.breedte = Math.min(170, canvas.width * 0.12);
+      kampvuur.x = grot.x - grot.breedte * 0.9;
+      kampvuur.y = horizonY() + 60;
+
       // De visvijver ligt rechts op de voorgrond.
       const grondHoogte = canvas.height - horizonY();
       vijver.x = canvas.width * 0.74;
@@ -397,6 +405,91 @@
           rijp: true,      // false als je de bramen net hebt opgegeten
           wachtTijd: 0,    // seconden tot er weer nieuwe bramen zijn
         });
+      }
+    }
+
+    function tekenGrot(hy) {
+      const b = grot.breedte;
+
+      // de rotsheuvel waar de grot in zit
+      ctx.fillStyle = '#75706a';
+      ctx.beginPath();
+      ctx.ellipse(grot.x, hy + 10, b, b * 0.95, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
+
+      // een lichtere kant, dan lijkt het of de zon erop schijnt
+      ctx.fillStyle = '#8a857e';
+      ctx.beginPath();
+      ctx.ellipse(grot.x - b * 0.3, hy + 10, b * 0.55, b * 0.8, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
+
+      // de donkere opening
+      ctx.fillStyle = '#241d1c';
+      ctx.beginPath();
+      ctx.ellipse(grot.x, hy + 10, b * 0.36, b * 0.62, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
+
+      // een paar stenen naast de ingang
+      ctx.fillStyle = '#9b9384';
+      for (const steen of [{ x: -b * 0.6, r: 16 }, { x: b * 0.55, r: 20 }]) {
+        ctx.beginPath();
+        ctx.ellipse(grot.x + steen.x, hy + 12, steen.r, steen.r * 0.7, 0, Math.PI, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function tekenKampvuur(v) {
+      // gloed op de grond
+      ctx.fillStyle = 'rgba(240, 150, 50, 0.25)';
+      ctx.beginPath();
+      ctx.ellipse(v.x, v.y, 60, 26, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // kring van stenen
+      ctx.fillStyle = '#9b9384';
+      for (let i = 0; i < 7; i++) {
+        const hoek = (i / 7) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.ellipse(v.x + Math.cos(hoek) * 42, v.y + Math.sin(hoek) * 18, 10, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // twee houtblokken over elkaar
+      ctx.strokeStyle = '#6b4a2f';
+      ctx.lineWidth = 9;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(v.x - 26, v.y + 6);
+      ctx.lineTo(v.x + 26, v.y - 4);
+      ctx.moveTo(v.x - 24, v.y - 4);
+      ctx.lineTo(v.x + 24, v.y + 6);
+      ctx.stroke();
+
+      // vlammen: drie tongen die met de tijd flakkeren
+      const vlammen = [
+        { x: -14, kleur: '#e2521f', hoog: 46 },
+        { x: 12, kleur: '#f08a1e', hoog: 40 },
+        { x: 0, kleur: '#ffd35e', hoog: 60 },
+      ];
+      for (let i = 0; i < vlammen.length; i++) {
+        const vl = vlammen[i];
+        const flakker = Math.sin(tijd * 9 + i * 2) * 7;
+        ctx.fillStyle = vl.kleur;
+        ctx.beginPath();
+        ctx.moveTo(v.x + vl.x - 13, v.y);
+        ctx.quadraticCurveTo(v.x + vl.x - 6, v.y - vl.hoog * 0.6, v.x + vl.x + flakker, v.y - vl.hoog);
+        ctx.quadraticCurveTo(v.x + vl.x + 8, v.y - vl.hoog * 0.6, v.x + vl.x + 13, v.y);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // rook boven het vuur
+      ctx.fillStyle = 'rgba(200, 200, 195, 0.35)';
+      for (let i = 0; i < 3; i++) {
+        const stijg = (tijd * 0.5 + i * 0.33) % 1;
+        ctx.beginPath();
+        ctx.arc(v.x + Math.sin(tijd + i) * 12, v.y - 70 - stijg * 90, 7 + stijg * 13, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 
@@ -672,6 +765,8 @@
         else tekenVarenboom(b.x, hy + 6, b.hoogte);
       }
 
+      tekenGrot(hy);
+      tekenKampvuur(kampvuur);
       tekenVijver(vijver);
 
       for (const b of bramen) tekenBraamstruik(b);
