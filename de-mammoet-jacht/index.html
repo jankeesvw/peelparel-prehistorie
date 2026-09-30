@@ -84,11 +84,14 @@
     const tijger = {
       x: 0,
       y: 0,
-      grootte: 110,
+      grootte: 175,
       actief: false,
-      leven: 2,      // twee speren raken is genoeg
-      vlucht: false, // true als hij geraakt is en wegrent
+      leven: 2,        // twee speren raken is genoeg
+      vlucht: false,   // true als hij geraakt is en wegrent
       loopt: false,
+      fase: 'sluipt',  // sluipt of springt
+      sprong: 0,       // 0 tot 1 tijdens de sprong
+      sprongStartX: 0,
     };
 
     let gameOver = false;
@@ -177,7 +180,10 @@
 
     function tekenTijger(t) {
       const s = t.grootte / 110;
-      const zwaai = t.loopt ? Math.sin(tijd * 10) * 8 : 0;
+      // Tijdens de sprong staan zijn poten gestrekt, tijdens het sluipen zwaaien ze.
+      let zwaai = 0;
+      if (t.fase === 'springt') zwaai = 18;
+      else if (t.loopt) zwaai = Math.sin(tijd * 10) * 8;
 
       ctx.save();
       ctx.translate(t.x, t.y);
@@ -483,6 +489,8 @@
       tijger.x = canvas.width + 140;
       tijger.leven = 2;
       tijger.vlucht = false;
+      tijger.fase = 'sluipt';
+      tijger.sprong = 0;
 
       oermens.x = 80;
       oermens.omver = false;
@@ -791,6 +799,7 @@
       let tekst = 'De jager sluipt naar de mammoet toe...';
       if (gameOver) tekst = 'De sabeltandtijger heeft de jager gepakt! Druk op Enter om opnieuw te beginnen.';
       else if (levelGehaald) tekst = 'Level ' + level + ' gehaald! Druk op Enter voor level ' + (level + 1) + '.';
+      else if (tijger.actief && !tijger.vlucht && tijger.fase === 'springt') tekst = 'De sabeltandtijger springt!';
       else if (tijger.actief && !tijger.vlucht) tekst = 'Pas op, een sabeltandtijger! Gooi je speer naar hem toe!';
       else if (baby.stemming === 'boos') tekst = 'Pas op! De baby is boos en jaagt de jager weg!';
       else if (mammoet.leven <= 0) tekst = 'De mammoet is gevangen! Je krijgt 5 punten.';
@@ -823,7 +832,7 @@
     function raaktTijger(sp) {
       if (!tijger.actief || tijger.vlucht) return false;
       // De speer komt van boven aanvliegen, dus we kijken royaal boven hem mee.
-      return Math.abs(sp.x - tijger.x) < 55 && sp.y > tijger.y - 100 && sp.y < tijger.y + 40;
+      return Math.abs(sp.x - tijger.x) < 75 && sp.y > tijger.y - 110 && sp.y < tijger.y + 50;
     }
 
     function updateSperen(dt) {
@@ -913,24 +922,49 @@
     function updateTijger(dt) {
       if (!tijger.actief) return;
 
-      tijger.y = oermens.y + 28;
+      // De hoogte waarop hij met zijn poten op de grond staat.
+      const staY = oermens.y + 60 - 32 * (tijger.grootte / 110);
 
       if (tijger.vlucht) {
         // Geraakt: hij rent er weer vandoor naar rechts.
         tijger.loopt = true;
+        tijger.fase = 'sluipt';
+        tijger.y = staY;
         tijger.x += 340 * dt;
         return;
       }
 
-      const doelX = oermens.x + 120; // zo dicht durft hij te komen
-      if (tijger.x > doelX) {
-        tijger.loopt = true;
-        tijger.x -= 110 * dt; // hij sluipt langzaam dichterbij
-      } else {
-        // Hij heeft de jager bereikt.
+      if (gameOver) {
         tijger.loopt = false;
-        gameOver = true;
-        oermens.omver = true;
+        return;
+      }
+
+      if (tijger.fase === 'springt') {
+        // De sprong duurt ongeveer een halve seconde.
+        tijger.sprong = Math.min(1, tijger.sprong + dt * 1.8);
+
+        // Hij vliegt van zijn afzetpunt naar de jager toe...
+        const doelX = oermens.x + 55;
+        tijger.x = tijger.sprongStartX + (doelX - tijger.sprongStartX) * tijger.sprong;
+        // ...in een boog door de lucht.
+        tijger.y = staY - Math.sin(tijger.sprong * Math.PI) * 130;
+
+        if (tijger.sprong >= 1) {
+          gameOver = true;
+          oermens.omver = true;
+        }
+        return;
+      }
+
+      // Sluipen tot hij dichtbij genoeg is om te springen.
+      tijger.y = staY;
+      if (tijger.x > oermens.x + 300) {
+        tijger.loopt = true;
+        tijger.x -= 110 * dt;
+      } else {
+        tijger.fase = 'springt';
+        tijger.sprong = 0;
+        tijger.sprongStartX = tijger.x;
       }
     }
 
