@@ -41,6 +41,7 @@
       grootte: 90,
       leven: 100,
       kantel: 0,
+      huilt: false,
     };
 
     // De oermens komt van links aanlopen met een speer.
@@ -212,6 +213,26 @@
       ctx.restore();
     }
 
+    // Tranen vallen uit het oog van de baby, in een lusje van boven naar beneden.
+    function tekenTranen(b) {
+      const s = b.grootte / 200;
+      const oogX = b.x - 95 * s;
+      const oogY = b.y - 20 * s;
+
+      ctx.fillStyle = '#4aa3df';
+      for (let i = 0; i < 3; i++) {
+        // val gaat steeds van 0 (bij het oog) naar 1 (onderaan) en begint dan opnieuw
+        const val = (tijd * 1.4 + i * 0.33) % 1;
+        ctx.beginPath();
+        ctx.ellipse(oogX - 6 - val * 10, oogY + val * 70, 4, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#111';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText('Oeeeh!', b.x - 20, b.y - 70 + Math.sin(tijd * 6) * 3);
+    }
+
     function tekenLevensbalk(m) {
       const breedte = 200;
       const x = m.x - breedte / 2;
@@ -261,9 +282,14 @@
       mammoet.y = canvas.height / 2;
       oermens.y = mammoet.y + 30;
 
+      // Zodra mama dood is, gaat de baby huilen.
+      baby.huilt = mammoet.leven <= 0;
+
       // De baby staat naast zijn moeder en wipt een beetje op en neer.
-      baby.x = mammoet.x + 165;
-      baby.y = mammoet.y + 50 + Math.sin(tijd * 3) * 4;
+      // Als hij huilt schuift hij dichter naar haar toe en snikt hij mee.
+      const snik = baby.huilt ? Math.sin(tijd * 14) * 3 : 0;
+      baby.x = mammoet.x + (baby.huilt ? 130 : 165);
+      baby.y = mammoet.y + 50 + Math.sin(tijd * 3) * 4 + snik;
 
       updateOermens(dt);
 
@@ -277,6 +303,7 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       tekenMammoet(mammoet);
       tekenMammoet(baby);
+      if (baby.huilt) tekenTranen(baby);
       tekenOermens(oermens);
       tekenLevensbalk(mammoet);
     }
