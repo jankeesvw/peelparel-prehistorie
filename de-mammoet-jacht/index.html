@@ -23,13 +23,91 @@
     pasGrootteAan();
     window.addEventListener('resize', pasGrootteAan);
 
+    // De mammoet staat in het midden van het scherm.
+    const mammoet = {
+      x: 0,
+      y: 0,
+      grootte: 200,
+    };
+
+    function tekenMammoet(m) {
+      const s = m.grootte / 200; // schaal: bij grootte 200 is s gelijk aan 1
+
+      ctx.save();
+      ctx.translate(m.x, m.y);
+      ctx.scale(s, s);
+
+      // benen
+      ctx.fillStyle = '#6b4a2f';
+      ctx.fillRect(-60, 30, 26, 60);
+      ctx.fillRect(-20, 30, 26, 60);
+      ctx.fillRect(20, 30, 26, 60);
+      ctx.fillRect(55, 30, 26, 60);
+
+      // lijf
+      ctx.fillStyle = '#8b5e3c';
+      ctx.beginPath();
+      ctx.ellipse(10, 0, 90, 55, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // kop
+      ctx.beginPath();
+      ctx.ellipse(-80, -10, 45, 45, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // oor
+      ctx.fillStyle = '#6b4a2f';
+      ctx.beginPath();
+      ctx.ellipse(-65, -20, 22, 28, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // slurf
+      ctx.strokeStyle = '#8b5e3c';
+      ctx.lineWidth = 22;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-110, 10);
+      ctx.quadraticCurveTo(-150, 40, -135, 75);
+      ctx.stroke();
+
+      // slagtanden
+      ctx.strokeStyle = '#f2ead3';
+      ctx.lineWidth = 12;
+      ctx.beginPath();
+      ctx.moveTo(-105, 25);
+      ctx.quadraticCurveTo(-145, 55, -160, 30);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-95, 30);
+      ctx.quadraticCurveTo(-130, 65, -145, 45);
+      ctx.stroke();
+
+      // oog
+      ctx.fillStyle = '#111';
+      ctx.beginPath();
+      ctx.arc(-95, -25, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // staart
+      ctx.strokeStyle = '#6b4a2f';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(98, -10);
+      ctx.lineTo(120, 15);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
     function update(dt) {
-      // spel-logica
+      // De mammoet blijft midden op het scherm staan.
+      mammoet.x = canvas.width / 2;
+      mammoet.y = canvas.height / 2;
     }
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // hier komt het tekenen
+      tekenMammoet(mammoet);
     }
 
     let vorige = performance.now();
