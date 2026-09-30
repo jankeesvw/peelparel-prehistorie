@@ -23,13 +23,122 @@
     pasGrootteAan();
     window.addEventListener('resize', pasGrootteAan);
 
+    // Nine is de hoofdpersoon.
+    const nine = {
+      x: 0,
+      y: 0,
+    };
+
+    // Eén bloemetje op haar t-shirt.
+    function tekenBloem(x, y, kleur) {
+      ctx.fillStyle = kleur;
+      for (let i = 0; i < 5; i++) {
+        const hoek = (i / 5) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(x + Math.cos(hoek) * 3, y + Math.sin(hoek) * 3, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#f7d774';
+      ctx.beginPath();
+      ctx.arc(x, y, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Een New Balance schoen: grijs met een witte N erop.
+    function tekenSchoen(x, y) {
+      ctx.fillStyle = '#c9ccd2';
+      ctx.beginPath();
+      ctx.roundRect(x, y, 22, 12, 5);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(x, y + 9, 22, 4, 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.fillText('N', x + 8, y + 8);
+    }
+
+    // Nine tekenen: x is haar midden, voetY is de grond onder haar schoenen.
+    function tekenNine(x, voetY) {
+      // schoenen
+      tekenSchoen(x - 20, voetY - 12);
+      tekenSchoen(x - 2, voetY - 12);
+
+      // benen
+      ctx.fillStyle = '#3f5d8a';
+      ctx.fillRect(x - 15, voetY - 42, 12, 30);
+      ctx.fillRect(x + 3, voetY - 42, 12, 30);
+
+      // armen
+      ctx.fillStyle = '#e8b892';
+      ctx.fillRect(x - 27, voetY - 78, 8, 30);
+      ctx.fillRect(x + 19, voetY - 78, 8, 30);
+
+      // grijs t-shirt
+      ctx.fillStyle = '#9aa0a8';
+      ctx.beginPath();
+      ctx.roundRect(x - 22, voetY - 82, 44, 42, 6);
+      ctx.fill();
+      // mouwtjes
+      ctx.fillRect(x - 28, voetY - 80, 8, 14);
+      ctx.fillRect(x + 20, voetY - 80, 8, 14);
+
+      // bloemen op het shirt
+      tekenBloem(x - 11, voetY - 70, '#e86a8f');
+      tekenBloem(x + 8, voetY - 63, '#f2f2f2');
+      tekenBloem(x - 4, voetY - 50, '#7fc7e8');
+
+      // nek
+      ctx.fillStyle = '#e8b892';
+      ctx.fillRect(x - 5, voetY - 90, 10, 10);
+
+      // hoofd
+      ctx.fillStyle = '#e8b892';
+      ctx.beginPath();
+      ctx.arc(x, voetY - 102, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // bruin haar: een kapje over haar hoofd en twee lokken langs haar gezicht
+      ctx.fillStyle = '#6b4226';
+      ctx.beginPath();
+      ctx.arc(x, voetY - 104, 19, Math.PI, 0);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.roundRect(x - 21, voetY - 108, 9, 30, 4);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.roundRect(x + 12, voetY - 108, 9, 30, 4);
+      ctx.fill();
+
+      // bruine ogen
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x - 6, voetY - 102, 4, 0, Math.PI * 2);
+      ctx.arc(x + 6, voetY - 102, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#5a3a1a';
+      ctx.beginPath();
+      ctx.arc(x - 6, voetY - 102, 2.2, 0, Math.PI * 2);
+      ctx.arc(x + 6, voetY - 102, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // mond
+      ctx.strokeStyle = '#a8543f';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, voetY - 95, 5, 0.2 * Math.PI, 0.8 * Math.PI);
+      ctx.stroke();
+    }
+
     function update(dt) {
-      // spel-logica
+      nine.x = canvas.width / 2;
+      nine.y = canvas.height / 2 + 60;
     }
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // hier komt het tekenen
+      tekenNine(nine.x, nine.y);
     }
 
     let vorige = performance.now();
