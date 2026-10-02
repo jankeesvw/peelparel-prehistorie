@@ -235,16 +235,53 @@
 
     // ---------- het level ----------
 
+    // Het level is veel breder dan het scherm. De camera schuift mee met de kat.
+    const LEVELBREEDTE = 3800;
+    let camera = 0;
+
     // Rotsblokken waar je tegenaan botst en bovenop kunt staan.
+    // Lage blokken haal je met een tikje, hoge alleen met een powerjump,
+    // en de trap halverwege klim je blok voor blok omhoog.
     const obstakels = [
-      { x: 380, breedte: 70, hoogte: 70 },
-      { x: 620, breedte: 50, hoogte: 130 },
-      { x: 860, breedte: 110, hoogte: 60 },
+      { x: 380, breedte: 70, hoogte: 50 },
+      { x: 620, breedte: 50, hoogte: 100 },
+      { x: 860, breedte: 110, hoogte: 50 },
+      { x: 1150, breedte: 60, hoogte: 130 },
+      { x: 1330, breedte: 60, hoogte: 130 },
+      { x: 1600, breedte: 160, hoogte: 60 },
+      { x: 1830, breedte: 60, hoogte: 150 },
+      { x: 2050, breedte: 90, hoogte: 90 },
+      { x: 2260, breedte: 70, hoogte: 110 },
+      { x: 2420, breedte: 70, hoogte: 155 },
+      { x: 2580, breedte: 70, hoogte: 200 },
+      { x: 2740, breedte: 140, hoogte: 245 },
+      { x: 2980, breedte: 60, hoogte: 110 },
+      { x: 3180, breedte: 80, hoogte: 55 },
+      { x: 3380, breedte: 60, hoogte: 140 },
     ];
+
+    // De finishvlag aan het eind van het level.
+    const finish = { x: 3600, hoogte: 260 };
+
+    let gehaald = false;   // staat de kat bij de vlag?
+    let speeltijd = 0;     // hoe lang je al onderweg bent
+
+    function opnieuw() {
+      kat.x = 120;
+      kat.y = grondY;
+      kat.snelheidX = 0;
+      kat.snelheidY = 0;
+      kat.opGrond = true;
+      kat.aanHetSpringen = false;
+      kat.powerjump = false;
+      gehaald = false;
+      speeltijd = 0;
+    }
 
     const toetsen = {};
     window.addEventListener('keydown', (e) => {
       toetsen[e.key] = true;
+      if (e.key === 'r' || e.key === 'R') opnieuw();
       if (e.key === ' ' || e.key === 'ArrowUp') e.preventDefault();
     });
     window.addEventListener('keyup', (e) => { toetsen[e.key] = false; });
@@ -274,8 +311,20 @@
     // meteen een nieuwe sprong als je de spatie ingedrukt houdt na de landing.
     let sprongToetsVorige = false;
 
+    // Zorgt dat een getal tussen een minimum en een maximum blijft.
+    function klem(waarde, min, max) {
+      return Math.max(min, Math.min(max, waarde));
+    }
+
     function update(dt) {
       tijd += dt;
+
+      // Bij de finish stopt de klok en luistert de kat niet meer naar de toetsen.
+      if (gehaald) {
+        volgCamera();
+        return;
+      }
+      speeltijd += dt;
 
       // links en rechts lopen
       kat.snelheidX = 0;
@@ -312,7 +361,7 @@
       for (const o of obstakels) {
         if (botst(nieuweX, kat.y, o)) nieuweX = kat.x;
       }
-      kat.x = Math.max(kat.breedte / 2, Math.min(canvas.width - kat.breedte / 2, nieuweX));
+      kat.x = klem(nieuweX, kat.breedte / 2, LEVELBREEDTE - kat.breedte / 2);
 
       // daarna vallen of stijgen
       kat.snelheidY += ZWAARTEKRACHT * dt;
@@ -345,6 +394,17 @@
         kat.powerjump = false;
       }
       kat.y = nieuweY;
+
+      // de vlag aangeraakt? dan ben je binnen
+      if (kat.x + kat.breedte / 2 >= finish.x) gehaald = true;
+
+      volgCamera();
+    }
+
+    // De camera houdt de kat in het midden, maar kijkt nooit buiten het level.
+    function volgCamera() {
+      const doel = kat.x - canvas.width / 2;
+      camera = klem(doel, 0, Math.max(0, LEVELBREEDTE - canvas.width));
     }
 
     function tekenZon() {
@@ -373,11 +433,15 @@
       vulEnOmlijn('#ffffff', 5);
     }
 
-    function tekenHeuvels() {
+    // Tekent heuvels van x = vanaf tot x = tot, zodat er altijd genoeg in beeld staan.
+    function tekenHeuvels(vanaf, tot) {
+      const AFSTAND = 340;
       ctx.fillStyle = '#9ec97a';
-      for (let i = 0; i < 4; i++) {
-        const x = 150 + i * 340;
-        const r = 160 + (i % 2) * 50;
+      const eerste = Math.floor((vanaf - 360) / AFSTAND);
+      const laatste = Math.ceil((tot + 360) / AFSTAND);
+      for (let i = eerste; i <= laatste; i++) {
+        const x = 150 + i * AFSTAND;
+        const r = 160 + (((i % 2) + 2) % 2) * 50;
         ctx.beginPath();
         ctx.ellipse(x, grondY + 20, r, r * 0.55, 0, Math.PI, 0);
         ctx.closePath();
@@ -387,27 +451,31 @@
       }
     }
 
-    function tekenGrond() {
+    // Tekent de grond van x = vanaf tot x = tot, het stuk dat de camera laat zien.
+    function tekenGrond(vanaf, tot) {
+      const links = Math.floor(vanaf / 30) * 30 - 30;
+      const rechts = Math.ceil(tot / 30) * 30 + 30;
+
       // aarde
       ctx.beginPath();
-      ctx.moveTo(-10, grondY);
-      for (let x = 0; x <= canvas.width + 20; x += 30) {
+      ctx.moveTo(links, grondY);
+      for (let x = links; x <= rechts; x += 30) {
         ctx.lineTo(x, grondY + Math.sin(x * 0.03) * 3);
       }
-      ctx.lineTo(canvas.width + 10, canvas.height + 10);
-      ctx.lineTo(-10, canvas.height + 10);
+      ctx.lineTo(rechts, canvas.height + 10);
+      ctx.lineTo(links, canvas.height + 10);
       ctx.closePath();
       ctx.fillStyle = '#c99a62';
       ctx.fill();
 
       // graslaag bovenop
       ctx.beginPath();
-      ctx.moveTo(-10, grondY);
-      for (let x = 0; x <= canvas.width + 20; x += 30) {
+      ctx.moveTo(links, grondY);
+      for (let x = links; x <= rechts; x += 30) {
         ctx.lineTo(x, grondY + Math.sin(x * 0.03) * 3);
       }
-      ctx.lineTo(canvas.width + 10, grondY + 18);
-      ctx.lineTo(-10, grondY + 18);
+      ctx.lineTo(rechts, grondY + 18);
+      ctx.lineTo(links, grondY + 18);
       ctx.closePath();
       vulEnOmlijn('#79b457', 5);
 
@@ -415,12 +483,66 @@
       inktLijn(3);
       ctx.strokeStyle = '#4f7f39';
       ctx.beginPath();
-      for (let x = 20; x < canvas.width; x += 70) {
+      for (let x = Math.floor(vanaf / 70) * 70; x < rechts; x += 70) {
         const h = 10 + ruis(x) * 6;
         ctx.moveTo(x, grondY + 2);
         ctx.quadraticCurveTo(x + 4, grondY - h, x + 9, grondY - h - 2);
       }
       ctx.stroke();
+    }
+
+    // De finishvlag: een paal met een geruite vlag die in de wind wappert.
+    function tekenFinish() {
+      const x = finish.x;
+      const top = grondY - finish.hoogte;
+
+      // paal
+      schetsBlok(x - 8, top, 16, finish.hoogte, 11);
+      vulEnOmlijn('#e8ddc8', 5);
+
+      // vlag, opgebouwd uit zwart-witte vakjes die mee golven
+      const kolommen = 4;
+      const rijen = 3;
+      const vlagB = 132;
+      const vlagH = 84;
+      const vakB = vlagB / kolommen;
+      const vakH = vlagH / rijen;
+      const golf = (c) => Math.sin(tijd * 4 + c * 0.9) * 8;
+
+      for (let c = 0; c < kolommen; c++) {
+        for (let r = 0; r < rijen; r++) {
+          const xl = x + 4 + c * vakB;
+          const xr = x + 4 + (c + 1) * vakB;
+          const gl = golf(c);
+          const gr = golf(c + 1);
+          ctx.beginPath();
+          ctx.moveTo(xl, top + 6 + r * vakH + gl);
+          ctx.lineTo(xr, top + 6 + r * vakH + gr);
+          ctx.lineTo(xr, top + 6 + (r + 1) * vakH + gr);
+          ctx.lineTo(xl, top + 6 + (r + 1) * vakH + gl);
+          ctx.closePath();
+          ctx.fillStyle = (c + r) % 2 === 0 ? '#3b2d23' : '#fff';
+          ctx.fill();
+        }
+      }
+
+      // inktrand om de hele vlag
+      inktLijn(5);
+      ctx.beginPath();
+      ctx.moveTo(x + 4, top + 6 + golf(0));
+      for (let c = 1; c <= kolommen; c++) ctx.lineTo(x + 4 + c * vakB, top + 6 + golf(c));
+      for (let c = kolommen; c >= 0; c--) ctx.lineTo(x + 4 + c * vakB, top + 6 + vlagH + golf(c));
+      ctx.closePath();
+      ctx.stroke();
+
+      // bordje met FINISH onderaan de paal
+      schetsBlok(x - 70, grondY - 70, 140, 46, 13);
+      vulEnOmlijn('#ffd968', 5);
+      ctx.fillStyle = INKT;
+      ctx.font = 'bold 26px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('FINISH', x, grondY - 46);
     }
 
     function tekenObstakels() {
@@ -439,25 +561,78 @@
       }
     }
 
-    function tekenLevel() {
-      // lucht
+    // Een getal dat netjes binnen 0 en breedte blijft, ook als het negatief is.
+    function rondOm(waarde, breedte) {
+      return ((waarde % breedte) + breedte) % breedte;
+    }
+
+    function tekenLucht() {
       const lucht = ctx.createLinearGradient(0, 0, 0, grondY);
       lucht.addColorStop(0, '#9fd8f2');
       lucht.addColorStop(1, '#e6f6fc');
       ctx.fillStyle = lucht;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
 
-      tekenZon();
-
-      // wolken die langzaam naar links drijven
-      for (let i = 0; i < 3; i++) {
-        const x = ((i * 420 + 200 - tijd * 12) % (canvas.width + 400)) - 200;
-        tekenWolk(x, 90 + i * 55, 1 - i * 0.15);
+    // Wolken drijven naar links en schuiven maar een beetje mee met de camera,
+    // waardoor ze ver weg lijken te staan.
+    function tekenWolken() {
+      const ruimte = canvas.width + 400;
+      for (let i = 0; i < 4; i++) {
+        const x = rondOm(i * 420 + 200 - tijd * 12 - camera * 0.2, ruimte) - 200;
+        tekenWolk(x, 90 + (i % 3) * 55, 1 - (i % 3) * 0.15);
       }
+    }
 
-      tekenHeuvels();
-      tekenGrond();
-      tekenObstakels();
+    // Tekst met een witte rand eromheen, zodat je hem overal kunt lezen.
+    function tekenTekst(tekst, x, y, grootte) {
+      ctx.font = 'bold ' + grootte + 'px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 7;
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#fff';
+      ctx.strokeText(tekst, x, y);
+      ctx.fillStyle = INKT;
+      ctx.fillText(tekst, x, y);
+    }
+
+    // De balk bovenin: hoe lang je onderweg bent en hoe ver je al bent.
+    function tekenHud() {
+      const deel = klem(kat.x / finish.x, 0, 1);
+      const balkB = Math.min(360, canvas.width - 80);
+      const balkX = canvas.width / 2 - balkB / 2;
+      const balkY = 28;
+
+      schetsBlok(balkX, balkY, balkB, 22, 21);
+      vulEnOmlijn('#ffffff', 4);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(balkX, balkY, balkB * deel, 22);
+      ctx.clip();
+      schetsBlok(balkX, balkY, balkB, 22, 21);
+      ctx.fillStyle = '#79b457';
+      ctx.fill();
+      ctx.restore();
+
+      tekenTekst(speeltijd.toFixed(1) + ' sec', canvas.width / 2, balkY + 56, 24);
+    }
+
+    // Het bord dat in beeld komt als je de vlag hebt aangeraakt.
+    function tekenGehaaldBord() {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const b = Math.min(520, canvas.width - 60);
+      const h = 190;
+      const x = canvas.width / 2 - b / 2;
+      const y = canvas.height / 2 - h / 2;
+      schetsBlok(x, y, b, h, 31);
+      vulEnOmlijn('#ffd968', 6);
+
+      tekenTekst('Gehaald!', canvas.width / 2, y + 60, 54);
+      tekenTekst('in ' + speeltijd.toFixed(1) + ' seconden', canvas.width / 2, y + 112, 26);
+      tekenTekst('druk op R om opnieuw te spelen', canvas.width / 2, y + 152, 20);
     }
 
     // Gele vonken onder de voeten, zodat je ziet dat dit een powerjump is.
@@ -480,10 +655,33 @@
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      tekenLevel();
+
+      // de lucht en de zon blijven staan waar ze staan
+      tekenLucht();
+      tekenZon();
+      tekenWolken();
+
+      // de heuvels schuiven half zo snel mee als de rest
+      ctx.save();
+      ctx.translate(-camera * 0.5, 0);
+      tekenHeuvels(camera * 0.5, camera * 0.5 + canvas.width);
+      ctx.restore();
+
+      // en hier komt het level zelf, dat helemaal met de camera meeschuift
+      ctx.save();
+      ctx.translate(-camera, 0);
+      tekenGrond(camera, camera + canvas.width);
+      tekenObstakels();
+      tekenFinish();
       if (kat.powerjump) tekenVonken(kat.x, kat.y);
       tekenKat(kat.x, kat.y, 1);
+      ctx.restore();
+
+      tekenHud();
+      if (gehaald) tekenGehaaldBord();
     }
+
+    opnieuw();
 
     let vorige = performance.now();
     function loop(nu) {
