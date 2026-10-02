@@ -44,7 +44,8 @@ class Handler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def log_message(self, fmt, *args):
-        if '/__mtime' not in (args[0] if args else ''):
+        # str() want bij een foutmelding is args[0] een HTTPStatus en geen tekst
+        if '/__mtime' not in str(args[0] if args else ''):
             super().log_message(fmt, *args)
 
 

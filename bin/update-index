@@ -88,7 +88,9 @@ HEAD
   aantal=0
   for dir in "$ROOT"/*/; do
     naam="$(basename "$dir")"
-    [[ "$naam" == "template" || "$naam" == "bin" ]] && continue
+    # geheim/ staat bewust niet in het overzicht: die games vind je alleen
+    # als je de link kent, bijvoorbeeld geheim/nine-en-soof/
+    [[ "$naam" == "template" || "$naam" == "bin" || "$naam" == "geheim" ]] && continue
     [[ -f "$dir/index.html" ]] || continue
     icoon="${ICONEN[$((i % ${#ICONEN[@]}))]}"
     titel="${naam//-/ }"
