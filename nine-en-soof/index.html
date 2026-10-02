@@ -266,6 +266,34 @@
     let gehaald = false;   // staat de kat bij de vlag?
     let speeltijd = 0;     // hoe lang je al onderweg bent
 
+    // ---------- de sushi-ingrediënten ----------
+
+    // Aan het eind maakt de kat sushi, maar dan moet hij onderweg wel alles
+    // oprapen. hoogte is hoe hoog het ingrediënt boven de grond zweeft, dus 0
+    // ligt op de grond. De hoge liggen op een rotsblok of haal je met een
+    // powerjump.
+    const INGREDIENTEN = [
+      { soort: 'rijst',     naam: 'rijst',     x: 395,  hoogte: 110 },
+      { soort: 'nori',      naam: 'zeewier',   x: 650,  hoogte: 175 },
+      { soort: 'zalm',      naam: 'zalm',      x: 1680, hoogte: 125 },
+      { soort: 'komkommer', naam: 'komkommer', x: 2095, hoogte: 155 },
+      { soort: 'avocado',   naam: 'avocado',   x: 2810, hoogte: 310 },
+    ];
+
+    // De ingrediënten in het spel zelf, met erbij of je ze al gepakt hebt.
+    // plop telt af na het oprapen, zodat er nog even sterretjes blijven staan.
+    const ingredienten = INGREDIENTEN.map((i) => ({ ...i, gepakt: false, plop: 0 }));
+
+    function aantalGepakt() {
+      let n = 0;
+      for (const i of ingredienten) if (i.gepakt) n++;
+      return n;
+    }
+
+    function allesGepakt() {
+      return aantalGepakt() === ingredienten.length;
+    }
+
     function opnieuw() {
       kat.x = 120;
       kat.y = grondY;
@@ -276,6 +304,10 @@
       kat.powerjump = false;
       gehaald = false;
       speeltijd = 0;
+      for (const i of ingredienten) {
+        i.gepakt = false;
+        i.plop = 0;
+      }
     }
 
     const toetsen = {};
@@ -298,6 +330,16 @@
       const rechts = x + kat.breedte / 2;
       const boven = y - kat.hoogte;
       return rechts > v.links && links < v.rechts && y > v.boven && boven < v.onder;
+    }
+
+    // Loopt de kat tegen dit ingrediënt aan? Het vak van de kat mag een stukje
+    // ruimer zijn dan hij echt is, zodat oprapen makkelijk voelt.
+    function raaktKat(i) {
+      const y = grondY - i.hoogte;
+      return i.x > kat.x - kat.breedte / 2 - 22 &&
+             i.x < kat.x + kat.breedte / 2 + 22 &&
+             y > kat.y - kat.hoogte - 22 &&
+             y < kat.y + 22;
     }
 
     const LOOPSNELHEID = 260;
@@ -394,6 +436,15 @@
         kat.powerjump = false;
       }
       kat.y = nieuweY;
+
+      // onderweg ingrediënten oprapen
+      for (const i of ingredienten) {
+        if (!i.gepakt && raaktKat(i)) {
+          i.gepakt = true;
+          i.plop = 0.7;
+        }
+        if (i.plop > 0) i.plop = Math.max(0, i.plop - dt);
+      }
 
       // de vlag aangeraakt? dan ben je binnen
       if (kat.x + kat.breedte / 2 >= finish.x) gehaald = true;
@@ -545,6 +596,132 @@
       ctx.fillText('FINISH', x, grondY - 46);
     }
 
+    // ---------- de ingrediënten tekenen ----------
+
+    // Alle ingrediënten in dezelfde cartoon-stijl, met (x, y) als hun midden.
+    // Met schaal maak je ze groter of kleiner, zodat ze ook in de balk bovenin passen.
+    function tekenIngredient(soort, x, y, schaal) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(schaal, schaal);
+
+      if (soort === 'rijst') {
+        // een bolletje rijst met korreltjes erop
+        schetsOvaal(0, 2, 27, 21, 201);
+        vulEnOmlijn('#fdfbf1', 5);
+        inktLijn(2.5);
+        ctx.beginPath();
+        for (let k = 0; k < 5; k++) {
+          const kx = -16 + k * 8;
+          const ky = -6 + (k % 2) * 11;
+          ctx.moveTo(kx, ky);
+          ctx.lineTo(kx + 6, ky + 4);
+        }
+        ctx.stroke();
+      } else if (soort === 'nori') {
+        // een blad zeewier: bijna zwart, met een glans erop
+        schetsBlok(-24, -24, 48, 48, 211);
+        vulEnOmlijn('#31472f', 5);
+        inktLijn(3);
+        ctx.strokeStyle = '#7fa871';
+        ctx.beginPath();
+        ctx.moveTo(-14, 8);
+        ctx.quadraticCurveTo(-2, -6, 14, -12);
+        ctx.stroke();
+      } else if (soort === 'zalm') {
+        // een visje met een staart en lichte strepen
+        ctx.beginPath();
+        ctx.moveTo(-26, 0);
+        ctx.quadraticCurveTo(-4, -20, 20, -2);
+        ctx.quadraticCurveTo(-4, 18, -26, 0);
+        ctx.closePath();
+        vulEnOmlijn('#f08b5a', 5);
+        ctx.beginPath();
+        ctx.moveTo(20, -2);
+        ctx.lineTo(34, -12);
+        ctx.lineTo(32, 8);
+        ctx.closePath();
+        vulEnOmlijn('#f08b5a', 5);
+        inktLijn(3);
+        ctx.strokeStyle = '#fbdcc8';
+        ctx.beginPath();
+        ctx.moveTo(-14, -4); ctx.quadraticCurveTo(-6, 2, 2, -6);
+        ctx.moveTo(-18, 4); ctx.quadraticCurveTo(-10, 9, 0, 3);
+        ctx.stroke();
+        ctx.fillStyle = INKT;
+        ctx.beginPath();
+        ctx.arc(-16, -3, 2.6, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (soort === 'komkommer') {
+        // een schijfje komkommer met zaadjes
+        schetsOvaal(0, 0, 24, 24, 221);
+        vulEnOmlijn('#6fb33f', 5);
+        schetsOvaal(0, 0, 16, 16, 222);
+        vulEnOmlijn('#d8eeb4', 3);
+        ctx.fillStyle = '#9ac46a';
+        for (let k = 0; k < 4; k++) {
+          const hoek = (k / 4) * Math.PI * 2 + 0.4;
+          ctx.beginPath();
+          ctx.ellipse(Math.cos(hoek) * 8, Math.sin(hoek) * 8, 3.4, 2.4, hoek, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (soort === 'avocado') {
+        // een halve avocado met een grote pit
+        schetsOvaal(0, 0, 21, 28, 231);
+        vulEnOmlijn('#4f7f39', 5);
+        schetsOvaal(0, 1, 14, 21, 232);
+        vulEnOmlijn('#cfe08a', 3);
+        schetsOvaal(0, 3, 8, 10, 233);
+        vulEnOmlijn('#a9713f', 3);
+      }
+
+      ctx.restore();
+    }
+
+    // Sterretjes op de plek waar net een ingrediënt lag. sterkte loopt van 0.7 naar 0.
+    function tekenPlop(x, y, sterkte) {
+      const uit = (0.7 - sterkte) * 60;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, sterkte / 0.7);
+      ctx.strokeStyle = '#ffd43b';
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      for (let k = 0; k < 6; k++) {
+        const hoek = (k / 6) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(x + Math.cos(hoek) * (14 + uit), y + Math.sin(hoek) * (14 + uit));
+        ctx.lineTo(x + Math.cos(hoek) * (24 + uit), y + Math.sin(hoek) * (24 + uit));
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // De ingrediënten in het level zweven een beetje op en neer, zodat ze opvallen.
+    function tekenIngredienten() {
+      for (const i of ingredienten) {
+        const y = grondY - i.hoogte;
+        if (!i.gepakt) {
+          tekenIngredient(i.soort, i.x, y + Math.sin(tijd * 3 + i.x) * 6, 1);
+        } else if (i.plop > 0) {
+          tekenPlop(i.x, y, i.plop);
+        }
+      }
+    }
+
+    // Een maki-rolletje van bovenaf: zeewier eromheen, dan rijst, en vulling in het midden.
+    function tekenSushi(x, y, schaal, vulling) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(schaal, schaal);
+      schetsOvaal(0, 0, 30, 30, 301);
+      vulEnOmlijn('#31472f', 5);
+      schetsOvaal(0, 0, 23, 23, 302);
+      vulEnOmlijn('#fdfbf1', 3);
+      schetsOvaal(0, 0, 10, 10, 303);
+      vulEnOmlijn(vulling, 3);
+      ctx.restore();
+    }
+
     function tekenObstakels() {
       for (const o of obstakels) {
         const v = vak(o);
@@ -616,6 +793,29 @@
       ctx.restore();
 
       tekenTekst(speeltijd.toFixed(1) + ' sec', canvas.width / 2, balkY + 56, 24);
+
+      tekenIngredientenBalk();
+    }
+
+    // Het rijtje linksboven: wat je al gepakt hebt staat er in kleur in,
+    // de rest is nog vaag. Zo zie je wat je voor je sushi nog mist.
+    function tekenIngredientenBalk() {
+      const vakje = 56;
+      const b = 20 + ingredienten.length * vakje;
+      const x = 26;
+      const y = 26;
+
+      schetsBlok(x, y, b, 76, 41);
+      vulEnOmlijn('rgba(255, 255, 255, 0.8)', 4);
+
+      ingredienten.forEach((i, n) => {
+        const cx = x + 10 + vakje / 2 + n * vakje;
+        const cy = y + 40;
+        ctx.save();
+        if (!i.gepakt) ctx.globalAlpha = 0.25;
+        tekenIngredient(i.soort, cx, cy, 0.62);
+        ctx.restore();
+      });
     }
 
     // Het bord dat in beeld komt als je de vlag hebt aangeraakt.
@@ -624,15 +824,37 @@
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const b = Math.min(520, canvas.width - 60);
-      const h = 190;
+      const h = 290;
       const x = canvas.width / 2 - b / 2;
       const y = canvas.height / 2 - h / 2;
       schetsBlok(x, y, b, h, 31);
       vulEnOmlijn('#ffd968', 6);
 
-      tekenTekst('Gehaald!', canvas.width / 2, y + 60, 54);
-      tekenTekst('in ' + speeltijd.toFixed(1) + ' seconden', canvas.width / 2, y + 112, 26);
-      tekenTekst('druk op R om opnieuw te spelen', canvas.width / 2, y + 152, 20);
+      const midden = canvas.width / 2;
+      tekenTekst(allesGepakt() ? 'Sushi!' : 'Gehaald!', midden, y + 56, 54);
+
+      if (allesGepakt()) {
+        // alles bij elkaar: de kat rolt er drie rolletjes van
+        tekenSushi(midden - 78, y + 150, 0.9, '#f08b5a');
+        tekenSushi(midden, y + 150, 0.9, '#cfe08a');
+        tekenSushi(midden + 78, y + 150, 0.9, '#6fb33f');
+        tekenTekst('je had alle ingrediënten', midden, y + 212, 24);
+      } else {
+        const mist = ingredienten.length - aantalGepakt();
+        tekenTekst('maar je mist nog ' + mist, midden, y + 108, 26);
+        tekenTekst(mist === 1 ? 'ingrediënt voor de sushi' : 'ingrediënten voor de sushi', midden, y + 142, 26);
+        for (let n = 0; n < ingredienten.length; n++) {
+          const i = ingredienten[n];
+          const cx = midden - (ingredienten.length - 1) * 28 + n * 56;
+          ctx.save();
+          if (!i.gepakt) ctx.globalAlpha = 0.25;
+          tekenIngredient(i.soort, cx, y + 196, 0.62);
+          ctx.restore();
+        }
+      }
+
+      tekenTekst('in ' + speeltijd.toFixed(1) + ' seconden', midden, y + 244, 24);
+      tekenTekst('druk op R om opnieuw te spelen', midden, y + 274, 20);
     }
 
     // Gele vonken onder de voeten, zodat je ziet dat dit een powerjump is.
@@ -673,6 +895,7 @@
       tekenGrond(camera, camera + canvas.width);
       tekenObstakels();
       tekenFinish();
+      tekenIngredienten();
       if (kat.powerjump) tekenVonken(kat.x, kat.y);
       tekenKat(kat.x, kat.y, 1);
       ctx.restore();
