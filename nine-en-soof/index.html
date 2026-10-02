@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>nine-en-soof</title>
   <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; color: #111; font-family: sans-serif; }
-    canvas { display: block; background: #fff; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #bfe3f5; color: #111; font-family: sans-serif; }
+    canvas { display: block; }
   </style>
 </head>
 <body>
@@ -27,6 +27,65 @@
 
     let tijd = 0;
 
+    // ---------- tekenen in cartoon-stijl ----------
+    // Alles krijgt een dikke donkere lijn eromheen en randen die een beetje scheef
+    // zijn, zodat het lijkt alsof het met de hand getekend is.
+
+    const INKT = '#3b2d23';
+
+    // Altijd dezelfde "toevallige" waarde voor hetzelfde nummer, zodat het beeld niet trilt.
+    function ruis(n) {
+      return (Math.sin(n * 127.1) * 43758.5453) % 1;
+    }
+
+    function inktLijn(dikte) {
+      ctx.strokeStyle = INKT;
+      ctx.lineWidth = dikte;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+    }
+
+    // Vult het pad dat je net getekend hebt en zet er een inktlijn omheen.
+    function vulEnOmlijn(kleur, dikte) {
+      ctx.fillStyle = kleur;
+      ctx.fill();
+      inktLijn(dikte);
+      ctx.stroke();
+    }
+
+    // Een ovaal met een wiebelige rand, alsof hij met de hand getekend is.
+    function schetsOvaal(x, y, rx, ry, zaad) {
+      const stappen = 26;
+      ctx.beginPath();
+      for (let i = 0; i <= stappen; i++) {
+        const hoek = (i / stappen) * Math.PI * 2;
+        const wiebel = 1 + ruis(zaad + i) * 0.04;
+        const px = x + Math.cos(hoek) * rx * wiebel;
+        const py = y + Math.sin(hoek) * ry * wiebel;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+    }
+
+    // Een blok met ronde hoeken en scheve randen.
+    function schetsBlok(x, y, breedte, hoogte, zaad) {
+      const r = 14;
+      const w = (n) => ruis(zaad + n) * 4;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y + w(1));
+      ctx.lineTo(x + breedte - r, y + w(2));
+      ctx.quadraticCurveTo(x + breedte, y, x + breedte + w(3), y + r);
+      ctx.lineTo(x + breedte + w(4), y + hoogte - r);
+      ctx.quadraticCurveTo(x + breedte, y + hoogte, x + breedte - r, y + hoogte);
+      ctx.lineTo(x + r, y + hoogte);
+      ctx.quadraticCurveTo(x, y + hoogte, x + w(5), y + hoogte - r);
+      ctx.lineTo(x + w(6), y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y + w(1));
+      ctx.closePath();
+    }
+
+    // ---------- de kat ----------
+
     // De kat. x en y zijn het midden van zijn voeten.
     const kat = {
       x: 120,
@@ -38,7 +97,142 @@
       opGrond: true,
     };
 
-    // Het level: rotsblokken waar je tegenaan botst en bovenop kunt staan.
+    // Tekent een kat met zijn voeten op (x, y). Met schaal maak je hem groter of kleiner.
+    function tekenKat(x, y, schaal) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(schaal, schaal);
+
+      const vacht = '#7d9b5e';
+      const buik = '#f3efe2';
+      const roze = '#f0a6ae';
+
+      // staart, zwaait heen en weer
+      const zwaai = Math.sin(tijd * 2) * 0.35;
+      ctx.beginPath();
+      ctx.moveTo(38, -18);
+      ctx.quadraticCurveTo(80, -30 + zwaai * 40, 72, -80 + zwaai * 30);
+      inktLijn(22);
+      ctx.stroke();
+      ctx.strokeStyle = vacht;
+      ctx.lineWidth = 14;
+      ctx.stroke();
+
+      // lijf
+      schetsOvaal(0, -38, 42, 44, 10);
+      vulEnOmlijn(vacht, 5);
+
+      // lichte buik
+      schetsOvaal(0, -30, 24, 30, 20);
+      ctx.fillStyle = buik;
+      ctx.fill();
+
+      // voorpootjes
+      schetsOvaal(-18, -8, 13, 9, 30);
+      vulEnOmlijn(vacht, 5);
+      schetsOvaal(18, -8, 13, 9, 40);
+      vulEnOmlijn(vacht, 5);
+
+      // oren
+      ctx.beginPath();
+      ctx.moveTo(-34, -96);
+      ctx.quadraticCurveTo(-32, -126, -24, -130);
+      ctx.quadraticCurveTo(-14, -120, -6, -104);
+      ctx.closePath();
+      vulEnOmlijn(vacht, 5);
+      ctx.beginPath();
+      ctx.moveTo(34, -96);
+      ctx.quadraticCurveTo(32, -126, 24, -130);
+      ctx.quadraticCurveTo(14, -120, 6, -104);
+      ctx.closePath();
+      vulEnOmlijn(vacht, 5);
+
+      // binnenkant van de oren
+      ctx.beginPath();
+      ctx.moveTo(-29, -101);
+      ctx.lineTo(-24, -121);
+      ctx.lineTo(-14, -105);
+      ctx.closePath();
+      ctx.fillStyle = roze;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(29, -101);
+      ctx.lineTo(24, -121);
+      ctx.lineTo(14, -105);
+      ctx.closePath();
+      ctx.fill();
+
+      // kop
+      schetsOvaal(0, -92, 40, 34, 50);
+      vulEnOmlijn(vacht, 5);
+
+      // wangen
+      schetsOvaal(-13, -80, 14, 11, 60);
+      ctx.fillStyle = buik;
+      ctx.fill();
+      schetsOvaal(13, -80, 14, 11, 70);
+      ctx.fill();
+
+      // ogen, die af en toe knipperen
+      const knippert = Math.sin(tijd * 1.3) > 0.97;
+      if (knippert) {
+        inktLijn(4);
+        ctx.beginPath();
+        ctx.moveTo(-22, -99);
+        ctx.quadraticCurveTo(-15, -95, -8, -99);
+        ctx.moveTo(8, -99);
+        ctx.quadraticCurveTo(15, -95, 22, -99);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = INKT;
+        schetsOvaal(-15, -99, 7, 9, 80);
+        ctx.fill();
+        schetsOvaal(15, -99, 7, 9, 90);
+        ctx.fill();
+        // lichtpuntjes in de ogen
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(-13, -102, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(17, -102, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // neusje
+      ctx.beginPath();
+      ctx.moveTo(-6, -83);
+      ctx.lineTo(6, -83);
+      ctx.lineTo(0, -76);
+      ctx.closePath();
+      vulEnOmlijn(roze, 3);
+
+      // mondje
+      inktLijn(3);
+      ctx.beginPath();
+      ctx.moveTo(0, -76);
+      ctx.lineTo(0, -72);
+      ctx.moveTo(0, -72);
+      ctx.quadraticCurveTo(-5, -67, -11, -72);
+      ctx.moveTo(0, -72);
+      ctx.quadraticCurveTo(5, -67, 11, -72);
+      ctx.stroke();
+
+      // snorharen
+      inktLijn(2.5);
+      ctx.beginPath();
+      ctx.moveTo(-15, -81); ctx.quadraticCurveTo(-30, -86, -46, -88);
+      ctx.moveTo(-15, -77); ctx.quadraticCurveTo(-31, -77, -47, -74);
+      ctx.moveTo(15, -81); ctx.quadraticCurveTo(30, -86, 46, -88);
+      ctx.moveTo(15, -77); ctx.quadraticCurveTo(31, -77, 47, -74);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // ---------- het level ----------
+
+    // Rotsblokken waar je tegenaan botst en bovenop kunt staan.
     const obstakels = [
       { x: 380, breedte: 70, hoogte: 70 },
       { x: 620, breedte: 50, hoogte: 130 },
@@ -120,179 +314,117 @@
       kat.y = nieuweY;
     }
 
-    function tekenLevel() {
-      // lucht
-      const lucht = ctx.createLinearGradient(0, 0, 0, grondY);
-      lucht.addColorStop(0, '#bfe3f5');
-      lucht.addColorStop(1, '#eaf6fb');
-      ctx.fillStyle = lucht;
-      ctx.fillRect(0, 0, canvas.width, grondY);
+    function tekenZon() {
+      const x = canvas.width - 110;
+      const y = 100;
+      schetsOvaal(x, y, 42, 42, 100);
+      vulEnOmlijn('#ffd968', 5);
+      // stralen
+      inktLijn(4);
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const hoek = (i / 8) * Math.PI * 2 + 0.2;
+        ctx.moveTo(x + Math.cos(hoek) * 52, y + Math.sin(hoek) * 52);
+        ctx.lineTo(x + Math.cos(hoek) * 68, y + Math.sin(hoek) * 68);
+      }
+      ctx.stroke();
+    }
 
-      // aarde
-      ctx.fillStyle = '#8b6b4a';
-      ctx.fillRect(0, grondY, canvas.width, canvas.height - grondY);
+    // Een cartoon-wolk: drie bollen met een platte onderkant.
+    function tekenWolk(x, y, s) {
+      ctx.beginPath();
+      ctx.arc(x - 34 * s, y, 30 * s, Math.PI * 0.85, Math.PI * 1.95);
+      ctx.arc(x + 2 * s, y - 18 * s, 34 * s, Math.PI * 1.15, Math.PI * 1.9);
+      ctx.arc(x + 42 * s, y, 28 * s, Math.PI * 1.1, Math.PI * 0.2);
+      ctx.closePath();
+      vulEnOmlijn('#ffffff', 5);
+    }
 
-      // graslaagje bovenop de aarde
-      ctx.fillStyle = '#6aa84f';
-      ctx.fillRect(0, grondY, canvas.width, 14);
-
-      // rotsblokken
-      for (const o of obstakels) {
-        const v = vak(o);
-        ctx.fillStyle = '#9aa0a6';
-        ctx.fillRect(v.links, v.boven, o.breedte, o.hoogte);
-        ctx.fillStyle = '#b9bfc5';
-        ctx.fillRect(v.links, v.boven, o.breedte, 10);
-        ctx.strokeStyle = '#6d7276';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(v.links + 1.5, v.boven + 1.5, o.breedte - 3, o.hoogte - 3);
+    function tekenHeuvels() {
+      ctx.fillStyle = '#9ec97a';
+      for (let i = 0; i < 4; i++) {
+        const x = 150 + i * 340;
+        const r = 160 + (i % 2) * 50;
+        ctx.beginPath();
+        ctx.ellipse(x, grondY + 20, r, r * 0.55, 0, Math.PI, 0);
+        ctx.closePath();
+        ctx.fill();
+        inktLijn(5);
+        ctx.stroke();
       }
     }
 
-    // Tekent een kat met zijn voeten op (x, y). Met schaal maak je hem groter of kleiner.
-    function tekenKat(x, y, schaal) {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.scale(schaal, schaal);
-
-      const vacht = '#6b7f5a';
-      const vachtDonker = '#55674a';
-      const buik = '#e8e4d9';
-      const roze = '#e9a0a8';
-
-      // staart, zwaait heen en weer
-      const zwaai = Math.sin(tijd * 2) * 0.35;
-      ctx.strokeStyle = vacht;
-      ctx.lineWidth = 14;
-      ctx.lineCap = 'round';
+    function tekenGrond() {
+      // aarde
       ctx.beginPath();
-      ctx.moveTo(38, -18);
-      ctx.quadraticCurveTo(80, -30 + zwaai * 40, 72, -80 + zwaai * 30);
+      ctx.moveTo(-10, grondY);
+      for (let x = 0; x <= canvas.width + 20; x += 30) {
+        ctx.lineTo(x, grondY + Math.sin(x * 0.03) * 3);
+      }
+      ctx.lineTo(canvas.width + 10, canvas.height + 10);
+      ctx.lineTo(-10, canvas.height + 10);
+      ctx.closePath();
+      ctx.fillStyle = '#c99a62';
+      ctx.fill();
+
+      // graslaag bovenop
+      ctx.beginPath();
+      ctx.moveTo(-10, grondY);
+      for (let x = 0; x <= canvas.width + 20; x += 30) {
+        ctx.lineTo(x, grondY + Math.sin(x * 0.03) * 3);
+      }
+      ctx.lineTo(canvas.width + 10, grondY + 18);
+      ctx.lineTo(-10, grondY + 18);
+      ctx.closePath();
+      vulEnOmlijn('#79b457', 5);
+
+      // grassprietjes
+      inktLijn(3);
+      ctx.strokeStyle = '#4f7f39';
+      ctx.beginPath();
+      for (let x = 20; x < canvas.width; x += 70) {
+        const h = 10 + ruis(x) * 6;
+        ctx.moveTo(x, grondY + 2);
+        ctx.quadraticCurveTo(x + 4, grondY - h, x + 9, grondY - h - 2);
+      }
       ctx.stroke();
+    }
 
-      // lijf
-      ctx.fillStyle = vacht;
-      ctx.beginPath();
-      ctx.ellipse(0, -38, 42, 44, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // lichte buik
-      ctx.fillStyle = buik;
-      ctx.beginPath();
-      ctx.ellipse(0, -30, 24, 30, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // voorpootjes
-      ctx.fillStyle = vacht;
-      ctx.beginPath();
-      ctx.ellipse(-18, -8, 12, 8, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(18, -8, 12, 8, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // oren
-      ctx.fillStyle = vacht;
-      ctx.beginPath();
-      ctx.moveTo(-34, -96);
-      ctx.lineTo(-24, -130);
-      ctx.lineTo(-6, -104);
-      ctx.closePath();
-      ctx.moveTo(34, -96);
-      ctx.lineTo(24, -130);
-      ctx.lineTo(6, -104);
-      ctx.closePath();
-      ctx.fill();
-
-      // binnenkant van de oren
-      ctx.fillStyle = roze;
-      ctx.beginPath();
-      ctx.moveTo(-29, -99);
-      ctx.lineTo(-24, -120);
-      ctx.lineTo(-14, -104);
-      ctx.closePath();
-      ctx.moveTo(29, -99);
-      ctx.lineTo(24, -120);
-      ctx.lineTo(14, -104);
-      ctx.closePath();
-      ctx.fill();
-
-      // kop
-      ctx.fillStyle = vacht;
-      ctx.beginPath();
-      ctx.ellipse(0, -92, 40, 34, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // wangen
-      ctx.fillStyle = buik;
-      ctx.beginPath();
-      ctx.ellipse(-13, -80, 14, 11, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(13, -80, 14, 11, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // ogen, die af en toe knipperen
-      const knippert = Math.sin(tijd * 1.3) > 0.97;
-      ctx.strokeStyle = '#2b2b2b';
-      ctx.lineWidth = 3;
-      if (knippert) {
+    function tekenObstakels() {
+      for (const o of obstakels) {
+        const v = vak(o);
+        schetsBlok(v.links, v.boven, o.breedte, o.hoogte, o.x);
+        vulEnOmlijn('#aab2b8', 5);
+        // lichte bovenkant en een barstje, zodat het op een rots lijkt
+        inktLijn(3);
         ctx.beginPath();
-        ctx.moveTo(-22, -98);
-        ctx.lineTo(-8, -98);
-        ctx.moveTo(8, -98);
-        ctx.lineTo(22, -98);
+        ctx.moveTo(v.links + 12, v.boven + 14);
+        ctx.quadraticCurveTo(v.links + o.breedte / 2, v.boven + 8, v.rechts - 12, v.boven + 15);
+        ctx.moveTo(v.links + o.breedte * 0.6, v.boven + 24);
+        ctx.lineTo(v.links + o.breedte * 0.45, v.boven + o.hoogte * 0.55);
         ctx.stroke();
-      } else {
-        ctx.fillStyle = '#2b2b2b';
-        ctx.beginPath();
-        ctx.ellipse(-15, -99, 7, 9, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.ellipse(15, -99, 7, 9, 0, 0, Math.PI * 2);
-        ctx.fill();
-        // lichtpuntjes in de ogen
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(-13, -102, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(17, -102, 2.5, 0, Math.PI * 2);
-        ctx.fill();
+      }
+    }
+
+    function tekenLevel() {
+      // lucht
+      const lucht = ctx.createLinearGradient(0, 0, 0, grondY);
+      lucht.addColorStop(0, '#9fd8f2');
+      lucht.addColorStop(1, '#e6f6fc');
+      ctx.fillStyle = lucht;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      tekenZon();
+
+      // wolken die langzaam naar links drijven
+      for (let i = 0; i < 3; i++) {
+        const x = ((i * 420 + 200 - tijd * 12) % (canvas.width + 400)) - 200;
+        tekenWolk(x, 90 + i * 55, 1 - i * 0.15);
       }
 
-      // neusje
-      ctx.fillStyle = roze;
-      ctx.beginPath();
-      ctx.moveTo(-5, -82);
-      ctx.lineTo(5, -82);
-      ctx.lineTo(0, -76);
-      ctx.closePath();
-      ctx.fill();
-
-      // mondje
-      ctx.strokeStyle = '#2b2b2b';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(0, -76);
-      ctx.lineTo(0, -72);
-      ctx.moveTo(0, -72);
-      ctx.quadraticCurveTo(-5, -68, -10, -72);
-      ctx.moveTo(0, -72);
-      ctx.quadraticCurveTo(5, -68, 10, -72);
-      ctx.stroke();
-
-      // snorharen
-      ctx.strokeStyle = vachtDonker;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-14, -80); ctx.lineTo(-44, -86);
-      ctx.moveTo(-14, -77); ctx.lineTo(-45, -75);
-      ctx.moveTo(14, -80); ctx.lineTo(44, -86);
-      ctx.moveTo(14, -77); ctx.lineTo(45, -75);
-      ctx.stroke();
-
-      ctx.restore();
+      tekenHeuvels();
+      tekenGrond();
+      tekenObstakels();
     }
 
     function draw() {
