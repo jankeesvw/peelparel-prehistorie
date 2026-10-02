@@ -106,9 +106,9 @@
       ctx.translate(x, y);
       ctx.scale(schaal, schaal);
 
-      const vacht = '#7d9b5e';
-      const buik = '#f3efe2';
-      const roze = '#f0a6ae';
+      const vacht = '#f49cb9';
+      const buik = '#fdeef3';
+      const roze = '#d9657f';
 
       // staart, zwaait heen en weer
       const zwaai = Math.sin(tijd * 2) * 0.35;
@@ -168,6 +168,26 @@
       // kop
       schetsOvaal(0, -92, 40, 34, 50);
       vulEnOmlijn(vacht, 5);
+
+      // koksmuts: eerst de bollen bovenop, daarna de band eroverheen
+      ctx.beginPath();
+      ctx.arc(-23, -146, 19, Math.PI * 0.75, Math.PI * 1.85);
+      ctx.arc(0, -156, 23, Math.PI * 1.15, Math.PI * 1.9);
+      ctx.arc(23, -146, 19, Math.PI * 1.1, Math.PI * 0.35);
+      ctx.closePath();
+      vulEnOmlijn('#fffdf7', 5);
+
+      schetsBlok(-32, -136, 64, 22, 12);
+      vulEnOmlijn('#ffffff', 5);
+
+      // twee plooitjes in de band
+      inktLijn(3);
+      ctx.beginPath();
+      ctx.moveTo(-11, -133);
+      ctx.lineTo(-11, -117);
+      ctx.moveTo(11, -133);
+      ctx.lineTo(11, -117);
+      ctx.stroke();
 
       // wangen
       schetsOvaal(-13, -80, 14, 11, 60);
