@@ -465,7 +465,6 @@
     let stapel = [];                            // wat op het matje ligt, van onder naar boven
     let sleept = null;                          // wat je nu vasthoudt
     const muis = { x: -100, y: -100 };          // waar de muis of je vinger is
-    const LAAGHOOGTE = 28;                      // hoeveel hoger elke laag komt te liggen
 
     // Een sushi bouw je van onder naar boven op: eerst het zeewier, dan de
     // rijst, en daarna mag de rest in elke volgorde.
@@ -1153,14 +1152,35 @@
       return sleepItems.every((i) => i.opMat);
     }
 
-    // Legt de stapel op het matje op elkaar: wat je het eerst neerlegt ligt
-    // onderop, elke volgende laag komt er zichtbaar bovenop.
+    // Hoe groot een ingrediënt wordt zodra het op het matje ligt. Het is dan
+    // geen los stukje meer maar een hele laag over de breedte van het matje.
+    // Het zeewier ligt onderop en is het breedst, daarna wordt elke laag wat
+    // smaller, net als bij echte sushi.
+    function laagMaat(soort, matB) {
+      if (soort === 'nori') return { breedte: matB - 20, hoogte: 26 };
+      if (soort === 'rijst') return { breedte: matB - 48, hoogte: 34 };
+      return { breedte: matB - 86, hoogte: 26 };
+    }
+
+    // Hoe hoog de hele stapel nu is.
+    function stapelHoogte() {
+      const m = keukenMaten();
+      let h = 0;
+      for (const i of stapel) h += laagMaat(i.soort, m.mat.breedte).hoogte;
+      return h;
+    }
+
+    // Legt de lagen op het matje precies op elkaar: wat je het eerst neerlegt
+    // ligt onderop, elke volgende laag komt daar bovenop te liggen.
     function schikStapel() {
       const m = keukenMaten();
-      stapel.forEach((i, n) => {
+      let onderkant = m.mat.y + 34;
+      for (const i of stapel) {
+        const maat = laagMaat(i.soort, m.mat.breedte);
         i.x = m.mat.x;
-        i.y = m.mat.y + 18 - n * LAAGHOOGTE;
-      });
+        i.y = onderkant - maat.hoogte / 2;
+        onderkant -= maat.hoogte;
+      }
     }
 
     // Hoe heet dit ingrediënt? Dat staat in de lijst van het level.
@@ -1265,9 +1285,11 @@
     // Ligt dit punt ergens op de stapel? Dan bedoel je de bovenste laag.
     function raaktStapel(p) {
       if (stapel.length === 0) return false;
+      const m = keukenMaten();
       const onder = stapel[0];
       const boven = stapel[stapel.length - 1];
-      return Math.abs(p.x - onder.x) < 50 && p.y > boven.y - 40 && p.y < onder.y + 40;
+      const halveB = laagMaat(onder.soort, m.mat.breedte).breedte / 2;
+      return Math.abs(p.x - onder.x) < halveB && p.y > boven.y - 30 && p.y < onder.y + 30;
     }
 
     function pakOp(i) {
@@ -1295,7 +1317,7 @@
       sleept = null;
 
       const bovenHetMatje = Math.abs(i.x - m.mat.x) < m.mat.breedte / 2 + 20 &&
-                            i.y > m.mat.y - m.mat.hoogte / 2 - 30 - stapel.length * LAAGHOOGTE &&
+                            i.y > m.mat.y - m.mat.hoogte / 2 - 30 - stapelHoogte() &&
                             i.y < m.mat.y + m.mat.hoogte / 2 + 30;
 
       if (bovenHetMatje) {
@@ -1347,6 +1369,76 @@
       vulEnOmlijn('#31472f', 5);
       schetsOvaal(x + hb, y, 13, halveH - 4, 77);
       vulEnOmlijn('#fdfbf1', 4);
+    }
+
+    // Een ingrediënt zoals het op het matje ligt: geen los stukje meer, maar
+    // een hele laag over de breedte van het matje.
+    function tekenLaag(soort, x, y, b, h) {
+      const links = x - b / 2;
+      const rechts = x + b / 2;
+
+      if (soort === 'nori') {
+        // een vel zeewier, bijna zwart, met een glans erover
+        schetsBlok(links, y - h / 2, b, h, 401);
+        vulEnOmlijn('#31472f', 5);
+        inktLijn(3);
+        ctx.strokeStyle = '#7fa871';
+        ctx.beginPath();
+        ctx.moveTo(links + 18, y + 4);
+        ctx.quadraticCurveTo(x, y - 7, rechts - 18, y - 1);
+        ctx.stroke();
+      } else if (soort === 'rijst') {
+        // een dikke laag rijst met korreltjes erin
+        schetsBlok(links, y - h / 2, b, h, 402);
+        vulEnOmlijn('#fdfbf1', 5);
+        inktLijn(2.5);
+        ctx.strokeStyle = '#d8d0b6';
+        ctx.beginPath();
+        let n = 0;
+        for (let kx = links + 14; kx < rechts - 12; kx += 17) {
+          const ky = y - 8 + (n % 2) * 11;
+          ctx.moveTo(kx, ky);
+          ctx.lineTo(kx + 8, ky + 4);
+          n++;
+        }
+        ctx.stroke();
+      } else if (soort === 'zalm') {
+        // een lange reep zalm met lichte strepen
+        schetsBlok(links, y - h / 2, b, h, 403);
+        vulEnOmlijn('#f08b5a', 5);
+        inktLijn(3);
+        ctx.strokeStyle = '#fbdcc8';
+        ctx.beginPath();
+        for (let kx = links + 16; kx < rechts - 20; kx += 28) {
+          ctx.moveTo(kx, y - 5);
+          ctx.quadraticCurveTo(kx + 9, y + 2, kx + 18, y - 4);
+        }
+        ctx.stroke();
+      } else if (soort === 'komkommer') {
+        // reepjes komkommer die over de hele lengte liggen
+        schetsBlok(links, y - h / 2, b, h, 404);
+        vulEnOmlijn('#6fb33f', 5);
+        inktLijn(3);
+        ctx.strokeStyle = '#d8eeb4';
+        ctx.beginPath();
+        ctx.moveTo(links + 10, y - 4);
+        ctx.lineTo(rechts - 10, y - 4);
+        ctx.moveTo(links + 10, y + 5);
+        ctx.lineTo(rechts - 10, y + 5);
+        ctx.stroke();
+      } else if (soort === 'avocado') {
+        // schuine plakjes avocado naast elkaar
+        schetsBlok(links, y - h / 2, b, h, 405);
+        vulEnOmlijn('#9ec96a', 5);
+        inktLijn(3);
+        ctx.strokeStyle = '#4f7f39';
+        ctx.beginPath();
+        for (let kx = links + 20; kx < rechts - 6; kx += 22) {
+          ctx.moveTo(kx, y - h / 2 + 5);
+          ctx.lineTo(kx - 11, y + h / 2 - 5);
+        }
+        ctx.stroke();
+      }
     }
 
     // Een ingrediënt op het aanrecht, met een schaduwtje en zijn naam erbij.
@@ -1419,13 +1511,15 @@
           breedte: m.mat.breedte * (1 - deel * 0.5),
           hoogte: m.mat.hoogte,
         });
-        // de hele stapel zakt naar het midden in elkaar
+        // de lagen worden smaller en zakken naar het midden in elkaar
         for (const i of stapel) {
-          tekenIngredient(
+          const maat = laagMaat(i.soort, m.mat.breedte);
+          tekenLaag(
             i.soort,
-            i.x + (m.mat.x - i.x) * deel,
+            m.mat.x,
             i.y + (m.mat.y - i.y) * deel,
-            1 - deel * 0.55
+            maat.breedte * (1 - deel * 0.72),
+            maat.hoogte
           );
         }
         if (deel > 0.45) tekenRol(m.mat.x, m.mat.y, m.mat.breedte * 0.3 * (deel - 0.45) / 0.55, 52);
@@ -1495,8 +1589,11 @@
       } else {
         tekenMatje(m.mat);
         const beurt = nuAanDeBeurt();
-        // de stapel van onder naar boven, zodat je elke laag erbovenop ziet komen
-        for (const i of stapel) tekenSleepItem(i, false, false);
+        // de stapel van onder naar boven, elke laag over de breedte van het matje
+        for (const i of stapel) {
+          const maat = laagMaat(i.soort, m.mat.breedte);
+          tekenLaag(i.soort, i.x, i.y, maat.breedte, maat.hoogte);
+        }
         // dan wat er nog los op het aanrecht ligt
         for (const i of sleepItems) {
           if (!i.opMat && i !== sleept) tekenSleepItem(i, false, i.soort === beurt);
