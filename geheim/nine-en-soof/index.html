@@ -460,10 +460,13 @@
     let rolTijd = -1;            // -1 tot je op de knop drukt, daarna de animatie
     const ROLDUUR = 1.9;
 
-    // De ingrediënten die je op het aanrecht heen en weer kunt slepen.
-    let sleepItems = [];
-    let stapel = [];                            // wat op het matje ligt, van onder naar boven
-    let sleept = null;                          // wat je nu vasthoudt
+    // Wat je onderweg gevonden hebt ligt als voorraad op het aanrecht. Die
+    // voorraad raakt nooit op: elke keer dat je er iets vanaf sleept maak je
+    // een nieuw stuk, zodat je zelf kunt bepalen hoe je sushi eruitziet.
+    let voorraad = [];
+    let stapel = [];                            // de lagen op het matje, van onder naar boven
+    let sleept = null;                          // het stuk dat je nu vasthoudt
+    const LAAGRUIMTE = 11;                      // zo dun mag een laag op zijn dunst worden
     const muis = { x: -100, y: -100 };          // waar de muis of je vinger is
 
     // Een sushi bouw je van onder naar boven op: eerst het zeewier, dan de
@@ -524,7 +527,7 @@
       inDeKeuken = false;
       inKeukenScherm = false;
       rolTijd = -1;
-      sleepItems = [];
+      voorraad = [];
       stapel = [];
       sleept = null;
       foutTijd = 0;
@@ -1133,7 +1136,7 @@
       const bladY = Math.round(h * 0.42);   // de achterrand van het aanrecht
       const mat = {
         x: b / 2,
-        y: bladY + (h - bladY) * 0.40,
+        y: bladY + (h - bladY) * 0.44,
         breedte: Math.min(430, b * 0.5),
         hoogte: 124,
       };
@@ -1147,9 +1150,12 @@
       return Math.abs(p.x - k.x) < k.breedte / 2 && Math.abs(p.y - k.y) < k.hoogte / 2;
     }
 
-    // Je mag pas rollen als alles wat je gevonden hebt op het matje ligt.
+    // Rollen mag zodra de basis op het matje ligt. Hoeveel lagen je er daarna
+    // nog bovenop stapelt mag je helemaal zelf weten.
     function klaarOmTeRollen() {
-      return sleepItems.every((i) => i.opMat);
+      if (voorraad.length === 0) return true;   // niets gevonden, dan maar een lege rol
+      if (nuAanDeBeurt() !== null) return false;
+      return stapel.length > 0;
     }
 
     // Hoe groot een ingrediënt wordt zodra het op het matje ligt. Het is dan
@@ -1162,24 +1168,47 @@
       return { breedte: matB - 86, hoogte: 26 };
     }
 
-    // Hoe hoog de hele stapel nu is.
+    // Hoe hoog de hele stapel nu is, met de maten waarmee hij getekend wordt.
     function stapelHoogte() {
-      const m = keukenMaten();
       let h = 0;
-      for (const i of stapel) h += laagMaat(i.soort, m.mat.breedte).hoogte;
+      for (const i of stapel) h += i.hoogte || 0;
       return h;
     }
 
+    // Hoeveel ruimte er boven het matje is voor de stapel.
+    function stapelRuimte(m) {
+      return (m.mat.y + 50) - (m.bladY + 96);
+    }
+
+    // Hoeveel lagen er in die ruimte passen. Op een klein scherm zijn dat er
+    // minder, zodat de sushi nooit over de tekst heen groeit.
+    function maxLagen() {
+      return klem(Math.floor(stapelRuimte(keukenMaten()) / LAAGRUIMTE), 4, 12);
+    }
+
+    // Als je veel lagen stapelt, tekenen we ze platter zodat de hele sushi in
+    // beeld blijft. Dit zegt hoeveel platter.
+    function stapelKrimp(m) {
+      const ruimte = stapelRuimte(m);
+      let totaal = 0;
+      for (const i of stapel) totaal += laagMaat(i.soort, m.mat.breedte).hoogte;
+      return totaal > ruimte ? Math.max(0.4, ruimte / totaal) : 1;
+    }
+
     // Legt de lagen op het matje precies op elkaar: wat je het eerst neerlegt
-    // ligt onderop, elke volgende laag komt daar bovenop te liggen.
+    // ligt onderop, elke volgende laag komt daar bovenop te liggen. Elke laag
+    // onthoudt hoe breed en hoe hoog hij getekend wordt.
     function schikStapel() {
       const m = keukenMaten();
-      let onderkant = m.mat.y + 34;
+      const krimp = stapelKrimp(m);
+      let onderkant = m.mat.y + 50;
       for (const i of stapel) {
         const maat = laagMaat(i.soort, m.mat.breedte);
+        i.breedte = maat.breedte;
+        i.hoogte = maat.hoogte * krimp;
         i.x = m.mat.x;
-        i.y = onderkant - maat.hoogte / 2;
-        onderkant -= maat.hoogte;
+        i.y = onderkant - i.hoogte / 2;
+        onderkant -= i.hoogte;
       }
     }
 
@@ -1200,27 +1229,29 @@
     // we over, anders kom je nooit verder.
     function nuAanDeBeurt() {
       for (const soort of BOUWVOLGORDE) {
-        const heb = sleepItems.some((i) => i.soort === soort);
+        const heb = voorraad.some((i) => i.soort === soort);
         const ligt = stapel.some((i) => i.soort === soort);
         if (heb && !ligt) return soort;
       }
       return null;
     }
 
-    // Zet het keukenscherm klaar: alles wat je onderweg gevonden hebt ligt los
-    // op het aanrecht, om en om links en rechts van het matje.
-    function openKeukenScherm() {
+    // Legt de voorraad om en om links en rechts van het matje neer.
+    function legVoorraadNeer() {
       const m = keukenMaten();
       const rijH = Math.min(96, (m.h - m.bladY - 150) / 2.6);
-      sleepItems = ingredienten.filter((i) => i.gepakt).map((i, n) => ({
-        soort: i.soort,
-        naam: i.naam,
-        x: n % 2 === 0 ? m.b * 0.13 : m.b * 0.87,
-        y: m.bladY + 64 + Math.floor(n / 2) * rijH,
-        startX: n % 2 === 0 ? m.b * 0.13 : m.b * 0.87,
-        startY: m.bladY + 64 + Math.floor(n / 2) * rijH,
-        opMat: false,
-      }));
+      voorraad.forEach((v, n) => {
+        v.x = n % 2 === 0 ? m.b * 0.13 : m.b * 0.87;
+        v.y = m.bladY + 64 + Math.floor(n / 2) * rijH;
+      });
+    }
+
+    // Zet het keukenscherm klaar met alles wat je onderweg gevonden hebt.
+    function openKeukenScherm() {
+      voorraad = ingredienten
+        .filter((i) => i.gepakt)
+        .map((i) => ({ soort: i.soort, naam: i.naam, x: 0, y: 0 }));
+      legVoorraadNeer();
       stapel = [];
       sleept = null;
       foutTijd = 0;
@@ -1231,11 +1262,7 @@
     // Na het veranderen van de venstergrootte liggen de ingrediënten misschien
     // buiten beeld. Dit zet ze weer netjes op het aanrecht.
     function herschikKeuken() {
-      const m = keukenMaten();
-      for (const i of sleepItems) {
-        i.x = klem(i.x, 50, m.b - 50);
-        i.y = klem(i.y, m.bladY + 40, m.h - 110);
-      }
+      legVoorraadNeer();
       schikStapel();
     }
 
@@ -1259,19 +1286,21 @@
         return;
       }
 
-      // klik je op de stapel, dan pak je er de bovenste laag weer af
+      // klik je op de stapel, dan pak je de bovenste laag er weer af
       if (raaktStapel(p)) {
-        const boven = stapel.pop();
-        boven.opMat = false;
-        pakOp(boven);
+        sleept = stapel.pop();
+        sleept.x = p.x;
+        sleept.y = p.y;
+        schikStapel();
         return;
       }
 
-      // anders pak je iets wat los op het aanrecht ligt
-      for (let n = sleepItems.length - 1; n >= 0; n--) {
-        const i = sleepItems[n];
-        if (!i.opMat && raaktItem(i, p)) {
-          pakOp(i);
+      // uit de voorraad pak je een nieuw stuk. De voorraad zelf blijft liggen,
+      // dus je kunt van hetzelfde ingrediënt zoveel lagen maken als je wilt.
+      for (let n = voorraad.length - 1; n >= 0; n--) {
+        const v = voorraad[n];
+        if (raaktItem(v, p)) {
+          sleept = { soort: v.soort, naam: v.naam, x: p.x, y: p.y, breedte: 0, hoogte: 0 };
           break;
         }
       }
@@ -1288,14 +1317,9 @@
       const m = keukenMaten();
       const onder = stapel[0];
       const boven = stapel[stapel.length - 1];
-      const halveB = laagMaat(onder.soort, m.mat.breedte).breedte / 2;
-      return Math.abs(p.x - onder.x) < halveB && p.y > boven.y - 30 && p.y < onder.y + 30;
-    }
-
-    function pakOp(i) {
-      sleepItems.splice(sleepItems.indexOf(i), 1);
-      sleepItems.push(i);
-      sleept = i;
+      return Math.abs(p.x - onder.x) < onder.breedte / 2 &&
+             p.y > boven.y - boven.hoogte / 2 - 16 &&
+             p.y < onder.y + onder.hoogte / 2 + 16;
     }
 
     canvas.addEventListener('pointermove', (e) => {
@@ -1308,8 +1332,9 @@
       }
     });
 
-    // Loslaten. Boven het matje telt alleen als het ook aan de beurt is,
-    // anders glijdt het ingrediënt terug naar zijn plek op het aanrecht.
+    // Loslaten. Boven het matje wordt het een nieuwe laag, als het tenminste
+    // aan de beurt is. Laat je het ergens anders los, dan gooi je het stuk weg;
+    // dat geeft niet, want de voorraad raakt toch nooit op.
     function laatLos() {
       if (!sleept) return;
       const m = keukenMaten();
@@ -1318,24 +1343,20 @@
 
       const bovenHetMatje = Math.abs(i.x - m.mat.x) < m.mat.breedte / 2 + 20 &&
                             i.y > m.mat.y - m.mat.hoogte / 2 - 30 - stapelHoogte() &&
-                            i.y < m.mat.y + m.mat.hoogte / 2 + 30;
+                            i.y < m.mat.y + m.mat.hoogte / 2 + 40;
 
       if (bovenHetMatje) {
         const moet = nuAanDeBeurt();
         if (moet && i.soort !== moet) {
-          // verkeerde volgorde: terug naar het aanrecht met een melding
           foutTijd = 1.4;
           foutTekst = 'eerst ' + volledigeNaam(moet) + '!';
-          i.x = i.startX;
-          i.y = i.startY;
+        } else if (stapel.length >= maxLagen()) {
+          foutTijd = 1.4;
+          foutTekst = 'je sushi is hoog genoeg!';
         } else {
-          i.opMat = true;
           stapel.push(i);
           foutTijd = 0;   // het ging goed, dus de melding mag weg
         }
-      } else {
-        i.x = klem(i.x, 50, m.b - 50);
-        i.y = klem(i.y, m.bladY + 40, m.h - 110);
       }
 
       schikStapel();
@@ -1443,21 +1464,8 @@
 
     // Een ingrediënt op het aanrecht, met een schaduwtje en zijn naam erbij.
     // Wat je vasthoudt tekenen we iets groter, zodat je ziet dat je het hebt.
-    function tekenSleepItem(i, vast, beurt) {
+    function tekenSleepItem(i, vast) {
       const schaal = vast ? 1.15 : 1;
-
-      // een knipperende ring om wat nu aan de beurt is
-      if (beurt) {
-        ctx.save();
-        inktLijn(5);
-        ctx.strokeStyle = '#ffd43b';
-        ctx.globalAlpha = 0.45 + Math.sin(tijd * 6) * 0.3;
-        ctx.beginPath();
-        ctx.arc(i.x, i.y, 46, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
-
       ctx.save();
       ctx.globalAlpha = 0.18;
       ctx.fillStyle = INKT;
@@ -1466,22 +1474,47 @@
       ctx.fill();
       ctx.restore();
       tekenIngredient(i.soort, i.x, i.y - (vast ? 8 : 0), schaal);
-      if (!i.opMat) tekenTekst(i.naam, i.x, i.y + 54, 17);
+    }
+
+    // Een plekje uit de voorraad. We tekenen er twee vage kopieën achter,
+    // zodat je ziet dat er altijd nog meer van is.
+    function tekenVoorraadItem(v, beurt) {
+      // de knipperende ring om wat nu aan de beurt is
+      if (beurt) {
+        ctx.save();
+        inktLijn(5);
+        ctx.strokeStyle = '#ffd43b';
+        ctx.globalAlpha = 0.45 + Math.sin(tijd * 6) * 0.3;
+        ctx.beginPath();
+        ctx.arc(v.x, v.y, 48, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      tekenIngredient(v.soort, v.x + 13, v.y - 11, 1);
+      ctx.globalAlpha = 0.55;
+      tekenIngredient(v.soort, v.x + 7, v.y - 6, 1);
+      ctx.restore();
+
+      tekenSleepItem(v, false);
+      tekenTekst(v.naam, v.x, v.y + 54, 17);
     }
 
     // De uitleg bovenaan het aanrecht, en de knop zodra alles klaarligt.
     function tekenKeukenTekst(m, beurt) {
-      const nog = sleepItems.filter((i) => !i.opMat).length;
-      if (sleepItems.length === 0) {
+      if (voorraad.length === 0) {
         tekenTekst('je hebt onderweg niets gevonden...', m.b / 2, m.bladY + 38, 24);
       } else if (beurt) {
         tekenTekst('sleep nu ' + volledigeNaam(beurt) + ' op het matje', m.b / 2, m.bladY + 38, 26);
         tekenTekst('eerst zeewier, dan rijst, dan de rest', m.b / 2, m.bladY + 70, 19);
-      } else if (nog > 0) {
-        tekenTekst('en nu de rest erbovenop', m.b / 2, m.bladY + 38, 26);
-        tekenTekst('nog ' + nog + ' te gaan', m.b / 2, m.bladY + 70, 20);
       } else {
-        tekenTekst('alles ligt op elkaar!', m.b / 2, m.bladY + 38, 26);
+        tekenTekst('ontwerp je eigen sushi!', m.b / 2, m.bladY + 38, 26);
+        tekenTekst(
+          stapel.length + (stapel.length === 1 ? ' laag' : ' lagen') + ' - je voorraad raakt nooit op',
+          m.b / 2, m.bladY + 70, 19
+        );
       }
 
       // de melding als je iets in de verkeerde volgorde probeerde
@@ -1513,14 +1546,7 @@
         });
         // de lagen worden smaller en zakken naar het midden in elkaar
         for (const i of stapel) {
-          const maat = laagMaat(i.soort, m.mat.breedte);
-          tekenLaag(
-            i.soort,
-            m.mat.x,
-            i.y + (m.mat.y - i.y) * deel,
-            maat.breedte * (1 - deel * 0.72),
-            maat.hoogte
-          );
+          tekenLaag(i.soort, m.mat.x, i.y + (m.mat.y - i.y) * deel, i.breedte * (1 - deel * 0.72), i.hoogte);
         }
         if (deel > 0.45) tekenRol(m.mat.x, m.mat.y, m.mat.breedte * 0.3 * (deel - 0.45) / 0.55, 52);
         tekenTekst('rollen!', m.b / 2, m.bladY + 38, 28);
@@ -1590,16 +1616,11 @@
         tekenMatje(m.mat);
         const beurt = nuAanDeBeurt();
         // de stapel van onder naar boven, elke laag over de breedte van het matje
-        for (const i of stapel) {
-          const maat = laagMaat(i.soort, m.mat.breedte);
-          tekenLaag(i.soort, i.x, i.y, maat.breedte, maat.hoogte);
-        }
-        // dan wat er nog los op het aanrecht ligt
-        for (const i of sleepItems) {
-          if (!i.opMat && i !== sleept) tekenSleepItem(i, false, i.soort === beurt);
-        }
+        for (const i of stapel) tekenLaag(i.soort, i.x, i.y, i.breedte, i.hoogte);
+        // de voorraad aan weerszijden van het matje
+        for (const v of voorraad) tekenVoorraadItem(v, v.soort === beurt);
         // en bovenop alles wat je nu vasthoudt
-        if (sleept) tekenSleepItem(sleept, true, false);
+        if (sleept) tekenSleepItem(sleept, true);
         tekenKeukenTekst(m, beurt);
       }
     }
