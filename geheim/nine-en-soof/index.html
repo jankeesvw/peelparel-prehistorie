@@ -101,6 +101,8 @@
       aanHetSpringen: false, // staat aan zolang het vasthouden van de spatie nog meetelt
       vasthoudTijd: 0,       // hoe lang je de spatie al vasthoudt tijdens deze sprong
       powerjump: false,      // lang genoeg vastgehouden voor de grote sprong
+      kijkt: 1,              // 1 is naar rechts, -1 is naar links
+      stap: 0,               // waar hij in zijn looppasje zit
     };
 
     // Tekent een kat met zijn voeten op (x, y). Met schaal maak je hem groter of kleiner.
@@ -256,6 +258,148 @@
       ctx.restore();
     }
 
+    // De kat van opzij, zoals je hem ziet zodra hij loopt of springt.
+    // richting is 1 naar rechts en -1 naar links, stap is waar hij in zijn
+    // looppasje zit, en springt zet zijn pootjes in een sprongstand.
+    function tekenKatZij(x, y, schaal, richting, stap, springt) {
+      const vacht = '#f49cb9';
+      const donker = '#dd7fa0';   // de pootjes aan de overkant
+      const buik = '#fdeef3';
+      const roze = '#d9657f';
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(schaal * richting, schaal);
+
+      // Eén pootje. f bepaalt waar het in de pas zit: naar voren zwaaien,
+      // neerzetten, en weer naar achteren.
+      function tekenPoot(basis, kleur, f) {
+        const voetX = basis + Math.sin(f) * 16;
+        const voetY = -Math.max(0, Math.cos(f)) * 14;
+        ctx.beginPath();
+        ctx.moveTo(basis, -44);
+        ctx.quadraticCurveTo(basis + Math.sin(f) * 9, -24, voetX, voetY - 6);
+        inktLijn(17);
+        ctx.stroke();
+        ctx.strokeStyle = kleur;
+        ctx.lineWidth = 11;
+        ctx.stroke();
+        schetsOvaal(voetX, voetY - 6, 11, 7, basis + 300);
+        vulEnOmlijn(kleur, 4);
+      }
+
+      // in de lucht staan de pootjes stil, uit elkaar
+      const achter = springt ? -0.95 : stap;
+      const voor = springt ? 0.95 : stap + Math.PI;
+
+      // de twee pootjes aan de overkant eerst, want die zitten achter het lijf
+      tekenPoot(-26, donker, achter + Math.PI);
+      tekenPoot(26, donker, voor + Math.PI);
+
+      // staart
+      const zwaai = Math.sin(tijd * 2.6) * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(-42, -58);
+      ctx.quadraticCurveTo(-80, -58 + zwaai * 32, -72, -108 + zwaai * 26);
+      inktLijn(20);
+      ctx.stroke();
+      ctx.strokeStyle = vacht;
+      ctx.lineWidth = 13;
+      ctx.stroke();
+
+      // lijf
+      schetsOvaal(-2, -56, 46, 33, 110);
+      vulEnOmlijn(vacht, 5);
+      schetsOvaal(-6, -45, 34, 17, 111);
+      ctx.fillStyle = buik;
+      ctx.fill();
+
+      // en dan de twee pootjes aan deze kant
+      tekenPoot(-20, vacht, achter);
+      tekenPoot(30, vacht, voor);
+
+      // kop met snuitje
+      schetsOvaal(36, -94, 32, 29, 112);
+      vulEnOmlijn(vacht, 5);
+      schetsOvaal(58, -84, 17, 13, 113);
+      ctx.fillStyle = buik;
+      ctx.fill();
+
+      // het oor dat je ziet
+      ctx.beginPath();
+      ctx.moveTo(22, -114);
+      ctx.quadraticCurveTo(20, -143, 31, -146);
+      ctx.quadraticCurveTo(43, -134, 49, -116);
+      ctx.closePath();
+      vulEnOmlijn(vacht, 5);
+      ctx.beginPath();
+      ctx.moveTo(28, -118);
+      ctx.lineTo(32, -138);
+      ctx.lineTo(43, -120);
+      ctx.closePath();
+      ctx.fillStyle = roze;
+      ctx.fill();
+
+      // oog, dat af en toe knippert
+      const knippert = Math.sin(tijd * 1.3) > 0.97;
+      if (knippert) {
+        inktLijn(4);
+        ctx.beginPath();
+        ctx.moveTo(42, -100);
+        ctx.quadraticCurveTo(49, -96, 56, -100);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = INKT;
+        schetsOvaal(49, -100, 7, 9, 114);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(51, -103, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // neusje en mondje
+      ctx.beginPath();
+      ctx.moveTo(66, -90);
+      ctx.lineTo(74, -86);
+      ctx.lineTo(66, -82);
+      ctx.closePath();
+      vulEnOmlijn(roze, 3);
+      inktLijn(3);
+      ctx.beginPath();
+      ctx.moveTo(69, -82);
+      ctx.quadraticCurveTo(66, -74, 58, -76);
+      ctx.stroke();
+
+      // snorharen naar voren
+      inktLijn(2.5);
+      ctx.beginPath();
+      ctx.moveTo(62, -88); ctx.quadraticCurveTo(78, -94, 92, -96);
+      ctx.moveTo(62, -84); ctx.quadraticCurveTo(79, -82, 94, -78);
+      ctx.stroke();
+
+      // de koksmuts, een beetje achterover
+      ctx.save();
+      ctx.translate(32, -120);
+      ctx.rotate(-0.14);
+      ctx.beginPath();
+      ctx.arc(-18, -29, 16, Math.PI * 0.75, Math.PI * 1.85);
+      ctx.arc(2, -39, 20, Math.PI * 1.15, Math.PI * 1.9);
+      ctx.arc(21, -29, 16, Math.PI * 1.1, Math.PI * 0.35);
+      ctx.closePath();
+      vulEnOmlijn('#fffdf7', 5);
+      schetsBlok(-27, -21, 55, 20, 115);
+      vulEnOmlijn('#ffffff', 5);
+      inktLijn(3);
+      ctx.beginPath();
+      ctx.moveTo(-9, -18); ctx.lineTo(-9, -4);
+      ctx.moveTo(9, -18); ctx.lineTo(9, -4);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.restore();
+    }
+
     // ---------- het level ----------
 
     // Het level is veel breder dan het scherm. De camera schuift mee met de kat.
@@ -374,6 +518,8 @@
       kat.opGrond = true;
       kat.aanHetSpringen = false;
       kat.powerjump = false;
+      kat.kijkt = 1;
+      kat.stap = 0;
       gehaald = false;
       speeltijd = 0;
       inDeKeuken = false;
@@ -467,6 +613,12 @@
       kat.snelheidX = 0;
       if (toetsen['ArrowLeft']) kat.snelheidX = -LOOPSNELHEID;
       if (toetsen['ArrowRight']) kat.snelheidX = LOOPSNELHEID;
+
+      // zolang hij loopt kijkt hij die kant op en gaan zijn pootjes door
+      if (kat.snelheidX !== 0) {
+        kat.kijkt = kat.snelheidX > 0 ? 1 : -1;
+        if (kat.opGrond) kat.stap += Math.abs(kat.snelheidX) * dt * 0.03;
+      }
 
       // springen: een tikje is een klein sprongetje, vasthouden laadt een powerjump op
       const sprongToets = !!(toetsen[' '] || toetsen['ArrowUp']);
@@ -1600,7 +1752,11 @@
       tekenKeukenAchter();
       tekenIngredienten();
       if (kat.powerjump) tekenVonken(kat.x, kat.y);
-      tekenKat(kat.x, kat.y, 1);
+      if (kat.snelheidX !== 0 || !kat.opGrond) {
+        tekenKatZij(kat.x, kat.y, 1, kat.kijkt, kat.stap, !kat.opGrond);
+      } else {
+        tekenKat(kat.x, kat.y, 1);
+      }
       tekenKeukenVoor();
       if (inDeKeuken) tekenKookTip();
       ctx.restore();
