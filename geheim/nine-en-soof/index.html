@@ -87,6 +87,172 @@
       ctx.closePath();
     }
 
+    // ---------- de outfits en de muntjes ----------
+
+    // Elke outfit geeft de kat een andere vachtkleur en een andere hoed.
+    // De eerste heb je al, de rest koop je met muntjes in de winkel.
+    const OUTFITS = [
+      { naam: 'Kok',        prijs: 0,  vacht: '#f49cb9', donker: '#dd7fa0', buik: '#fdeef3', roze: '#d9657f', hoed: 'kok' },
+      { naam: 'Ninja',      prijs: 5,  vacht: '#5c6670', donker: '#49525b', buik: '#cfd6dc', roze: '#9aa5ae', hoed: 'band' },
+      { naam: 'Prinses',    prijs: 8,  vacht: '#f7d6e8', donker: '#e3bcd6', buik: '#fffafd', roze: '#d9657f', hoed: 'kroon' },
+      { naam: 'Piraat',     prijs: 12, vacht: '#c08a5a', donker: '#a97548', buik: '#f3e2cd', roze: '#b05a46', hoed: 'piraat' },
+      { naam: 'Feestbeest', prijs: 16, vacht: '#b48ad8', donker: '#9a72bf', buik: '#f1e6fa', roze: '#d9657f', hoed: 'feest' },
+      { naam: 'Sportkat',   prijs: 20, vacht: '#8fd17a', donker: '#75b862', buik: '#eaf7e4', roze: '#d9657f', hoed: 'pet' },
+    ];
+
+    let munten = 0;          // je spaarpot
+    let gekocht = [0];       // welke outfits je al hebt
+    let outfitAan = 0;       // welke je nu draagt
+    let laatsteBeloning = 0; // wat je net verdiend hebt, voor op het eindbord
+
+    // De outfit die de kat nu aanheeft.
+    function outfit() {
+      return OUTFITS[outfitAan] || OUTFITS[0];
+    }
+
+    // Munten en outfits bewaren we in de browser, zodat je ze na het herladen
+    // van de pagina nog hebt. Lukt dat niet, dan begin je gewoon opnieuw.
+    const BEWAARSLEUTEL = 'nine-en-soof';
+
+    function laadBewaard() {
+      try {
+        const bewaard = JSON.parse(localStorage.getItem(BEWAARSLEUTEL));
+        if (!bewaard) return;
+        munten = bewaard.munten || 0;
+        gekocht = Array.isArray(bewaard.gekocht) ? bewaard.gekocht : [0];
+        outfitAan = bewaard.aan || 0;
+        if (!gekocht.includes(0)) gekocht.push(0);
+        if (!gekocht.includes(outfitAan)) outfitAan = 0;
+      } catch (e) {
+        // geen opslag beschikbaar, niets aan de hand
+      }
+    }
+
+    function bewaar() {
+      try {
+        localStorage.setItem(BEWAARSLEUTEL, JSON.stringify({ munten, gekocht, aan: outfitAan }));
+      } catch (e) {
+        // geen opslag beschikbaar, niets aan de hand
+      }
+    }
+
+    // Wat je verdient aan een bestelling: precies goed levert het meest op,
+    // maar je krijgt altijd iets.
+    function beloning() {
+      if (bestellingKlopt()) return 3;
+      if (bestellingBijna()) return 2;
+      return 1;
+    }
+
+    // Tekent een hoed. De onderkant van de hoed ligt op y = 0 en hij staat
+    // midden boven x = 0, zodat hij zowel op de kat van voren als van opzij
+    // past: je zet de tekenpen eerst op de bovenkant van zijn kop.
+    function tekenHoed(soort) {
+      if (soort === 'kok') {
+        // koksmuts: eerst de bollen, dan de band eroverheen
+        ctx.beginPath();
+        ctx.arc(-20, -50, 17, Math.PI * 0.75, Math.PI * 1.85);
+        ctx.arc(1, -61, 21, Math.PI * 1.15, Math.PI * 1.9);
+        ctx.arc(22, -50, 17, Math.PI * 1.1, Math.PI * 0.35);
+        ctx.closePath();
+        vulEnOmlijn('#fffdf7', 5);
+        schetsBlok(-29, -22, 58, 22, 601);
+        vulEnOmlijn('#ffffff', 5);
+        inktLijn(3);
+        ctx.beginPath();
+        ctx.moveTo(-10, -19); ctx.lineTo(-10, -4);
+        ctx.moveTo(10, -19); ctx.lineTo(10, -4);
+        ctx.stroke();
+      } else if (soort === 'kroon') {
+        // een gouden kroon met puntjes en juweeltjes
+        ctx.beginPath();
+        ctx.moveTo(-30, 0);
+        ctx.lineTo(-30, -28);
+        ctx.lineTo(-15, -12);
+        ctx.lineTo(0, -36);
+        ctx.lineTo(15, -12);
+        ctx.lineTo(30, -28);
+        ctx.lineTo(30, 0);
+        ctx.closePath();
+        vulEnOmlijn('#ffd43b', 5);
+        ctx.fillStyle = '#e4572e';
+        for (const jx of [-16, 0, 16]) {
+          ctx.beginPath();
+          ctx.arc(jx, -7, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (soort === 'piraat') {
+        // een brede piratenhoed met een doodshoofdje
+        ctx.beginPath();
+        ctx.moveTo(-42, -2);
+        ctx.quadraticCurveTo(-32, -44, 0, -44);
+        ctx.quadraticCurveTo(32, -44, 42, -2);
+        ctx.quadraticCurveTo(0, -16, -42, -2);
+        ctx.closePath();
+        vulEnOmlijn('#3b2d23', 5);
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, -26, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = INKT;
+        ctx.beginPath();
+        ctx.arc(-3, -27, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(3, -27, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (soort === 'feest') {
+        // een puntmuts met strepen en een pluim
+        ctx.beginPath();
+        ctx.moveTo(-25, 0);
+        ctx.lineTo(0, -64);
+        ctx.lineTo(25, 0);
+        ctx.closePath();
+        vulEnOmlijn('#f0a6ae', 5);
+        inktLijn(4);
+        ctx.strokeStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(-18, -17); ctx.lineTo(18, -17);
+        ctx.moveTo(-11, -34); ctx.lineTo(11, -34);
+        ctx.stroke();
+        schetsOvaal(0, -68, 9, 9, 602);
+        vulEnOmlijn('#ffd43b', 4);
+      } else if (soort === 'band') {
+        // een hoofdband met twee linten die wapperen
+        const wap = Math.sin(tijd * 4) * 7;
+        inktLijn(6);
+        ctx.strokeStyle = '#c0392b';
+        ctx.beginPath();
+        ctx.moveTo(26, -14);
+        ctx.quadraticCurveTo(48, -8 + wap, 64, -20 + wap);
+        ctx.moveTo(26, -7);
+        ctx.quadraticCurveTo(46, 4 + wap, 60, 0 + wap);
+        ctx.stroke();
+        schetsBlok(-31, -21, 62, 20, 603);
+        vulEnOmlijn('#c0392b', 5);
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, -11, 6, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (soort === 'pet') {
+        // een pet met een klep
+        ctx.beginPath();
+        ctx.moveTo(8, -8);
+        ctx.quadraticCurveTo(50, -12, 46, 2);
+        ctx.quadraticCurveTo(28, 7, 8, 3);
+        ctx.closePath();
+        vulEnOmlijn('#2f6a99', 5);
+        ctx.beginPath();
+        ctx.arc(0, -2, 30, Math.PI, 0);
+        ctx.closePath();
+        vulEnOmlijn('#3f8fc4', 5);
+        ctx.fillStyle = '#2f6a99';
+        ctx.beginPath();
+        ctx.arc(0, -31, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
     // ---------- de kat ----------
 
     // De kat. x en y zijn het midden van zijn voeten.
@@ -106,14 +272,15 @@
     };
 
     // Tekent een kat met zijn voeten op (x, y). Met schaal maak je hem groter of kleiner.
-    function tekenKat(x, y, schaal) {
+    function tekenKat(x, y, schaal, welke) {
+      const o = welke || outfit();
       ctx.save();
       ctx.translate(x, y);
       ctx.scale(schaal, schaal);
 
-      const vacht = '#f49cb9';
-      const buik = '#fdeef3';
-      const roze = '#d9657f';
+      const vacht = o.vacht;
+      const buik = o.buik;
+      const roze = o.roze;
 
       // staart, zwaait heen en weer
       const zwaai = Math.sin(tijd * 2) * 0.35;
@@ -174,25 +341,11 @@
       schetsOvaal(0, -92, 40, 34, 50);
       vulEnOmlijn(vacht, 5);
 
-      // koksmuts: eerst de bollen bovenop, daarna de band eroverheen
-      ctx.beginPath();
-      ctx.arc(-23, -146, 19, Math.PI * 0.75, Math.PI * 1.85);
-      ctx.arc(0, -156, 23, Math.PI * 1.15, Math.PI * 1.9);
-      ctx.arc(23, -146, 19, Math.PI * 1.1, Math.PI * 0.35);
-      ctx.closePath();
-      vulEnOmlijn('#fffdf7', 5);
-
-      schetsBlok(-32, -136, 64, 22, 12);
-      vulEnOmlijn('#ffffff', 5);
-
-      // twee plooitjes in de band
-      inktLijn(3);
-      ctx.beginPath();
-      ctx.moveTo(-11, -133);
-      ctx.lineTo(-11, -117);
-      ctx.moveTo(11, -133);
-      ctx.lineTo(11, -117);
-      ctx.stroke();
+      // de hoed van de outfit, bovenop zijn kop
+      ctx.save();
+      ctx.translate(0, -116);
+      tekenHoed(o.hoed);
+      ctx.restore();
 
       // wangen
       schetsOvaal(-13, -80, 14, 11, 60);
@@ -262,10 +415,11 @@
     // richting is 1 naar rechts en -1 naar links, stap is waar hij in zijn
     // looppasje zit, en springt zet zijn pootjes in een sprongstand.
     function tekenKatZij(x, y, schaal, richting, stap, springt) {
-      const vacht = '#f49cb9';
-      const donker = '#dd7fa0';   // de pootjes aan de overkant
-      const buik = '#fdeef3';
-      const roze = '#d9657f';
+      const o = outfit();
+      const vacht = o.vacht;
+      const donker = o.donker;    // de pootjes aan de overkant
+      const buik = o.buik;
+      const roze = o.roze;
 
       ctx.save();
       ctx.translate(x, y);
@@ -378,23 +532,11 @@
       ctx.moveTo(62, -84); ctx.quadraticCurveTo(79, -82, 94, -78);
       ctx.stroke();
 
-      // de koksmuts, een beetje achterover
+      // de hoed, een beetje achterover
       ctx.save();
       ctx.translate(32, -120);
       ctx.rotate(-0.14);
-      ctx.beginPath();
-      ctx.arc(-18, -29, 16, Math.PI * 0.75, Math.PI * 1.85);
-      ctx.arc(2, -39, 20, Math.PI * 1.15, Math.PI * 1.9);
-      ctx.arc(21, -29, 16, Math.PI * 1.1, Math.PI * 0.35);
-      ctx.closePath();
-      vulEnOmlijn('#fffdf7', 5);
-      schetsBlok(-27, -21, 55, 20, 115);
-      vulEnOmlijn('#ffffff', 5);
-      inktLijn(3);
-      ctx.beginPath();
-      ctx.moveTo(-9, -18); ctx.lineTo(-9, -4);
-      ctx.moveTo(9, -18); ctx.lineTo(9, -4);
-      ctx.stroke();
+      tekenHoed(o.hoed);
       ctx.restore();
 
       ctx.restore();
@@ -717,9 +859,14 @@
     const toetsen = {};
     window.addEventListener('keydown', (e) => {
       toetsen[e.key] = true;
-      if (e.key === 'r' || e.key === 'R') opnieuw();
-      // na de sushi brengt de spatie je naar het volgende level
-      if (gehaald && (e.key === ' ' || e.key === 'Enter')) volgendLevel();
+      // met S ga je naar de kledingwinkel en weer terug
+      if ((e.key === 's' || e.key === 'S') && rolTijd < 0) winkelOpen = !winkelOpen;
+      if (e.key === 'Escape') winkelOpen = false;
+      if (!winkelOpen) {
+        if (e.key === 'r' || e.key === 'R') opnieuw();
+        // na de sushi brengt de spatie je naar het volgende level
+        if (gehaald && (e.key === ' ' || e.key === 'Enter')) volgendLevel();
+      }
       if (e.key === ' ' || e.key === 'ArrowUp') e.preventDefault();
     });
     window.addEventListener('keyup', (e) => { toetsen[e.key] = false; });
@@ -769,6 +916,10 @@
 
     function update(dt) {
       tijd += dt;
+      if (foutTijd > 0) foutTijd = Math.max(0, foutTijd - dt);
+
+      // met de winkel open staat het spel stil
+      if (winkelOpen) return;
 
       // Als de sushi klaar is stopt alles en blijft alleen het bord nog staan.
       if (gehaald) {
@@ -778,10 +929,14 @@
 
       // In het keukenscherm staat het level stil: daar doe je alles met de muis.
       if (inKeukenScherm) {
-        if (foutTijd > 0) foutTijd = Math.max(0, foutTijd - dt);
         if (rolTijd >= 0) {
           rolTijd += dt;
-          if (rolTijd >= ROLDUUR) gehaald = true;
+          if (rolTijd >= ROLDUUR && !gehaald) {
+            gehaald = true;
+            laatsteBeloning = beloning();
+            munten += laatsteBeloning;
+            bewaar();
+          }
         } else if (klaarOmTeRollen() && (toetsen['Enter'] || toetsen[' '])) {
           rolTijd = 0;   // met enter of de spatie kan het ook
         }
@@ -1551,6 +1706,23 @@
       const p = muisPlek(e);
       muis.x = p.x;
       muis.y = p.y;
+
+      // in de winkel klik je op een outfit of op het kruisje
+      if (winkelOpen) {
+        const w = winkelMaten();
+        if (Math.hypot(p.x - w.sluit.x, p.y - w.sluit.y) < w.sluit.r + 10) {
+          winkelOpen = false;
+          return;
+        }
+        for (const v of w.vakken) {
+          if (Math.abs(p.x - v.x) < v.breedte / 2 && Math.abs(p.y - v.y) < v.hoogte / 2) {
+            koop(v.n);
+            return;
+          }
+        }
+        return;
+      }
+
       if (!inKeukenScherm || rolTijd >= 0 || gehaald) return;
       canvas.setPointerCapture(e.pointerId);
 
@@ -2182,7 +2354,7 @@
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const b = Math.min(540, canvas.width - 60);
-      const h = 356;
+      const h = 382;
       const x = canvas.width / 2 - b / 2;
       const y = canvas.height / 2 - h / 2;
       schetsBlok(x, y, b, h, 31);
@@ -2214,17 +2386,16 @@
       tekenTekst(regel1, midden + 32, y + 198, 22);
       tekenTekst(regel2, midden + 32, y + 228, 22);
 
-      tekenTekst('in ' + speeltijd.toFixed(1) + ' seconden', midden, y + 268, 23);
+      tekenMuntje(midden - 54, y + 266, 0.85);
+      tekenTekst('+' + laatsteBeloning + (laatsteBeloning === 1 ? ' munt' : ' munten'), midden + 24, y + 266, 24);
+      tekenTekst('in ' + speeltijd.toFixed(1) + ' seconden', midden, y + 296, 20);
 
       const laatste = levelNummer + 1 >= LEVELS.length;
       tekenTekst(
         laatste ? 'je hebt alle levels gehaald!' : 'spatie: door naar ' + LEVELS[levelNummer + 1].naam,
-        midden, y + 304, 22
+        midden, y + 328, 21
       );
-      tekenTekst(
-        laatste ? 'spatie begint weer bij level 1  -  R: dit level nog eens' : 'R: dit level nog eens',
-        midden, y + 332, 18
-      );
+      tekenTekst('R: nog eens  -  S: de kledingwinkel', midden, y + 354, 18);
     }
 
     // Gele vonken onder de voeten, zodat je ziet dat dit een powerjump is.
@@ -2245,6 +2416,129 @@
       ctx.restore();
     }
 
+    // ---------- de winkel ----------
+
+    let winkelOpen = false;
+
+    // Waar alle vakjes van de winkel staan, uitgerekend uit de schermgrootte.
+    function winkelMaten() {
+      const kolommen = canvas.width < 660 ? 2 : 3;
+      const b = Math.min(760, canvas.width - 40);
+      const vakB = (b - 40) / kolommen;
+      const vakH = Math.min(158, (canvas.height - 180) / Math.ceil(OUTFITS.length / kolommen));
+      const rijen = Math.ceil(OUTFITS.length / kolommen);
+      const h = 112 + rijen * vakH;
+      const x = canvas.width / 2 - b / 2;
+      const y = Math.max(16, canvas.height / 2 - h / 2);
+      const vakken = OUTFITS.map((o, n) => ({
+        o,
+        n,
+        x: x + 20 + (n % kolommen) * vakB + vakB / 2,
+        y: y + 92 + Math.floor(n / kolommen) * vakH + vakH / 2,
+        breedte: vakB - 14,
+        hoogte: vakH - 14,
+      }));
+      return { x, y, b, h, vakken, sluit: { x: x + b - 36, y: y + 36, r: 20 } };
+    }
+
+    // Een outfit kopen, of als je hem al hebt gewoon aantrekken.
+    function koop(n) {
+      const o = OUTFITS[n];
+      if (gekocht.includes(n)) {
+        outfitAan = n;
+        bewaar();
+        return;
+      }
+      if (munten >= o.prijs) {
+        munten -= o.prijs;
+        gekocht.push(n);
+        outfitAan = n;
+        bewaar();
+      } else {
+        foutTijd = 1.6;
+        foutTekst = 'je hebt nog ' + (o.prijs - munten) + ' munten nodig';
+      }
+    }
+
+    // Een muntje, voor in de balk en in de winkel.
+    function tekenMuntje(x, y, schaal) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(schaal, schaal);
+      schetsOvaal(0, 0, 16, 16, 611);
+      vulEnOmlijn('#ffd43b', 4);
+      schetsOvaal(0, 0, 10, 10, 612);
+      vulEnOmlijn('#ffe9a3', 3);
+      ctx.fillStyle = INKT;
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('S', 0, 1);
+      ctx.restore();
+    }
+
+    // Hoeveel munten je hebt, rechtsboven in beeld.
+    function tekenMunten() {
+      const x = canvas.width - 96;
+      const y = 44;
+      tekenMuntje(x, y, 1);
+      tekenTekst(String(munten), x + 36, y, 26);
+    }
+
+    // Het winkelscherm met alle outfits.
+    function tekenWinkel() {
+      const w = winkelMaten();
+
+      ctx.fillStyle = 'rgba(59, 45, 35, 0.55)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      schetsBlok(w.x, w.y, w.b, w.h, 621);
+      vulEnOmlijn('#fff7e8', 6);
+
+      tekenTekst('de kledingwinkel', w.x + w.b / 2, w.y + 40, 32);
+      tekenMuntje(w.x + 40, w.y + 38, 1);
+      tekenTekst(String(munten), w.x + 76, w.y + 38, 24);
+
+      // het kruisje om te sluiten
+      schetsOvaal(w.sluit.x, w.sluit.y, w.sluit.r, w.sluit.r, 622);
+      vulEnOmlijn('#f0a6ae', 4);
+      inktLijn(4);
+      ctx.beginPath();
+      ctx.moveTo(w.sluit.x - 7, w.sluit.y - 7);
+      ctx.lineTo(w.sluit.x + 7, w.sluit.y + 7);
+      ctx.moveTo(w.sluit.x + 7, w.sluit.y - 7);
+      ctx.lineTo(w.sluit.x - 7, w.sluit.y + 7);
+      ctx.stroke();
+
+      for (const v of w.vakken) {
+        const heb = gekocht.includes(v.n);
+        const aan = v.n === outfitAan;
+        schetsBlok(v.x - v.breedte / 2, v.y - v.hoogte / 2, v.breedte, v.hoogte, 630 + v.n);
+        vulEnOmlijn(aan ? '#ffe9a3' : heb ? '#ffffff' : '#efe6d6', 5);
+
+        // de kat met die outfit aan
+        const schaal = Math.min(0.46, (v.hoogte - 56) / 190);
+        ctx.save();
+        if (!heb && munten < v.o.prijs) ctx.globalAlpha = 0.5;
+        tekenKat(v.x, v.y + v.hoogte / 2 - 30, schaal, v.o);
+        ctx.restore();
+
+        tekenTekst(v.o.naam, v.x, v.y - v.hoogte / 2 + 20, 20);
+        if (aan) {
+          tekenTekst('aan', v.x, v.y + v.hoogte / 2 - 12, 18, '#4f9d3a');
+        } else if (heb) {
+          tekenTekst('klik om aan te doen', v.x, v.y + v.hoogte / 2 - 12, 15);
+        } else {
+          tekenMuntje(v.x - 20, v.y + v.hoogte / 2 - 14, 0.62);
+          tekenTekst(String(v.o.prijs), v.x + 10, v.y + v.hoogte / 2 - 14, 20,
+                     munten >= v.o.prijs ? '#4f9d3a' : '#c0392b');
+        }
+      }
+
+      if (foutTijd > 0) tekenTekst(foutTekst, w.x + w.b / 2, w.y + w.h - 18, 20, '#c0392b');
+      tekenTekst('S of Esc om te sluiten', w.x + w.b / 2, w.y + 68, 17);
+    }
+
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -2252,6 +2546,8 @@
       if (inKeukenScherm) {
         tekenKeukenScherm();
         if (gehaald) tekenGehaaldBord();
+        tekenMunten();
+        if (winkelOpen) tekenWinkel();
         return;
       }
 
@@ -2294,8 +2590,11 @@
 
       tekenHud();
       if (gehaald) tekenGehaaldBord();
+      tekenMunten();
+      if (winkelOpen) tekenWinkel();
     }
 
+    laadBewaard();
     startLevel(0);
 
     let vorige = performance.now();
