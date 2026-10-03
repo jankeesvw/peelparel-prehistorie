@@ -262,25 +262,40 @@
     const LEVELBREEDTE = 4250;
     let camera = 0;
 
-    // Rotsblokken waar je tegenaan botst en bovenop kunt staan.
-    // Lage blokken haal je met een tikje, hoge alleen met een powerjump,
-    // en de trap halverwege klim je blok voor blok omhoog.
+    // Waar je op kunt staan. hoogte is hoe hoog de bovenkant boven de grond zit.
+    // Zonder dikte is het een rotsblok dat op de grond staat; met dikte is het
+    // een zwevend eilandje, en dan is dikte hoe dik dat eilandje is. Onder een
+    // zwevend eilandje kun je door lopen, want ze hangen hoger dan de kat.
     const obstakels = [
-      { x: 380, breedte: 70, hoogte: 50 },
-      { x: 620, breedte: 50, hoogte: 100 },
-      { x: 860, breedte: 110, hoogte: 50 },
-      { x: 1150, breedte: 60, hoogte: 130 },
-      { x: 1330, breedte: 60, hoogte: 130 },
-      { x: 1600, breedte: 160, hoogte: 60 },
-      { x: 1830, breedte: 60, hoogte: 150 },
-      { x: 2050, breedte: 90, hoogte: 90 },
-      { x: 2260, breedte: 70, hoogte: 110 },
-      { x: 2420, breedte: 70, hoogte: 155 },
-      { x: 2580, breedte: 70, hoogte: 200 },
-      { x: 2740, breedte: 140, hoogte: 245 },
-      { x: 2980, breedte: 60, hoogte: 110 },
-      { x: 3180, breedte: 80, hoogte: 55 },
-      { x: 3380, breedte: 60, hoogte: 140 },
+      // Let op: onder een zwevend eilandje kan de kat wel lopen, maar niet
+      // springen, want dan stoot hij zijn kop. Een rotsblok op de grond zet je
+      // daarom nooit vlak naast een eilandje, anders komt hij er niet overheen.
+      { x: 300,  breedte: 90,  hoogte: 70 },
+
+      // de eerste twee eilandjes, met de rijst en het zeewier erbij
+      { x: 560,  breedte: 120, hoogte: 175, dikte: 26 },
+      { x: 740,  breedte: 110, hoogte: 250, dikte: 26 },
+
+      // weer omlaag, over een rots heen, en dan de klim omhoog
+      { x: 1050, breedte: 80,  hoogte: 80 },
+      { x: 1280, breedte: 120, hoogte: 190, dikte: 26 },
+      { x: 1450, breedte: 100, hoogte: 265, dikte: 26 },
+      { x: 1620, breedte: 90,  hoogte: 335, dikte: 26 },
+      { x: 1790, breedte: 110, hoogte: 265, dikte: 26 },
+
+      // een stuk met grotere gaten ertussen
+      { x: 1980, breedte: 100, hoogte: 185, dikte: 26 },
+      { x: 2180, breedte: 90,  hoogte: 185, dikte: 26 },
+      { x: 2360, breedte: 90,  hoogte: 250, dikte: 26 },
+
+      // de toren, met de avocado bovenop
+      { x: 2520, breedte: 100, hoogte: 320, dikte: 26 },
+      { x: 2680, breedte: 100, hoogte: 390, dikte: 26 },
+      { x: 2850, breedte: 110, hoogte: 300, dikte: 26 },
+
+      // en zo naar beneden richting de vlag
+      { x: 3050, breedte: 100, hoogte: 200, dikte: 26 },
+      { x: 3250, breedte: 120, hoogte: 165, dikte: 26 },
     ];
 
     // De finishvlag aan het eind van het level.
@@ -330,11 +345,11 @@
     // ligt op de grond. De hoge liggen op een rotsblok of haal je met een
     // powerjump.
     const INGREDIENTEN = [
-      { soort: 'rijst',     naam: 'rijst',     lid: 'de',  x: 395,  hoogte: 110 },
-      { soort: 'nori',      naam: 'zeewier',   lid: 'het', x: 650,  hoogte: 175 },
-      { soort: 'zalm',      naam: 'zalm',      lid: 'de',  x: 1680, hoogte: 125 },
-      { soort: 'komkommer', naam: 'komkommer', lid: 'de',  x: 2095, hoogte: 155 },
-      { soort: 'avocado',   naam: 'avocado',   lid: 'de',  x: 2810, hoogte: 310 },
+      { soort: 'rijst',     naam: 'rijst',     lid: 'de',  x: 470,  hoogte: 150 },
+      { soort: 'nori',      naam: 'zeewier',   lid: 'het', x: 700,  hoogte: 300 },
+      { soort: 'zalm',      naam: 'zalm',      lid: 'de',  x: 1570, hoogte: 390 },
+      { soort: 'komkommer', naam: 'komkommer', lid: 'de',  x: 2130, hoogte: 240 },
+      { soort: 'avocado',   naam: 'avocado',   lid: 'de',  x: 2730, hoogte: 460 },
     ];
 
     // De ingrediënten in het spel zelf, met erbij of je ze al gepakt hebt.
@@ -384,7 +399,10 @@
 
     // Geeft de rechthoek van een obstakel terug: links, rechts, boven, onder.
     function vak(o) {
-      return { links: o.x, rechts: o.x + o.breedte, boven: grondY - o.hoogte, onder: grondY };
+      const boven = grondY - o.hoogte;
+      // een zwevend eilandje houdt onderaan op, een rotsblok loopt door tot de grond
+      const onder = o.dikte ? boven + o.dikte : grondY;
+      return { links: o.x, rechts: o.x + o.breedte, boven, onder };
     }
 
     // Botst de kat (op positie x, y) tegen dit obstakel?
@@ -569,6 +587,90 @@
       ctx.arc(x + 42 * s, y, 28 * s, Math.PI * 1.1, Math.PI * 0.2);
       ctx.closePath();
       vulEnOmlijn('#ffffff', 5);
+    }
+
+    // Verre bergen met sneeuw erop. Ze schuiven het langzaamst mee, dus ze
+    // lijken het verst weg te staan.
+    function tekenBergen(vanaf, tot) {
+      const AFSTAND = 520;
+      const eerste = Math.floor((vanaf - 540) / AFSTAND);
+      const laatste = Math.ceil((tot + 540) / AFSTAND);
+      for (let i = eerste; i <= laatste; i++) {
+        const x = i * AFSTAND;
+        const h = 210 + (((i % 3) + 3) % 3) * 70;
+        const top = grondY + 20 - h;
+        ctx.beginPath();
+        ctx.moveTo(x - 270, grondY + 20);
+        ctx.lineTo(x, top);
+        ctx.lineTo(x + 270, grondY + 20);
+        ctx.closePath();
+        vulEnOmlijn('#b6c6d8', 5);
+
+        // de sneeuwkap
+        ctx.beginPath();
+        ctx.moveTo(x - 62, top + 62);
+        ctx.lineTo(x, top);
+        ctx.lineTo(x + 62, top + 62);
+        ctx.quadraticCurveTo(x + 24, top + 44, x, top + 56);
+        ctx.quadraticCurveTo(x - 24, top + 44, x - 62, top + 62);
+        ctx.closePath();
+        vulEnOmlijn('#ffffff', 4);
+      }
+    }
+
+    // Struikjes en bloemetjes op de grond. Ze staan altijd op dezelfde plek,
+    // want ruis() geeft bij hetzelfde nummer steeds hetzelfde antwoord.
+    function tekenBegroeiing(vanaf, tot) {
+      const AFSTAND = 165;
+      const eerste = Math.floor(vanaf / AFSTAND) - 1;
+      const laatste = Math.ceil(tot / AFSTAND) + 1;
+      for (let i = eerste; i <= laatste; i++) {
+        const x = i * AFSTAND + ruis(i) * 70;
+        const soort = ((i % 3) + 3) % 3;
+        if (soort === 0) {
+          // een struikje van twee bollen
+          ctx.beginPath();
+          ctx.arc(x - 15, grondY - 6, 17, Math.PI, 0);
+          ctx.arc(x + 8, grondY - 10, 21, Math.PI, 0);
+          ctx.closePath();
+          vulEnOmlijn('#5f9d46', 4);
+        } else {
+          // een bloem met vijf blaadjes
+          inktLijn(3);
+          ctx.strokeStyle = '#4f7f39';
+          ctx.beginPath();
+          ctx.moveTo(x, grondY);
+          ctx.quadraticCurveTo(x + 5, grondY - 16, x, grondY - 30);
+          ctx.stroke();
+          ctx.fillStyle = soort === 1 ? '#f0a6ae' : '#ffd968';
+          for (let k = 0; k < 5; k++) {
+            const hoek = (k / 5) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.arc(x + Math.cos(hoek) * 8, grondY - 30 + Math.sin(hoek) * 8, 6, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.fillStyle = '#fff3c4';
+          ctx.beginPath();
+          ctx.arc(x, grondY - 30, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    // Vogeltjes die langzaam door de lucht trekken.
+    function tekenVogels() {
+      inktLijn(3);
+      ctx.strokeStyle = 'rgba(59, 45, 35, 0.5)';
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const x = rondOm(i * 360 + 140 - tijd * 24 - camera * 0.15, canvas.width + 320) - 160;
+        const y = 120 + (i % 3) * 48 + Math.sin(tijd * 1.4 + i) * 9;
+        const v = 9 + (i % 2) * 4;
+        ctx.moveTo(x - v, y);
+        ctx.quadraticCurveTo(x - v / 2, y - v * 0.8, x, y);
+        ctx.quadraticCurveTo(x + v / 2, y - v * 0.8, x + v, y);
+      }
+      ctx.stroke();
     }
 
     // Tekent heuvels van x = vanaf tot x = tot, zodat er altijd genoeg in beeld staan.
@@ -1262,9 +1364,54 @@
       tekenTekst('voor sushi', x, y - 10, 20);
     }
 
+    // Een zwevend eilandje: een brok rots met een punt eronder, gras erop en
+    // twee ranken die in de wind hangen te zwaaien.
+    function tekenZwevendPlatform(o, v) {
+      // de punt onderaan
+      ctx.beginPath();
+      ctx.moveTo(v.links + 8, v.onder - 6);
+      ctx.lineTo(v.links + o.breedte * 0.45, v.onder + 38);
+      ctx.lineTo(v.rechts - 8, v.onder - 6);
+      ctx.closePath();
+      vulEnOmlijn('#8a7259', 5);
+
+      // ranken die eronder hangen
+      inktLijn(4);
+      ctx.strokeStyle = '#5f9d46';
+      ctx.beginPath();
+      for (const rx of [v.links + 18, v.rechts - 22]) {
+        const zwaai = Math.sin(tijd * 1.6 + rx * 0.05) * 7;
+        ctx.moveTo(rx, v.onder - 2);
+        ctx.quadraticCurveTo(rx + zwaai, v.onder + 20, rx - zwaai, v.onder + 42);
+      }
+      ctx.stroke();
+
+      // het blok zelf
+      schetsBlok(v.links, v.boven, o.breedte, o.dikte, o.x);
+      vulEnOmlijn('#a98c6b', 5);
+
+      // de graslaag bovenop
+      schetsBlok(v.links - 3, v.boven - 7, o.breedte + 6, 15, o.x + 1);
+      vulEnOmlijn('#79b457', 5);
+
+      // een paar sprietjes
+      inktLijn(3);
+      ctx.strokeStyle = '#4f7f39';
+      ctx.beginPath();
+      for (let sx = v.links + 14; sx < v.rechts - 10; sx += 34) {
+        ctx.moveTo(sx, v.boven - 4);
+        ctx.quadraticCurveTo(sx + 3, v.boven - 16, sx + 8, v.boven - 18);
+      }
+      ctx.stroke();
+    }
+
     function tekenObstakels() {
       for (const o of obstakels) {
         const v = vak(o);
+        if (o.dikte) {
+          tekenZwevendPlatform(o, v);
+          continue;
+        }
         schetsBlok(v.links, v.boven, o.breedte, o.hoogte, o.x);
         vulEnOmlijn('#aab2b8', 5);
         // lichte bovenkant en een barstje, zodat het op een rots lijkt
@@ -1430,7 +1577,14 @@
       tekenZon();
       tekenWolken();
 
-      // de heuvels schuiven half zo snel mee als de rest
+      tekenVogels();
+
+      // de bergen schuiven het minst mee, de heuvels half zo snel als de rest
+      ctx.save();
+      ctx.translate(-camera * 0.25, 0);
+      tekenBergen(camera * 0.25, camera * 0.25 + canvas.width);
+      ctx.restore();
+
       ctx.save();
       ctx.translate(-camera * 0.5, 0);
       tekenHeuvels(camera * 0.5, camera * 0.5 + canvas.width);
@@ -1440,6 +1594,7 @@
       ctx.save();
       ctx.translate(-camera, 0);
       tekenGrond(camera, camera + canvas.width);
+      tekenBegroeiing(camera, camera + canvas.width);
       tekenObstakels();
       tekenFinish();
       tekenKeukenAchter();
