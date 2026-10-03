@@ -1051,20 +1051,31 @@
       camera = klem(doel, 0, Math.max(0, LEVELBREEDTE - canvas.width));
     }
 
+    // De zon is een groot sushi-rolletje dat langzaam ronddraait. De vulling
+    // heeft de kleur van het eten dat in dit level te vinden is.
     function tekenZon() {
       const x = canvas.width - 110;
       const y = 100;
-      schetsOvaal(x, y, 42, 42, 100);
-      vulEnOmlijn('#ffd968', 5);
-      // stralen
-      inktLijn(4);
+
+      // de stralen eromheen, die zachtjes groter en kleiner worden
+      ctx.strokeStyle = '#ffd968';
+      ctx.lineWidth = 7;
+      ctx.lineCap = 'round';
       ctx.beginPath();
-      for (let i = 0; i < 8; i++) {
-        const hoek = (i / 8) * Math.PI * 2 + 0.2;
-        ctx.moveTo(x + Math.cos(hoek) * 52, y + Math.sin(hoek) * 52);
-        ctx.lineTo(x + Math.cos(hoek) * 68, y + Math.sin(hoek) * 68);
+      for (let i = 0; i < 10; i++) {
+        const hoek = (i / 10) * Math.PI * 2 + 0.2;
+        const uit = 52 + Math.sin(tijd * 2 + i) * 5;
+        ctx.moveTo(x + Math.cos(hoek) * uit, y + Math.sin(hoek) * uit);
+        ctx.lineTo(x + Math.cos(hoek) * (uit + 17), y + Math.sin(hoek) * (uit + 17));
       }
       ctx.stroke();
+
+      // en het rolletje zelf
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(tijd * 0.15);
+      tekenSushi(0, 0, 1.5, vullingKleuren()[0]);
+      ctx.restore();
     }
 
     // Een cartoon-wolk: drie bollen met een platte onderkant.
