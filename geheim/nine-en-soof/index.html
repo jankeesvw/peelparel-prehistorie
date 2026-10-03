@@ -23,7 +23,10 @@
       grondY = canvas.height - 90;
     }
     pasGrootteAan();
-    window.addEventListener('resize', pasGrootteAan);
+    window.addEventListener('resize', () => {
+      pasGrootteAan();
+      if (inKeukenScherm) herschikKeuken();
+    });
 
     let tijd = 0;
 
@@ -285,25 +288,23 @@
 
     // ---------- de keuken ----------
 
-    // Voorbij de finishvlag staat het aanrecht. Daar druk je op T en rolt de kat
-    // sushi van alles wat hij onderweg heeft opgeraapt.
+    // Voorbij de finishvlag staat het aanrecht. Druk je daar op T, dan gaat het
+    // spel naar het keukenscherm: een close-up waar je zelf de ingrediënten op
+    // het matje sleept en daarna de sushi rolt.
     const keuken = { x: 3760, breedte: 330 };
     const KOOKPLEK = keuken.x + 70;   // hier gaat de kat staan zodra hij begint
     const PLANK_X = keuken.x + 225;   // het midden van de snijplank
     const AANRECHT_H = 86;
 
-    let kookTijd = -1;        // -1 zolang hij nog niet kookt, anders hoe lang al
-    let inDeKeuken = false;   // staat de kat bij het aanrecht?
+    let inDeKeuken = false;      // staat de kat in het level bij het aanrecht?
+    let inKeukenScherm = false;  // is het keukenscherm open?
+    let rolTijd = -1;            // -1 tot je op de knop drukt, daarna de animatie
+    const ROLDUUR = 1.9;
 
-    // Het koken gaat in drie stappen. Hoe meer je hebt opgeraapt, hoe langer
-    // het vliegen duurt, dus rekenen we de tijden elke keer opnieuw uit.
-    function kookFases() {
-      const n = Math.max(1, aantalGepakt());
-      const vliegen = (n - 1) * 0.22 + 0.45;  // ingrediënten vallen op de plank
-      const hakken = vliegen + 1.0;           // het mes gaat op en neer
-      const rollen = hakken + 0.9;            // de rolletjes komen tevoorschijn
-      return { vliegen, hakken, rollen };
-    }
+    // De ingrediënten die je op het aanrecht heen en weer kunt slepen.
+    let sleepItems = [];
+    let sleept = null;                          // wat je nu vasthoudt
+    const muis = { x: -100, y: -100 };          // waar de muis of je vinger is
 
     // Hoeveel rolletjes het worden: met alles erbij drie, met bijna niets één.
     function aantalRollen() {
@@ -351,8 +352,11 @@
       kat.powerjump = false;
       gehaald = false;
       speeltijd = 0;
-      kookTijd = -1;
       inDeKeuken = false;
+      inKeukenScherm = false;
+      rolTijd = -1;
+      sleepItems = [];
+      sleept = null;
       for (const i of ingredienten) {
         i.gepakt = false;
         i.plop = 0;
@@ -416,12 +420,14 @@
         return;
       }
 
-      // Tijdens het koken staat de kat stil, luistert hij niet naar de toetsen
-      // en loopt de klok niet door.
-      if (kookTijd >= 0) {
-        kookTijd += dt;
-        if (kookTijd >= kookFases().rollen) gehaald = true;
-        volgCamera();
+      // In het keukenscherm staat het level stil: daar doe je alles met de muis.
+      if (inKeukenScherm) {
+        if (rolTijd >= 0) {
+          rolTijd += dt;
+          if (rolTijd >= ROLDUUR) gehaald = true;
+        } else if (klaarOmTeRollen() && (toetsen['Enter'] || toetsen[' '])) {
+          rolTijd = 0;   // met enter of de spatie kan het ook
+        }
         return;
       }
 
@@ -511,11 +517,11 @@
                    kat.x < keuken.x + keuken.breedte + 20;
 
       if (inDeKeuken && (toetsen['t'] || toetsen['T'])) {
-        kookTijd = 0;
         kat.x = KOOKPLEK;   // hij stapt achter het aanrecht
         kat.y = grondY;
         kat.snelheidX = 0;
         kat.snelheidY = 0;
+        openKeukenScherm();
       }
 
       volgCamera();
@@ -523,8 +529,7 @@
 
     // De camera houdt de kat in het midden, maar kijkt nooit buiten het level.
     function volgCamera() {
-      const kijkNaar = kookTijd >= 0 ? keuken.x + keuken.breedte / 2 : kat.x;
-      const doel = kijkNaar - canvas.width / 2;
+      const doel = kat.x - canvas.width / 2;
       camera = klem(doel, 0, Math.max(0, LEVELBREEDTE - canvas.width));
     }
 
@@ -835,8 +840,6 @@
       // de snijplank bovenop
       schetsBlok(PLANK_X - 82, top - 13, 164, 15, 55);
       vulEnOmlijn('#dbb380', 4);
-
-      if (kookTijd >= 0) tekenKoken();
     }
 
     // Een keukenmes, met het punt naar links.
@@ -855,46 +858,279 @@
       ctx.restore();
     }
 
-    // Het sushi maken zelf: eerst vallen de ingredienten op de plank, dan hakt
-    // het mes ze klein, en daarna liggen de rolletjes op een bordje.
-    function tekenKoken() {
-      const fase = kookFases();
-      const t = kookTijd;
-      const plankY = grondY - AANRECHT_H - 13;  // de bovenkant van de plank
-      const itemY = plankY - 22;
-      const lijst = ingredienten.filter((i) => i.gepakt);
+    // ---------- het keukenscherm ----------
 
-      if (t < fase.hakken) {
-        // de ingredienten komen een voor een naar beneden vallen
-        lijst.forEach((i, n) => {
-          const deel = klem((t - n * 0.22) / 0.45, 0, 1);
-          if (deel <= 0) return;
-          const hoog = (1 - deel) * (1 - deel) * 300;
-          const x = PLANK_X - (lijst.length - 1) * 17 + n * 34;
-          tekenIngredient(i.soort, x, itemY - hoog, 0.6);
-        });
+    // Alle plekken op het keukenscherm, uitgerekend uit de grootte van het
+    // venster. Zo klopt het ook als je het venster groter of kleiner maakt.
+    function keukenMaten() {
+      const b = canvas.width;
+      const h = canvas.height;
+      const bladY = Math.round(h * 0.42);   // de achterrand van het aanrecht
+      const mat = {
+        x: b / 2,
+        y: bladY + (h - bladY) * 0.40,
+        breedte: Math.min(430, b * 0.5),
+        hoogte: 124,
+      };
+      const knop = { x: b / 2, y: h - 52, breedte: Math.min(340, b - 60), hoogte: 62 };
+      return { b, h, bladY, mat, knop };
+    }
+
+    // Ligt dit punt op de knop?
+    function opKnop(p) {
+      const k = keukenMaten().knop;
+      return Math.abs(p.x - k.x) < k.breedte / 2 && Math.abs(p.y - k.y) < k.hoogte / 2;
+    }
+
+    // Je mag pas rollen als alles wat je gevonden hebt op het matje ligt.
+    function klaarOmTeRollen() {
+      return sleepItems.every((i) => i.opMat);
+    }
+
+    // Legt alles wat op het matje ligt netjes naast elkaar.
+    function schikMat() {
+      const m = keukenMaten();
+      const opMat = sleepItems.filter((i) => i.opMat);
+      const stap = Math.min(82, (m.mat.breedte - 50) / Math.max(1, opMat.length - 1));
+      opMat.forEach((i, n) => {
+        i.x = m.mat.x - (opMat.length - 1) * stap / 2 + n * stap;
+        i.y = m.mat.y;
+      });
+    }
+
+    // Zet het keukenscherm klaar: alles wat je onderweg gevonden hebt ligt los
+    // op het aanrecht, om en om links en rechts van het matje.
+    function openKeukenScherm() {
+      const m = keukenMaten();
+      const rijH = Math.min(96, (m.h - m.bladY - 150) / 2.6);
+      sleepItems = ingredienten.filter((i) => i.gepakt).map((i, n) => ({
+        soort: i.soort,
+        naam: i.naam,
+        x: n % 2 === 0 ? m.b * 0.13 : m.b * 0.87,
+        y: m.bladY + 64 + Math.floor(n / 2) * rijH,
+        opMat: false,
+      }));
+      sleept = null;
+      rolTijd = -1;
+      inKeukenScherm = true;
+    }
+
+    // Na het veranderen van de venstergrootte liggen de ingrediënten misschien
+    // buiten beeld. Dit zet ze weer netjes op het aanrecht.
+    function herschikKeuken() {
+      const m = keukenMaten();
+      for (const i of sleepItems) {
+        i.x = klem(i.x, 50, m.b - 50);
+        i.y = klem(i.y, m.bladY + 40, m.h - 110);
+      }
+      schikMat();
+    }
+
+    // ---------- slepen met de muis of met je vinger ----------
+
+    function muisPlek(e) {
+      const r = canvas.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+      const p = muisPlek(e);
+      muis.x = p.x;
+      muis.y = p.y;
+      if (!inKeukenScherm || rolTijd >= 0 || gehaald) return;
+      canvas.setPointerCapture(e.pointerId);
+
+      // op de knop gedrukt? dan gaan we rollen
+      if (klaarOmTeRollen() && opKnop(p)) {
+        rolTijd = 0;
+        return;
       }
 
-      if (t > fase.vliegen && t < fase.hakken) {
-        // het mes gaat op en neer boven de plank
-        const hak = Math.abs(Math.sin((t - fase.vliegen) * 11));
-        tekenMes(PLANK_X + 30, itemY - 26 - hak * 70);
-        if (hak < 0.12) tekenPlop(PLANK_X, plankY - 6, 0.3);
-      }
-
-      if (t >= fase.hakken) {
-        // een bordje met daarop de rolletjes die je verdiend hebt
-        schetsOvaal(PLANK_X, plankY + 2, 86, 14, 56);
-        vulEnOmlijn('#f2f2ef', 4);
-
-        const vullingen = ['#f08b5a', '#cfe08a', '#6fb33f'];
-        const rollen = aantalRollen();
-        for (let n = 0; n < rollen; n++) {
-          const kom = klem((t - fase.hakken - n * 0.18) / 0.3, 0, 1);
-          if (kom <= 0) continue;
-          const x = PLANK_X - (rollen - 1) * 26 + n * 52;
-          tekenSushi(x, plankY - 14, 0.62 * kom, vullingen[n % 3]);
+      // anders pak je het bovenste ingrediënt onder je muis op
+      for (let n = sleepItems.length - 1; n >= 0; n--) {
+        const i = sleepItems[n];
+        if (Math.abs(p.x - i.x) < 46 && Math.abs(p.y - i.y) < 46) {
+          i.opMat = false;
+          sleepItems.splice(n, 1);
+          sleepItems.push(i);   // wat je vasthoudt ligt bovenop
+          sleept = i;
+          schikMat();
+          break;
         }
+      }
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      const p = muisPlek(e);
+      muis.x = p.x;
+      muis.y = p.y;
+      if (sleept) {
+        sleept.x = p.x;
+        sleept.y = p.y;
+      }
+    });
+
+    // Loslaten: ligt het boven het matje, dan blijft het daar liggen.
+    function laatLos() {
+      if (!sleept) return;
+      const m = keukenMaten();
+      sleept.opMat = Math.abs(sleept.x - m.mat.x) < m.mat.breedte / 2 + 20 &&
+                     Math.abs(sleept.y - m.mat.y) < m.mat.hoogte / 2 + 30;
+      sleept.x = klem(sleept.x, 50, m.b - 50);
+      sleept.y = klem(sleept.y, m.bladY + 40, m.h - 110);
+      sleept = null;
+      schikMat();
+    }
+
+    canvas.addEventListener('pointerup', laatLos);
+    canvas.addEventListener('pointercancel', laatLos);
+
+    // ---------- het keukenscherm tekenen ----------
+
+    // Het bamboe matje waar de sushi op gerold wordt.
+    function tekenMatje(mat) {
+      const x = mat.x - mat.breedte / 2;
+      const y = mat.y - mat.hoogte / 2;
+      schetsBlok(x, y, mat.breedte, mat.hoogte, 73);
+      vulEnOmlijn('#e4c87e', 5);
+      inktLijn(3);
+      ctx.strokeStyle = '#b89a52';
+      ctx.beginPath();
+      for (let sx = x + 14; sx < x + mat.breedte - 8; sx += 15) {
+        ctx.moveTo(sx, y + 9);
+        ctx.lineTo(sx, y + mat.hoogte - 9);
+      }
+      ctx.stroke();
+    }
+
+    // De dichtgerolde sushi, nog voordat hij in stukjes gesneden is.
+    function tekenRol(x, y, halveB, halveH) {
+      const hb = Math.max(18, halveB);
+      schetsBlok(x - hb, y - halveH, hb * 2, halveH * 2, 76);
+      vulEnOmlijn('#31472f', 5);
+      schetsOvaal(x + hb, y, 13, halveH - 4, 77);
+      vulEnOmlijn('#fdfbf1', 4);
+    }
+
+    // Een ingrediënt op het aanrecht, met een schaduwtje en zijn naam erbij.
+    // Wat je vasthoudt tekenen we iets groter, zodat je ziet dat je het hebt.
+    function tekenSleepItem(i, vast) {
+      const schaal = vast ? 1.15 : 1;
+      ctx.save();
+      ctx.globalAlpha = 0.18;
+      ctx.fillStyle = INKT;
+      ctx.beginPath();
+      ctx.ellipse(i.x, i.y + 34, 30 * schaal, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      tekenIngredient(i.soort, i.x, i.y - (vast ? 8 : 0), schaal);
+      if (!i.opMat) tekenTekst(i.naam, i.x, i.y + 54, 17);
+    }
+
+    // De uitleg bovenaan het aanrecht, en de knop zodra alles klaarligt.
+    function tekenKeukenTekst(m) {
+      const nog = sleepItems.filter((i) => !i.opMat).length;
+      if (sleepItems.length === 0) {
+        tekenTekst('je hebt onderweg niets gevonden...', m.b / 2, m.bladY + 38, 24);
+      } else if (nog > 0) {
+        tekenTekst('sleep de ingrediënten op het matje', m.b / 2, m.bladY + 38, 26);
+        tekenTekst('nog ' + nog + ' te gaan', m.b / 2, m.bladY + 70, 20);
+      } else {
+        tekenTekst('alles ligt klaar!', m.b / 2, m.bladY + 38, 26);
+      }
+
+      if (klaarOmTeRollen()) {
+        const k = m.knop;
+        schetsBlok(k.x - k.breedte / 2, k.y - k.hoogte / 2, k.breedte, k.hoogte, 74);
+        vulEnOmlijn(opKnop(muis) ? '#ffe9a3' : '#ffd968', 5);
+        tekenTekst('MAAK DE SUSHI', k.x, k.y, 28);
+      }
+    }
+
+    // Het rollen en snijden, nadat je op de knop hebt gedrukt.
+    function tekenRolAnimatie(m) {
+      const t = rolTijd;
+
+      if (t < 0.8) {
+        // het matje rolt dicht en alles schuift naar het midden
+        const deel = t / 0.8;
+        tekenMatje({
+          x: m.mat.x,
+          y: m.mat.y,
+          breedte: m.mat.breedte * (1 - deel * 0.5),
+          hoogte: m.mat.hoogte,
+        });
+        for (const i of sleepItems) {
+          tekenIngredient(i.soort, i.x + (m.mat.x - i.x) * deel, m.mat.y, 1 - deel * 0.55);
+        }
+        if (deel > 0.45) tekenRol(m.mat.x, m.mat.y, m.mat.breedte * 0.3 * (deel - 0.45) / 0.55, 52);
+        tekenTekst('rollen!', m.b / 2, m.bladY + 38, 28);
+        return;
+      }
+
+      // en daarna hakt het mes er stukjes van
+      const rollen = aantalRollen();
+      const stuk = (ROLDUUR - 0.8) / rollen;
+      const t2 = t - 0.8;
+      const klaar = Math.min(rollen, Math.floor(t2 / stuk));
+      const binnen = (t2 % stuk) / stuk;
+      const over = 1 - klaar / rollen;
+
+      if (over > 0.01) tekenRol(m.mat.x, m.mat.y, m.mat.breedte * 0.3 * over, 52);
+      if (klaar < rollen) tekenMes(m.mat.x, m.mat.y - 70 - Math.sin(binnen * Math.PI) * 90);
+
+      const bordY = Math.min(m.mat.y + 125, m.h - 70);
+      schetsOvaal(m.mat.x, bordY, 160, 38, 75);
+      vulEnOmlijn('#f2f2ef', 5);
+      const vullingen = ['#f08b5a', '#cfe08a', '#6fb33f'];
+      for (let n = 0; n < klaar; n++) {
+        tekenSushi(m.mat.x - (rollen - 1) * 27 + n * 54, bordY - 10, 0.8, vullingen[n % 3]);
+      }
+      tekenTekst('hak!', m.b / 2, m.bladY + 38, 28);
+    }
+
+    // De close-up van de keuken: je ziet alleen de bovenkant van de kat achter
+    // het aanrecht, en daarvoor ligt het matje waar jij de sushi op maakt.
+    function tekenKeukenScherm() {
+      const m = keukenMaten();
+
+      // de tegelmuur
+      ctx.fillStyle = '#f7e6cd';
+      ctx.fillRect(0, 0, m.b, m.bladY);
+      ctx.strokeStyle = 'rgba(59, 45, 35, 0.15)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let x = 0; x <= m.b; x += 72) { ctx.moveTo(x, 0); ctx.lineTo(x, m.bladY); }
+      for (let y = 0; y <= m.bladY; y += 72) { ctx.moveTo(0, y); ctx.lineTo(m.b, y); }
+      ctx.stroke();
+
+      // het bord aan de muur
+      schetsBlok(m.b / 2 - 150, 18, 300, 72, 71);
+      vulEnOmlijn('#e4572e', 5);
+      tekenTekst('SUSHI', m.b / 2, 56, 44);
+
+      // de kat erachter. We tekenen hem zo groot en zo laag dat alleen zijn
+      // bovenkant boven het aanrecht uitkomt.
+      const schaal = klem((m.bladY - 100) / 144, 1, 2.3);
+      tekenKat(m.b / 2, m.bladY + 40 * schaal, schaal);
+
+      // het aanrecht eroverheen, met wat nerven in het hout
+      ctx.fillStyle = '#d7a86a';
+      ctx.fillRect(0, m.bladY, m.b, m.h - m.bladY);
+      inktLijn(3);
+      ctx.strokeStyle = 'rgba(59, 45, 35, 0.16)';
+      ctx.beginPath();
+      for (let y = m.bladY + 64; y < m.h; y += 64) { ctx.moveTo(0, y); ctx.lineTo(m.b, y); }
+      ctx.stroke();
+      schetsBlok(-12, m.bladY - 16, m.b + 24, 30, 72);
+      vulEnOmlijn('#e8ddc8', 5);
+
+      if (rolTijd >= 0) {
+        tekenRolAnimatie(m);
+      } else {
+        tekenMatje(m.mat);
+        for (const i of sleepItems) tekenSleepItem(i, i === sleept);
+        tekenKeukenTekst(m);
       }
     }
 
@@ -1063,6 +1299,13 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // in de keuken zie je het level niet meer, alleen de close-up
+      if (inKeukenScherm) {
+        tekenKeukenScherm();
+        if (gehaald) tekenGehaaldBord();
+        return;
+      }
+
       // de lucht en de zon blijven staan waar ze staan
       tekenLucht();
       tekenZon();
@@ -1085,7 +1328,7 @@
       if (kat.powerjump) tekenVonken(kat.x, kat.y);
       tekenKat(kat.x, kat.y, 1);
       tekenKeukenVoor();
-      if (inDeKeuken && kookTijd < 0) tekenKookTip();
+      if (inDeKeuken) tekenKookTip();
       ctx.restore();
 
       tekenHud();
