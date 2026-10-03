@@ -439,6 +439,7 @@
       {
         naam: 'de groene heuvels',
         finishX: 3600,
+        gast: { naam: 'Mimi', dier: 'muis', kleur: '#d9c2b2' },
         tema: { lucht1: '#9fd8f2', lucht2: '#e6f6fc', berg: '#b6c6d8', heuvel: '#9ec97a',
                 gras: '#79b457', spriet: '#4f7f39', aarde: '#c99a62', rots: '#aab2b8',
                 eiland: '#a98c6b', struik: '#5f9d46' },
@@ -471,6 +472,7 @@
       {
         naam: 'de avondzon',
         finishX: 3900,
+        gast: { naam: 'Boris', dier: 'beer', kleur: '#b98a5e' },
         tema: { lucht1: '#ff9e5e', lucht2: '#ffe2b8', berg: '#9c7a9e', heuvel: '#7f9a55',
                 gras: '#6b9c43', spriet: '#3f6b2c', aarde: '#a8754a', rots: '#9a8f93',
                 eiland: '#8f7252', struik: '#4e8438' },
@@ -505,6 +507,7 @@
       {
         naam: 'de sneeuwtoppen',
         finishX: 3850,
+        gast: { naam: 'Pippa', dier: 'vogel', kleur: '#7fc4e8' },
         tema: { lucht1: '#bcdff2', lucht2: '#f4fbff', berg: '#ffffff', heuvel: '#dfeef5',
                 gras: '#eef7fb', spriet: '#b9cfdb', aarde: '#b9c3c9', rots: '#c7d2d8',
                 eiland: '#9aa7ad', struik: '#8fb8a0' },
@@ -614,6 +617,44 @@
     let foutTijd = 0;    // telt af na een verkeerde volgorde
     let foutTekst = '';
 
+    // Wat de gast besteld heeft: een rijtje soorten van onder naar boven.
+    let bestelling = [];
+
+    // De gast bestelt alleen dingen die jij ook echt gevonden hebt, anders zou
+    // je zijn bestelling nooit kunnen maken. Elke keer dat je de keuken
+    // binnenkomt bedenkt hij iets nieuws.
+    function maakBestelling() {
+      const heb = voorraad.map((v) => v.soort);
+      const lijst = [];
+      if (heb.includes('nori')) lijst.push('nori');
+      if (heb.includes('rijst')) lijst.push('rijst');
+      const vullingen = heb.filter((sx) => sx !== 'nori' && sx !== 'rijst');
+      if (vullingen.length === 0) return lijst;
+      const aantal = 2 + Math.floor(Math.random() * 3);   // twee, drie of vier lagen vulling
+      for (let n = 0; n < aantal; n++) {
+        lijst.push(vullingen[Math.floor(Math.random() * vullingen.length)]);
+      }
+      return lijst;
+    }
+
+    // Heb je precies gemaakt wat er besteld is, in dezelfde volgorde?
+    function bestellingKlopt() {
+      return stapel.length === bestelling.length &&
+             stapel.every((i, n) => i.soort === bestelling[n]);
+    }
+
+    // Of in elk geval hetzelfde eten, maar in een andere volgorde?
+    function bestellingBijna() {
+      if (bestellingKlopt() || stapel.length !== bestelling.length) return false;
+      const mijn = stapel.map((i) => i.soort).sort().join(',');
+      return mijn === bestelling.slice().sort().join(',');
+    }
+
+    // De gast van dit level.
+    function gast() {
+      return LEVELS[levelNummer].gast;
+    }
+
     // De kleuren van de vulling in dit level, voor de rolletjes die je snijdt.
     function vullingKleuren() {
       const kleuren = ingredienten
@@ -664,6 +705,7 @@
       rolTijd = -1;
       voorraad = [];
       stapel = [];
+      bestelling = [];
       sleept = null;
       foutTijd = 0;
       for (const i of ingredienten) {
@@ -1483,6 +1525,7 @@
         .filter((i) => i.gepakt)
         .map((i) => ({ soort: i.soort, naam: i.naam, x: 0, y: 0 }));
       legVoorraadNeer();
+      bestelling = maakBestelling();
       stapel = [];
       sleept = null;
       foutTijd = 0;
@@ -1736,6 +1779,9 @@
       } else if (beurt) {
         tekenTekst('sleep nu ' + volledigeNaam(beurt) + ' op het matje', m.b / 2, m.bladY + 38, 26);
         tekenTekst('eerst zeewier, dan rijst, dan de rest', m.b / 2, m.bladY + 70, 19);
+      } else if (bestellingKlopt()) {
+        tekenTekst('precies de bestelling van ' + gast().naam + '!', m.b / 2, m.bladY + 38, 25);
+        tekenTekst('druk op de knop om te rollen', m.b / 2, m.bladY + 70, 19);
       } else {
         tekenTekst('ontwerp je eigen sushi!', m.b / 2, m.bladY + 38, 26);
         tekenTekst(
@@ -1801,6 +1847,126 @@
       tekenTekst('hak!', m.b / 2, m.bladY + 38, 28);
     }
 
+    // Een gast in cartoon-stijl: een rond kopje met oren of een snavel.
+    function tekenGast(x, y, schaal, g, blij) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(schaal, schaal);
+
+      if (g.dier === 'muis') {
+        // twee grote ronde oren
+        for (const ox of [-30, 30]) {
+          schetsOvaal(ox, -26, 19, 19, 501 + ox);
+          vulEnOmlijn(g.kleur, 5);
+          schetsOvaal(ox, -26, 11, 11, 511 + ox);
+          ctx.fillStyle = '#f0a6ae';
+          ctx.fill();
+        }
+      } else if (g.dier === 'beer') {
+        // twee kleine ronde oortjes
+        for (const ox of [-28, 28]) {
+          schetsOvaal(ox, -27, 14, 14, 521 + ox);
+          vulEnOmlijn(g.kleur, 5);
+        }
+      }
+
+      // het kopje
+      schetsOvaal(0, 0, 34, 31, 531);
+      vulEnOmlijn(g.kleur, 5);
+
+      if (g.dier === 'vogel') {
+        // een kuifje en een snavel
+        inktLijn(5);
+        ctx.strokeStyle = g.kleur;
+        ctx.beginPath();
+        ctx.moveTo(-6, -30); ctx.lineTo(-13, -47);
+        ctx.moveTo(4, -31); ctx.lineTo(7, -49);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-10, 6);
+        ctx.lineTo(10, 6);
+        ctx.lineTo(0, blij ? 22 : 18);
+        ctx.closePath();
+        vulEnOmlijn('#ffb43d', 4);
+      } else {
+        // een snuitje met een neusje
+        schetsOvaal(0, 10, 15, 11, 541);
+        vulEnOmlijn('#fdeef3', 4);
+        ctx.fillStyle = INKT;
+        ctx.beginPath();
+        ctx.arc(0, 5, 4, 0, Math.PI * 2);
+        ctx.fill();
+        // mondje: blij of een rechte streep
+        inktLijn(3);
+        ctx.beginPath();
+        if (blij) {
+          ctx.moveTo(-9, 14);
+          ctx.quadraticCurveTo(0, 21, 9, 14);
+        } else {
+          ctx.moveTo(-7, 17);
+          ctx.lineTo(7, 17);
+        }
+        ctx.stroke();
+      }
+
+      // ogen met een lichtpuntje
+      ctx.fillStyle = INKT;
+      for (const ox of [-13, 13]) {
+        ctx.beginPath();
+        ctx.arc(ox, -9, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#fff';
+      for (const ox of [-14.5, 11.5]) {
+        ctx.beginPath();
+        ctx.arc(ox, -11, 1.7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    // Het bestelbriefje aan de muur, met de gast erboven. De lagen die je al
+    // goed hebt staan vol in kleur met een vinkje, de rest is nog vaag.
+    function tekenBestelling(m) {
+      const g = gast();
+      const b = Math.min(210, m.b * 0.26);
+      const x = 24;
+      const y = 58;
+      const h = Math.min(m.bladY - 78, 92 + bestelling.length * 22);
+
+      schetsBlok(x, y, b, h, 561);
+      vulEnOmlijn('#fffdf2', 5);
+      tekenGast(x + b / 2, y - 4, 0.7, g, bestellingKlopt());
+      tekenTekst(g.naam + ' wil:', x + b / 2, y + 44, 20);
+
+      if (bestelling.length === 0) {
+        tekenTekst('maakt niet uit!', x + b / 2, y + 76, 18);
+        return;
+      }
+
+      const stap = Math.min(22, (h - 64) / bestelling.length);
+      const laagH = stap - 2;
+      let ly = y + h - 14 - laagH / 2;
+      bestelling.forEach((soort, n) => {
+        const goed = n < stapel.length && stapel[n].soort === soort;
+        ctx.save();
+        if (!goed) ctx.globalAlpha = 0.4;
+        tekenLaag(soort, x + b / 2, ly, b - 44, laagH);
+        ctx.restore();
+        if (goed) {
+          inktLijn(4);
+          ctx.strokeStyle = '#4f9d3a';
+          ctx.beginPath();
+          ctx.moveTo(x + b - 24, ly - 1);
+          ctx.lineTo(x + b - 18, ly + 5);
+          ctx.lineTo(x + b - 7, ly - 8);
+          ctx.stroke();
+        }
+        ly -= stap;
+      });
+    }
+
     // De close-up van de keuken: je ziet alleen de bovenkant van de kat achter
     // het aanrecht, en daarvoor ligt het matje waar jij de sushi op maakt.
     function tekenKeukenScherm() {
@@ -1820,6 +1986,9 @@
       schetsBlok(m.b / 2 - 150, 18, 300, 72, 71);
       vulEnOmlijn('#e4572e', 5);
       tekenTekst('SUSHI', m.b / 2, 56, 44);
+
+      // het bestelbriefje van de gast
+      tekenBestelling(m);
 
       // de kat erachter. We tekenen hem zo groot en zo laag dat alleen zijn
       // bovenkant boven het aanrecht uitkomt.
@@ -2006,52 +2175,55 @@
       });
     }
 
-    // Het bord dat in beeld komt als je de vlag hebt aangeraakt.
+    // Het bord dat in beeld komt als je sushi klaar is, met de reactie van
+    // de gast erbij.
     function tekenGehaaldBord() {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      const b = Math.min(520, canvas.width - 60);
-      const h = 326;
+      const b = Math.min(540, canvas.width - 60);
+      const h = 356;
       const x = canvas.width / 2 - b / 2;
       const y = canvas.height / 2 - h / 2;
       schetsBlok(x, y, b, h, 31);
       vulEnOmlijn('#ffd968', 6);
 
       const midden = canvas.width / 2;
-      tekenTekst(allesGepakt() ? 'Sushi!' : 'Gehaald!', midden, y + 56, 54);
+      const klopt = bestellingKlopt();
+      const bijna = bestellingBijna();
+      tekenTekst(klopt ? 'Precies goed!' : bijna ? 'Bijna goed!' : 'Gehaald!', midden, y + 54, 50);
 
-      if (allesGepakt()) {
-        // alles bij elkaar: de kat rolt er drie rolletjes van
-        const kleuren = vullingKleuren();
-        tekenSushi(midden - 78, y + 150, 0.9, kleuren[0]);
-        tekenSushi(midden, y + 150, 0.9, kleuren[1 % kleuren.length]);
-        tekenSushi(midden + 78, y + 150, 0.9, kleuren[2 % kleuren.length]);
-        tekenTekst('je had alle ingrediënten', midden, y + 212, 24);
-      } else {
-        const mist = ingredienten.length - aantalGepakt();
-        tekenTekst('maar je mist nog ' + mist, midden, y + 108, 26);
-        tekenTekst(mist === 1 ? 'ingrediënt voor de sushi' : 'ingrediënten voor de sushi', midden, y + 142, 26);
-        for (let n = 0; n < ingredienten.length; n++) {
-          const i = ingredienten[n];
-          const cx = midden - (ingredienten.length - 1) * 28 + n * 56;
-          ctx.save();
-          if (!i.gepakt) ctx.globalAlpha = 0.25;
-          tekenIngredient(i.soort, cx, y + 196, 0.62);
-          ctx.restore();
-        }
-      }
+      // de rolletjes in de kleuren van de vulling die jij gekozen hebt
+      const mijn = stapel
+        .filter((i) => i.soort !== 'nori' && i.soort !== 'rijst')
+        .map((i) => ETEN[i.soort].kleur);
+      const kleuren = mijn.length ? mijn : vullingKleuren();
+      tekenSushi(midden - 78, y + 134, 0.9, kleuren[0]);
+      tekenSushi(midden, y + 134, 0.9, kleuren[1 % kleuren.length]);
+      tekenSushi(midden + 78, y + 134, 0.9, kleuren[2 % kleuren.length]);
 
-      tekenTekst('in ' + speeltijd.toFixed(1) + ' seconden', midden, y + 244, 24);
+      // de gast zegt er wat van
+      const g = gast();
+      tekenGast(midden - 168, y + 214, 0.8, g, klopt || bijna);
+      const regel1 = klopt ? 'precies wat ik wilde!'
+                  : bijna ? 'alles zat erin, maar de'
+                          : 'niet wat ik besteld had,';
+      const regel2 = klopt ? '- ' + g.naam
+                  : bijna ? 'volgorde was anders  - ' + g.naam
+                          : 'maar wel lekker!  - ' + g.naam;
+      tekenTekst(regel1, midden + 32, y + 198, 22);
+      tekenTekst(regel2, midden + 32, y + 228, 22);
+
+      tekenTekst('in ' + speeltijd.toFixed(1) + ' seconden', midden, y + 268, 23);
 
       const laatste = levelNummer + 1 >= LEVELS.length;
       tekenTekst(
         laatste ? 'je hebt alle levels gehaald!' : 'spatie: door naar ' + LEVELS[levelNummer + 1].naam,
-        midden, y + 280, 22
+        midden, y + 304, 22
       );
       tekenTekst(
         laatste ? 'spatie begint weer bij level 1  -  R: dit level nog eens' : 'R: dit level nog eens',
-        midden, y + 308, 18
+        midden, y + 332, 18
       );
     }
 
