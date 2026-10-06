@@ -870,7 +870,7 @@
     window.addEventListener('keydown', (e) => {
       toetsen[e.key] = true;
       // met S ga je naar de kledingwinkel en weer terug
-      if ((e.key === 's' || e.key === 'S') && rolTijd < 0) winkelOpen = !winkelOpen;
+      if ((e.key === 's' || e.key === 'S') && magWinkel()) winkelOpen = !winkelOpen;
       if (e.key === 'Escape') winkelOpen = false;
       if (!winkelOpen) {
         if (e.key === 'r' || e.key === 'R') opnieuw();
@@ -1783,6 +1783,12 @@
         return;
       }
 
+      // rechtsboven op de winkelknop geklikt?
+      if (magWinkel() && opWinkelKnop(p)) {
+        winkelOpen = true;
+        return;
+      }
+
       if (!inKeukenScherm || rolTijd >= 0 || gehaald) return;
       canvas.setPointerCapture(e.pointerId);
 
@@ -2459,10 +2465,10 @@
           laatste ? 'je hebt alle levels gehaald!' : 'spatie: door naar ' + LEVELS[levelNummer + 1].naam,
           midden, y + 328, 21
         );
-        tekenTekst('R: nog eens  -  S: de kledingwinkel', midden, y + 354, 18);
+        tekenTekst('R: nog eens  -  of klik rechtsboven op winkel', midden, y + 354, 18);
       } else {
         tekenTekst('T: nog een keer koken', midden, y + 328, 23);
-        tekenTekst('R: dit level opnieuw  -  S: de kledingwinkel', midden, y + 354, 18);
+        tekenTekst('R: dit level opnieuw  -  of klik rechtsboven op winkel', midden, y + 354, 18);
       }
     }
 
@@ -2545,12 +2551,49 @@
       ctx.restore();
     }
 
-    // Hoeveel munten je hebt, rechtsboven in beeld.
-    function tekenMunten() {
-      const x = canvas.width - 96;
-      const y = 44;
-      tekenMuntje(x, y, 1);
-      tekenTekst(String(munten), x + 36, y, 26);
+    // De knop rechtsboven: daar staat hoeveel munten je hebt en daar klik je
+    // op om naar de winkel te gaan. Op een smal scherm staat het onder elkaar.
+    function winkelKnop() {
+      const smal = canvas.width < 620;
+      const breedte = smal ? 108 : 168;
+      const hoogte = smal ? 64 : 48;
+      return {
+        x: canvas.width - 22 - breedte / 2,
+        y: 22 + hoogte / 2,
+        breedte,
+        hoogte,
+        smal,
+      };
+    }
+
+    // De winkel mag altijd open, behalve terwijl de sushi gerold en gesneden
+    // wordt. Als de sushi klaar is (gehaald) mag het weer, ook al staat rolTijd
+    // dan nog op zijn eindwaarde.
+    function magWinkel() {
+      return rolTijd < 0 || gehaald;
+    }
+
+    // Klik je op de winkelknop?
+    function opWinkelKnop(p) {
+      const k = winkelKnop();
+      return Math.abs(p.x - k.x) < k.breedte / 2 && Math.abs(p.y - k.y) < k.hoogte / 2;
+    }
+
+    function tekenWinkelKnop() {
+      const k = winkelKnop();
+      const eronder = opWinkelKnop(muis);
+      schetsBlok(k.x - k.breedte / 2, k.y - k.hoogte / 2, k.breedte, k.hoogte, 641);
+      vulEnOmlijn(eronder ? '#ffe9a3' : '#ffd968', 5);
+
+      if (k.smal) {
+        tekenTekst('winkel', k.x, k.y - 14, 20);
+        tekenMuntje(k.x - 18, k.y + 14, 0.8);
+        tekenTekst(String(munten), k.x + 14, k.y + 14, 21);
+      } else {
+        tekenMuntje(k.x - 62, k.y, 0.8);
+        tekenTekst(String(munten), k.x - 34, k.y, 22);
+        tekenTekst('winkel', k.x + 32, k.y, 22);
+      }
     }
 
     // Het winkelscherm met alle outfits.
@@ -2604,7 +2647,7 @@
       }
 
       if (foutTijd > 0) tekenTekst(foutTekst, w.x + w.b / 2, w.y + w.h - 18, 20, '#c0392b');
-      tekenTekst('S of Esc om te sluiten', w.x + w.b / 2, w.y + 68, 17);
+      tekenTekst('klik op het kruisje om te sluiten', w.x + w.b / 2, w.y + 68, 17);
     }
 
     function draw() {
@@ -2614,7 +2657,7 @@
       if (inKeukenScherm) {
         tekenKeukenScherm();
         if (gehaald) tekenGehaaldBord();
-        tekenMunten();
+        tekenWinkelKnop();
         if (winkelOpen) tekenWinkel();
         return;
       }
@@ -2658,7 +2701,7 @@
 
       tekenHud();
       if (gehaald) tekenGehaaldBord();
-      tekenMunten();
+      tekenWinkelKnop();
       if (winkelOpen) tekenWinkel();
     }
 
