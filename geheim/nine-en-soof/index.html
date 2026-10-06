@@ -136,12 +136,10 @@
       }
     }
 
-    // Wat je verdient aan een bestelling: precies goed levert het meest op,
-    // maar je krijgt altijd iets.
+    // Je verdient alleen munten als de bestelling precies klopt. Fout is
+    // fout, dan moet je het nog een keer doen.
     function beloning() {
-      if (bestellingKlopt()) return 3;
-      if (bestellingBijna()) return 2;
-      return 1;
+      return bestellingKlopt() ? 3 : 0;
     }
 
     // Tekent een hoed. De onderkant van de hoed ligt op y = 0 en hij staat
@@ -720,6 +718,18 @@
       opnieuw();
     }
 
+    // Mislukt? Dan hoef je het level niet opnieuw: je staat nog in de keuken
+    // en mag het nog een keer proberen. De gast houdt dezelfde bestelling, je
+    // voorraad ligt er nog, en je begint met een leeg matje.
+    function nogEensKoken() {
+      gehaald = false;
+      rolTijd = -1;
+      stapel = [];
+      sleept = null;
+      foutTijd = 0;
+      inKeukenScherm = true;
+    }
+
     // Na de sushi ga je door naar het volgende level, en na het laatste level
     // begin je weer bij het eerste.
     function volgendLevel() {
@@ -864,8 +874,13 @@
       if (e.key === 'Escape') winkelOpen = false;
       if (!winkelOpen) {
         if (e.key === 'r' || e.key === 'R') opnieuw();
-        // na de sushi brengt de spatie je naar het volgende level
-        if (gehaald && (e.key === ' ' || e.key === 'Enter')) volgendLevel();
+        if (gehaald && bestellingKlopt()) {
+          // goed gemaakt: de spatie brengt je naar het volgende level
+          if (e.key === ' ' || e.key === 'Enter') volgendLevel();
+        } else if (gehaald && (e.key === 't' || e.key === 'T')) {
+          // fout gemaakt: met T probeer je het nog een keer
+          nogEensKoken();
+        }
       }
       if (e.key === ' ' || e.key === 'ArrowUp') e.preventDefault();
     });
@@ -934,8 +949,10 @@
           if (rolTijd >= ROLDUUR && !gehaald) {
             gehaald = true;
             laatsteBeloning = beloning();
-            munten += laatsteBeloning;
-            bewaar();
+            if (laatsteBeloning > 0) {
+              munten += laatsteBeloning;
+              bewaar();
+            }
           }
         } else if (klaarOmTeRollen() && (toetsen['Enter'] || toetsen[' '])) {
           rolTijd = 0;   // met enter of de spatie kan het ook
@@ -1491,6 +1508,38 @@
       }
     }
 
+    // Een doorgesneden rolletje van jouw eigen stapel. Wat onderop het matje
+    // lag zit aan de buitenkant van de rol, en de laatste laag zit in het
+    // midden. Zo zie je in het stukje precies de volgorde terug die jij hebt
+    // gemaakt. lagen is een rijtje soorten van onder naar boven.
+    function tekenSushiStapel(x, y, schaal, lagen) {
+      const rij = lagen && lagen.length ? lagen : ['nori', 'rijst'];
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(schaal, schaal);
+
+      const buiten = 30;
+      const binnen = 7;
+      const stap = (buiten - binnen) / rij.length;
+
+      rij.forEach((soort, n) => {
+        const e = ETEN[soort] || ETEN.nori;
+        const r = buiten - n * stap;
+        schetsOvaal(0, 0, r, r, 311 + n);
+        if (n === 0) {
+          // de buitenste laag krijgt de dikke inktlijn
+          vulEnOmlijn(e.kleur, 5);
+        } else {
+          ctx.fillStyle = e.kleur;
+          ctx.fill();
+          inktLijn(2.5);
+          ctx.stroke();
+        }
+      });
+
+      ctx.restore();
+    }
+
     // Een maki-rolletje van bovenaf: zeewier eromheen, dan rijst, en vulling in het midden.
     function tekenSushi(x, y, schaal, vulling) {
       ctx.save();
@@ -2023,9 +2072,11 @@
       const bordY = Math.min(m.mat.y + 125, m.h - 70);
       schetsOvaal(m.mat.x, bordY, 160, 38, 75);
       vulEnOmlijn('#f2f2ef', 5);
-      const vullingen = vullingKleuren();
+      // elk stukje is een doorsnede van jouw eigen rol, dus ze zien er alle
+      // drie hetzelfde uit: jouw volgorde
+      const mijnLagen = stapel.map((i) => i.soort);
       for (let n = 0; n < klaar; n++) {
-        tekenSushi(m.mat.x - (rollen - 1) * 27 + n * 54, bordY - 10, 0.8, vullingen[n % 3]);
+        tekenSushiStapel(m.mat.x - (rollen - 1) * 27 + n * 54, bordY - 10, 0.8, mijnLagen);
       }
       tekenTekst('hak!', m.b / 2, m.bladY + 38, 28);
     }
@@ -2374,39 +2425,45 @@
       const midden = canvas.width / 2;
       const klopt = bestellingKlopt();
       const bijna = bestellingBijna();
-      tekenTekst(klopt ? 'Precies goed!' : bijna ? 'Bijna goed!' : 'Gehaald!', midden, y + 54, 50);
+      tekenTekst(klopt ? 'Precies goed!' : 'Helaas!', midden, y + 54, 50);
 
-      // de rolletjes in de kleuren van de vulling die jij gekozen hebt
-      const mijn = stapel
-        .filter((i) => i.soort !== 'nori' && i.soort !== 'rijst')
-        .map((i) => ETEN[i.soort].kleur);
-      const kleuren = mijn.length ? mijn : vullingKleuren();
-      tekenSushi(midden - 78, y + 134, 0.9, kleuren[0]);
-      tekenSushi(midden, y + 134, 0.9, kleuren[1 % kleuren.length]);
-      tekenSushi(midden + 78, y + 134, 0.9, kleuren[2 % kleuren.length]);
+      // drie stukjes van jouw rol, dus met jouw eigen volgorde erin
+      const mijnLagen = stapel.map((i) => i.soort);
+      tekenSushiStapel(midden - 78, y + 134, 0.9, mijnLagen);
+      tekenSushiStapel(midden, y + 134, 0.9, mijnLagen);
+      tekenSushiStapel(midden + 78, y + 134, 0.9, mijnLagen);
 
       // de gast zegt er wat van
       const g = gast();
-      tekenGast(midden - 168, y + 214, 0.8, g, klopt || bijna);
+      tekenGast(midden - 168, y + 214, 0.8, g, klopt);
       const regel1 = klopt ? 'precies wat ik wilde!'
                   : bijna ? 'alles zat erin, maar de'
-                          : 'niet wat ik besteld had,';
+                          : 'dit had ik niet besteld...';
       const regel2 = klopt ? '- ' + g.naam
-                  : bijna ? 'volgorde was anders  - ' + g.naam
-                          : 'maar wel lekker!  - ' + g.naam;
+                  : bijna ? 'volgorde was verkeerd  - ' + g.naam
+                          : '- ' + g.naam;
       tekenTekst(regel1, midden + 32, y + 198, 22);
       tekenTekst(regel2, midden + 32, y + 228, 22);
 
-      tekenMuntje(midden - 54, y + 266, 0.85);
-      tekenTekst('+' + laatsteBeloning + (laatsteBeloning === 1 ? ' munt' : ' munten'), midden + 24, y + 266, 24);
+      if (klopt) {
+        tekenMuntje(midden - 54, y + 266, 0.85);
+        tekenTekst('+' + laatsteBeloning + ' munten', midden + 24, y + 266, 24);
+      } else {
+        tekenTekst('geen muntjes, het moet precies goed', midden, y + 266, 21, '#c0392b');
+      }
       tekenTekst('in ' + speeltijd.toFixed(1) + ' seconden', midden, y + 296, 20);
 
       const laatste = levelNummer + 1 >= LEVELS.length;
-      tekenTekst(
-        laatste ? 'je hebt alle levels gehaald!' : 'spatie: door naar ' + LEVELS[levelNummer + 1].naam,
-        midden, y + 328, 21
-      );
-      tekenTekst('R: nog eens  -  S: de kledingwinkel', midden, y + 354, 18);
+      if (klopt) {
+        tekenTekst(
+          laatste ? 'je hebt alle levels gehaald!' : 'spatie: door naar ' + LEVELS[levelNummer + 1].naam,
+          midden, y + 328, 21
+        );
+        tekenTekst('R: nog eens  -  S: de kledingwinkel', midden, y + 354, 18);
+      } else {
+        tekenTekst('T: nog een keer koken', midden, y + 328, 23);
+        tekenTekst('R: dit level opnieuw  -  S: de kledingwinkel', midden, y + 354, 18);
+      }
     }
 
     // Gele vonken onder de voeten, zodat je ziet dat dit een powerjump is.
