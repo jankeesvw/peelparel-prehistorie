@@ -399,6 +399,7 @@
       powerjump: false,      // lang genoeg vastgehouden voor de grote sprong
       kijkt: 1,              // 1 is naar rechts, -1 is naar links
       stap: 0,               // waar hij in zijn looppasje zit
+      klimt: false,          // hangt hij aan een krabpaal?
     };
 
     // Tekent een kat met zijn voeten op (x, y). Met schaal maak je hem groter of kleiner.
@@ -642,6 +643,12 @@
       tonijn:    { naam: 'tonijn',    lid: 'de',  kleur: '#c1452f', lijn: '#f3a08c', laagstijl: 'strepen' },
       mango:     { naam: 'mango',     lid: 'de',  kleur: '#ffa52b', lijn: '#ffe0a3', laagstijl: 'plakjes' },
       wasabi:    { naam: 'wasabi',    lid: 'de',  kleur: '#8fc93a', lijn: '#dff0a8', laagstijl: 'bolletjes' },
+      paling:    { naam: 'paling',    lid: 'de',  kleur: '#7a4a2f', lijn: '#d9a05a', laagstijl: 'strepen' },
+      kaviaar:   { naam: 'kaviaar',   lid: 'de',  kleur: '#e0632b', lijn: '#ffb98a', laagstijl: 'bolletjes' },
+      gember:    { naam: 'gember',    lid: 'de',  kleur: '#f7c9d4', lijn: '#e398ad', laagstijl: 'plakjes' },
+      tofu:      { naam: 'tofu',      lid: 'de',  kleur: '#fff4d9', lijn: '#e0d2ae', laagstijl: 'reepjes' },
+      sesam:     { naam: 'sesam',     lid: 'de',  kleur: '#efdfb8', lijn: '#a98c5a', laagstijl: 'bolletjes' },
+      octopus:   { naam: 'octopus',   lid: 'de',  kleur: '#c77fb0', lijn: '#f2d0e6', laagstijl: 'strepen' },
     };
 
     // ---------- de levels ----------
@@ -663,114 +670,240 @@
     const LEVELS = [
       {
         naam: 'de groene heuvels',
+        bordX: 430,
         finishX: 3600,
+        keukenHoogte: 420,
+        // De krabpaal staat op het laatste eilandje van het lage stuk en is de
+        // enige weg naar het hoge stuk met de sushiwinkel. voet is hoe hoog hij
+        // begint, hoogte waar zijn plankje zit.
+        palen: [{ x: 2115, voet: 260, hoogte: 560 }],
         gast: { naam: 'Mimi', dier: 'muis', kleur: '#d9c2b2' },
         tema: { lucht1: '#9fd8f2', lucht2: '#e6f6fc', berg: '#b6c6d8', heuvel: '#9ec97a',
                 gras: '#79b457', spriet: '#4f7f39', aarde: '#c99a62', rots: '#aab2b8',
                 eiland: '#a98c6b', struik: '#5f9d46' },
         obstakels: [
+          // het lage stuk: van eilandje naar eilandje, met echte gaten ertussen
           { x: 300,  breedte: 90,  hoogte: 70 },
-          { x: 560,  breedte: 120, hoogte: 175, dikte: 26 },
-          { x: 740,  breedte: 110, hoogte: 250, dikte: 26 },
-          { x: 1050, breedte: 80,  hoogte: 80 },
-          { x: 1280, breedte: 120, hoogte: 190, dikte: 26 },
-          { x: 1450, breedte: 100, hoogte: 265, dikte: 26 },
-          { x: 1620, breedte: 90,  hoogte: 335, dikte: 26 },
-          { x: 1790, breedte: 110, hoogte: 265, dikte: 26 },
-          { x: 1980, breedte: 100, hoogte: 185, dikte: 26 },
-          { x: 2180, breedte: 90,  hoogte: 185, dikte: 26 },
-          { x: 2360, breedte: 90,  hoogte: 250, dikte: 26 },
-          { x: 2520, breedte: 100, hoogte: 320, dikte: 26 },
-          { x: 2680, breedte: 100, hoogte: 390, dikte: 26 },
-          { x: 2850, breedte: 110, hoogte: 300, dikte: 26 },
-          { x: 3050, breedte: 100, hoogte: 200, dikte: 26 },
-          { x: 3250, breedte: 120, hoogte: 165, dikte: 26 },
+          { x: 520,  breedte: 110, hoogte: 170, dikte: 26 },
+          { x: 760,  breedte: 100, hoogte: 240, dikte: 26 },
+          { x: 990,  breedte: 100, hoogte: 170, dikte: 26 },
+          { x: 1200, breedte: 90,  hoogte: 80 },
+          { x: 1420, breedte: 100, hoogte: 190, dikte: 26 },
+          { x: 1650, breedte: 90,  hoogte: 260, dikte: 26 },
+          { x: 1870, breedte: 90,  hoogte: 330, dikte: 26 },
+          { x: 2060, breedte: 110, hoogte: 260, dikte: 26 },
+
+          // en hierboven het hoge stuk, alleen via de krabpaal te bereiken
+          { x: 2270, breedte: 90,  hoogte: 540, dikte: 26 },
+          { x: 2480, breedte: 90,  hoogte: 500, dikte: 26 },
+          { x: 2690, breedte: 90,  hoogte: 530, dikte: 26 },
+          { x: 2900, breedte: 90,  hoogte: 470, dikte: 26 },
+          { x: 3110, breedte: 90,  hoogte: 500, dikte: 26 },
+          { x: 3320, breedte: 90,  hoogte: 440, dikte: 26 },
+          { x: 3530, breedte: 90,  hoogte: 420, dikte: 26 },
         ],
         eten: [
-          { soort: 'rijst',     x: 470,  hoogte: 150 },
-          { soort: 'nori',      x: 700,  hoogte: 300 },
-          { soort: 'zalm',      x: 1570, hoogte: 390 },
-          { soort: 'komkommer', x: 2130, hoogte: 240 },
-          { soort: 'avocado',   x: 2730, hoogte: 460 },
+          // boven de gaten, zodat je ze in de sprong moet pakken
+          { soort: 'rijst',     x: 455,  hoogte: 190 },
+          { soort: 'nori',      x: 925,  hoogte: 300 },
+          { soort: 'zalm',      x: 1805, hoogte: 390 },
+          { soort: 'komkommer', x: 2840, hoogte: 580 },
+          { soort: 'avocado',   x: 3260, hoogte: 560 },
         ],
       },
       {
         naam: 'de avondzon',
+        bordX: 450,
         finishX: 3900,
+        keukenHoogte: 460,
+        // twee palen: de eerste brengt je halfhoog, de tweede nog hoger
+        palen: [
+          { x: 1730, voet: 260, hoogte: 520 },
+          { x: 2815, voet: 440, hoogte: 640 },
+        ],
         gast: { naam: 'Boris', dier: 'beer', kleur: '#b98a5e' },
         tema: { lucht1: '#ff9e5e', lucht2: '#ffe2b8', berg: '#9c7a9e', heuvel: '#7f9a55',
                 gras: '#6b9c43', spriet: '#3f6b2c', aarde: '#a8754a', rots: '#9a8f93',
                 eiland: '#8f7252', struik: '#4e8438' },
         obstakels: [
+          // laag
           { x: 320,  breedte: 90,  hoogte: 75 },
-          { x: 540,  breedte: 110, hoogte: 180, dikte: 26 },
-          { x: 720,  breedte: 100, hoogte: 255, dikte: 26 },
-          { x: 900,  breedte: 110, hoogte: 190, dikte: 26 },
-          { x: 1100, breedte: 100, hoogte: 230, dikte: 26 },
-          { x: 1250, breedte: 90,  hoogte: 300, dikte: 26 },
-          { x: 1500, breedte: 80,  hoogte: 90 },
-          { x: 1730, breedte: 100, hoogte: 175, dikte: 26 },
-          { x: 1900, breedte: 90,  hoogte: 250, dikte: 26 },
-          { x: 2060, breedte: 90,  hoogte: 330, dikte: 26 },
-          { x: 2230, breedte: 100, hoogte: 255, dikte: 26 },
-          { x: 2400, breedte: 90,  hoogte: 180, dikte: 26 },
-          { x: 2650, breedte: 90,  hoogte: 70 },
-          { x: 2890, breedte: 110, hoogte: 200, dikte: 26 },
-          { x: 3080, breedte: 100, hoogte: 280, dikte: 26 },
-          { x: 3260, breedte: 90,  hoogte: 360, dikte: 26 },
-          { x: 3440, breedte: 110, hoogte: 260, dikte: 26 },
-          { x: 3620, breedte: 100, hoogte: 180, dikte: 26 },
+          { x: 540,  breedte: 100, hoogte: 180, dikte: 26 },
+          { x: 770,  breedte: 90,  hoogte: 250, dikte: 26 },
+          { x: 1000, breedte: 90,  hoogte: 180, dikte: 26 },
+          { x: 1220, breedte: 90,  hoogte: 85 },
+          { x: 1450, breedte: 90,  hoogte: 190, dikte: 26 },
+          { x: 1680, breedte: 100, hoogte: 260, dikte: 26 },
+
+          // halfhoog, na de eerste paal
+          { x: 1890, breedte: 90,  hoogte: 500, dikte: 26 },
+          { x: 2110, breedte: 90,  hoogte: 460, dikte: 26 },
+          { x: 2330, breedte: 90,  hoogte: 430, dikte: 26 },
+          { x: 2550, breedte: 90,  hoogte: 470, dikte: 26 },
+          { x: 2770, breedte: 90,  hoogte: 440, dikte: 26 },
+
+          // en helemaal boven, na de tweede paal
+          { x: 2970, breedte: 90,  hoogte: 620, dikte: 26 },
+          { x: 3180, breedte: 90,  hoogte: 570, dikte: 26 },
+          { x: 3390, breedte: 90,  hoogte: 520, dikte: 26 },
+          { x: 3600, breedte: 90,  hoogte: 480, dikte: 26 },
+          { x: 3810, breedte: 90,  hoogte: 460, dikte: 26 },
         ],
         eten: [
-          { soort: 'rijst',   x: 450,  hoogte: 150 },
-          { soort: 'nori',    x: 680,  hoogte: 310 },
-          { soort: 'garnaal', x: 1200, hoogte: 350 },
-          { soort: 'ei',      x: 2150, hoogte: 400 },
-          { soort: 'krab',    x: 3350, hoogte: 420 },
+          { soort: 'rijst',   x: 475,  hoogte: 200 },
+          { soort: 'nori',    x: 705,  hoogte: 310 },
+          { soort: 'garnaal', x: 1380, hoogte: 250 },
+          { soort: 'ei',      x: 2045, hoogte: 540 },
+          { soort: 'krab',    x: 3330, hoogte: 630 },
         ],
       },
       {
         naam: 'de sneeuwtoppen',
-        finishX: 3850,
+        bordX: 410,
+        finishX: 3900,
+        keukenHoogte: 500,
+        palen: [
+          { x: 1690, voet: 280, hoogte: 580 },
+          { x: 2560, voet: 470, hoogte: 720 },
+        ],
         gast: { naam: 'Pippa', dier: 'vogel', kleur: '#7fc4e8' },
         tema: { lucht1: '#bcdff2', lucht2: '#f4fbff', berg: '#ffffff', heuvel: '#dfeef5',
                 gras: '#eef7fb', spriet: '#b9cfdb', aarde: '#b9c3c9', rots: '#c7d2d8',
                 eiland: '#9aa7ad', struik: '#8fb8a0' },
         obstakels: [
+          // laag, met de breedste gaten van het spel
           { x: 280,  breedte: 80,  hoogte: 65 },
-          { x: 480,  breedte: 100, hoogte: 200, dikte: 26 },
-          { x: 650,  breedte: 90,  hoogte: 280, dikte: 26 },
-          { x: 820,  breedte: 90,  hoogte: 360, dikte: 26 },
-          { x: 990,  breedte: 100, hoogte: 290, dikte: 26 },
-          { x: 1180, breedte: 90,  hoogte: 200, dikte: 26 },
-          { x: 1360, breedte: 80,  hoogte: 300, dikte: 26 },
-          { x: 1520, breedte: 80,  hoogte: 380, dikte: 26 },
-          { x: 1690, breedte: 90,  hoogte: 300, dikte: 26 },
-          { x: 1950, breedte: 90,  hoogte: 100 },
-          { x: 2190, breedte: 90,  hoogte: 190, dikte: 26 },
-          { x: 2350, breedte: 80,  hoogte: 290, dikte: 26 },
-          { x: 2510, breedte: 80,  hoogte: 390, dikte: 26 },
-          { x: 2670, breedte: 80,  hoogte: 300, dikte: 26 },
-          { x: 2840, breedte: 90,  hoogte: 210, dikte: 26 },
-          { x: 3020, breedte: 80,  hoogte: 320, dikte: 26 },
-          { x: 3190, breedte: 80,  hoogte: 420, dikte: 26 },
-          { x: 3370, breedte: 90,  hoogte: 300, dikte: 26 },
-          { x: 3560, breedte: 100, hoogte: 190, dikte: 26 },
+          { x: 500,  breedte: 90,  hoogte: 190, dikte: 26 },
+          { x: 730,  breedte: 90,  hoogte: 270, dikte: 26 },
+          { x: 960,  breedte: 90,  hoogte: 190, dikte: 26 },
+          { x: 1180, breedte: 90,  hoogte: 90 },
+          { x: 1410, breedte: 90,  hoogte: 200, dikte: 26 },
+          { x: 1640, breedte: 100, hoogte: 280, dikte: 26 },
+
+          // halfhoog
+          { x: 1850, breedte: 90,  hoogte: 560, dikte: 26 },
+          { x: 2070, breedte: 90,  hoogte: 500, dikte: 26 },
+          { x: 2290, breedte: 90,  hoogte: 540, dikte: 26 },
+          { x: 2510, breedte: 100, hoogte: 470, dikte: 26 },
+
+          // en de hoogste verdieping van het hele spel
+          { x: 2720, breedte: 90,  hoogte: 700, dikte: 26 },
+          { x: 2940, breedte: 90,  hoogte: 650, dikte: 26 },
+          { x: 3160, breedte: 90,  hoogte: 600, dikte: 26 },
+          { x: 3380, breedte: 90,  hoogte: 560, dikte: 26 },
+          { x: 3600, breedte: 90,  hoogte: 520, dikte: 26 },
+          { x: 3820, breedte: 90,  hoogte: 500, dikte: 26 },
         ],
         eten: [
-          { soort: 'rijst',  x: 420,  hoogte: 160 },
-          { soort: 'nori',   x: 600,  hoogte: 340 },
-          { soort: 'tonijn', x: 900,  hoogte: 430 },
-          { soort: 'mango',  x: 2450, hoogte: 450 },
-          { soort: 'wasabi', x: 3280, hoogte: 490 },
+          { soort: 'rijst',  x: 430,  hoogte: 210 },
+          { soort: 'nori',   x: 660,  hoogte: 320 },
+          { soort: 'tonijn', x: 1115, hoogte: 230 },
+          { soort: 'mango',  x: 2225, hoogte: 560 },
+          { soort: 'wasabi', x: 3315, hoogte: 650 },
+        ],
+      },
+      {
+        naam: 'de grote grot',
+        bordX: 420,
+        finishX: 3900,
+        keukenHoogte: 540,
+        palen: [
+          { x: 1480, voet: 200, hoogte: 540 },
+          { x: 2350, voet: 450, hoogte: 740 },
+        ],
+        gast: { naam: 'Rocco', dier: 'konijn', kleur: '#c9b7a4' },
+        tema: { lucht1: '#3f3350', lucht2: '#7a6a8f', berg: '#2e2740', heuvel: '#453a58',
+                gras: '#6b8f5a', spriet: '#3f5c33', aarde: '#4a3f52', rots: '#6b6275',
+                eiland: '#5a5068', struik: '#4e7a52' },
+        obstakels: [
+          // laag in de grot
+          { x: 300,  breedte: 80,  hoogte: 70 },
+          { x: 520,  breedte: 90,  hoogte: 180, dikte: 26 },
+          { x: 750,  breedte: 90,  hoogte: 260, dikte: 26 },
+          { x: 980,  breedte: 90,  hoogte: 180, dikte: 26 },
+          { x: 1200, breedte: 90,  hoogte: 85 },
+          { x: 1430, breedte: 100, hoogte: 200, dikte: 26 },
+
+          // halverwege, na de eerste paal
+          { x: 1640, breedte: 90,  hoogte: 520, dikte: 26 },
+          { x: 1860, breedte: 90,  hoogte: 470, dikte: 26 },
+          { x: 2080, breedte: 90,  hoogte: 510, dikte: 26 },
+          { x: 2300, breedte: 100, hoogte: 450, dikte: 26 },
+
+          // en bovenin het gewelf, na de tweede paal
+          { x: 2510, breedte: 90,  hoogte: 720, dikte: 26 },
+          { x: 2730, breedte: 90,  hoogte: 660, dikte: 26 },
+          { x: 2950, breedte: 90,  hoogte: 690, dikte: 26 },
+          { x: 3170, breedte: 90,  hoogte: 620, dikte: 26 },
+          { x: 3390, breedte: 90,  hoogte: 570, dikte: 26 },
+          { x: 3610, breedte: 90,  hoogte: 540, dikte: 26 },
+          { x: 3830, breedte: 90,  hoogte: 540, dikte: 26 },
+        ],
+        eten: [
+          { soort: 'rijst',   x: 450,  hoogte: 200 },
+          { soort: 'nori',    x: 910,  hoogte: 320 },
+          { soort: 'paling',  x: 1135, hoogte: 240 },
+          { soort: 'gember',  x: 2015, hoogte: 570 },
+          { soort: 'kaviaar', x: 3105, hoogte: 750 },
+        ],
+      },
+      {
+        naam: 'het bamboebos',
+        bordX: 400,
+        finishX: 3900,
+        keukenHoogte: 620,
+        // drie palen: dit is het hoogste level van het spel
+        palen: [
+          { x: 1460, voet: 210, hoogte: 520 },
+          { x: 2110, voet: 490, hoogte: 760 },
+          { x: 2760, voet: 730, hoogte: 980 },
+        ],
+        gast: { naam: 'Wanda', dier: 'kikker', kleur: '#8fd17a' },
+        tema: { lucht1: '#8fd8c8', lucht2: '#e8f8f2', berg: '#86b0a6', heuvel: '#6fae8c',
+                gras: '#4f9d6b', spriet: '#2f6b43', aarde: '#8a6f4a', rots: '#9aaea4',
+                eiland: '#7a6a50', struik: '#3f8f5a' },
+        obstakels: [
+          // onderin het bos
+          { x: 290,  breedte: 80,  hoogte: 70 },
+          { x: 510,  breedte: 90,  hoogte: 190, dikte: 26 },
+          { x: 740,  breedte: 90,  hoogte: 280, dikte: 26 },
+          { x: 970,  breedte: 90,  hoogte: 190, dikte: 26 },
+          { x: 1190, breedte: 90,  hoogte: 90 },
+          { x: 1410, breedte: 100, hoogte: 210, dikte: 26 },
+
+          // eerste verdieping
+          { x: 1620, breedte: 90,  hoogte: 500, dikte: 26 },
+          { x: 1840, breedte: 90,  hoogte: 450, dikte: 26 },
+          { x: 2060, breedte: 100, hoogte: 490, dikte: 26 },
+
+          // tweede verdieping
+          { x: 2270, breedte: 90,  hoogte: 740, dikte: 26 },
+          { x: 2490, breedte: 90,  hoogte: 690, dikte: 26 },
+          { x: 2710, breedte: 100, hoogte: 730, dikte: 26 },
+
+          // en helemaal in de toppen van de bamboe
+          { x: 2920, breedte: 90,  hoogte: 960, dikte: 26 },
+          { x: 3140, breedte: 90,  hoogte: 890, dikte: 26 },
+          { x: 3360, breedte: 90,  hoogte: 800, dikte: 26 },
+          { x: 3580, breedte: 90,  hoogte: 700, dikte: 26 },
+          { x: 3800, breedte: 90,  hoogte: 620, dikte: 26 },
+        ],
+        eten: [
+          { soort: 'rijst',   x: 440,  hoogte: 210 },
+          { soort: 'nori',    x: 900,  hoogte: 340 },
+          { soort: 'octopus', x: 1125, hoogte: 250 },
+          { soort: 'tofu',    x: 1995, hoogte: 550 },
+          { soort: 'sesam',   x: 3295, hoogte: 950 },
         ],
       },
     ];
 
     // Het level is veel breder dan het scherm. De camera schuift mee met de kat.
     let camera = 0;
+    let cameraY = 0;         // hoeveel het beeld meeschuift als de kat hoog klimt
     let levelNummer = 0;
     let obstakels = [];
+    let palen = [];          // de krabpalen waar de kat langs omhoog klimt
     let ingredienten = [];
     let tema = LEVELS[0].tema;
     let finish = { x: 0, hoogte: 260 };
@@ -780,10 +913,18 @@
     function laadLevel(n) {
       levelNummer = klem(n, 0, LEVELS.length - 1);
       const L = LEVELS[levelNummer];
-      obstakels = L.obstakels;
       tema = L.tema;
-      finish = { x: L.finishX, hoogte: 260 };
-      keuken = { x: L.finishX + 160, breedte: 330 };
+      finish = { x: L.bordX || L.finishX, hoogte: 260 };
+      keuken = { x: L.finishX + 160, breedte: 330, vloer: L.keukenHoogte };
+      palen = L.palen || [];
+
+      // De vloer onder de keuken en het plankje bovenop elke krabpaal horen
+      // bij het level, maar die rekenen we erbij in plaats van ze met de hand
+      // in de lijst te zetten: zo kloppen ze altijd met de keuken en de paal.
+      obstakels = L.obstakels.concat(
+        [{ x: keuken.x - 40, breedte: keuken.breedte + 80, hoogte: keuken.vloer, dikte: 30 }],
+        palen.map((pl) => ({ x: pl.x - 30, breedte: 60, hoogte: pl.hoogte, dikte: 16 }))
+      );
       KOOKPLEK = keuken.x + 70;
       PLANK_X = keuken.x + 225;
       LEVELBREEDTE = keuken.x + 490;
@@ -934,6 +1075,8 @@
       kat.powerjump = false;
       kat.kijkt = 1;
       kat.stap = 0;
+      kat.klimt = false;
+      cameraY = 0;
       sprongToetsVorige = true;   // een al ingedrukte spatie telt niet als sprong
       gehaald = false;
       speeltijd = 0;
@@ -988,6 +1131,18 @@
       return rechts > v.links && links < v.rechts && y > v.boven && boven < v.onder;
     }
 
+    // Staat de kat bij een krabpaal, zodat hij eraan kan klimmen? Hij moet er
+    // met zijn midden dichtbij staan en tussen de voet en de top van de paal
+    // zitten. Een paal die op een eilandje staat pak je dus alleen van dat
+    // eilandje af, niet van de grond.
+    function paalBij(x, y) {
+      for (const pl of palen) {
+        const voet = pl.voet || 0;
+        if (Math.abs(x - pl.x) < 34 && y <= grondY - voet + 2 && y >= grondY - pl.hoogte) return pl;
+      }
+      return null;
+    }
+
     // Loopt de kat tegen dit ingrediënt aan? Het vak van de kat mag een stukje
     // ruimer zijn dan hij echt is, zodat oprapen makkelijk voelt.
     function raaktKat(i) {
@@ -1004,6 +1159,7 @@
     const MAX_VASTHOUD = 0.28;       // langer vasthouden dan dit helpt niet meer
     const POWERJUMP_VANAF = 0.2;     // vanaf hier is het een powerjump, met vonken
     const ZWAARTEKRACHT = 1600;
+    const KLIMSNELHEID = 190;        // hoe snel hij langs een krabpaal omhoog gaat
 
     // Was de sprongtoets vorige frame al ingedrukt? Zo begin je niet per ongeluk
     // meteen een nieuwe sprong als je de spatie ingedrukt houdt na de landing.
@@ -1058,8 +1214,14 @@
         if (kat.opGrond) kat.stap += Math.abs(kat.snelheidX) * dt * 0.03;
       }
 
+      // klimmen: sta je bij een krabpaal, dan gaat de pijl omhoog niet
+      // springen maar klimmen
+      const paal = paalBij(kat.x, kat.y);
+      if (!paal) kat.klimt = false;
+      if (paal && (toetsen['ArrowUp'] || toetsen['ArrowDown'])) kat.klimt = true;
+
       // springen: een tikje is een klein sprongetje, vasthouden laadt een powerjump op
-      const sprongToets = !!(toetsen[' '] || toetsen['ArrowUp']);
+      const sprongToets = !!(toetsen[' '] || (!paal && toetsen['ArrowUp']));
 
       if (sprongToets && !sprongToetsVorige && kat.opGrond) {
         kat.snelheidY = -SPRONGKRACHT;
@@ -1090,37 +1252,67 @@
       }
       kat.x = klem(nieuweX, kat.breedte / 2, LEVELBREEDTE - kat.breedte / 2);
 
-      // daarna vallen of stijgen
-      kat.snelheidY += ZWAARTEKRACHT * dt;
-      let nieuweY = kat.y + kat.snelheidY * dt;
-      kat.opGrond = false;
-
-      for (const o of obstakels) {
-        if (botst(kat.x, nieuweY, o)) {
-          const v = vak(o);
-          if (kat.snelheidY > 0) {
-            // je valt en landt bovenop het blok
-            nieuweY = v.boven;
-            kat.opGrond = true;
-            kat.aanHetSpringen = false;
-            kat.powerjump = false;
-          } else {
-            // je springt en stoot je kop
-            nieuweY = v.onder + kat.hoogte;
-          }
-          kat.snelheidY = 0;
-        }
-      }
-
-      // de grond
-      if (nieuweY > grondY) {
-        nieuweY = grondY;
+      if (kat.klimt && paal) {
+        // Aan de krabpaal geldt de zwaartekracht niet: daar klim je rustig
+        // omhoog en omlaag. Hij houdt de paal stevig vast, dus links en rechts
+        // doen even niets; anders zou je er zo vanaf glijden en vallen.
+        const voet = paal.voet || 0;
+        kat.x = paal.x;
         kat.snelheidY = 0;
-        kat.opGrond = true;
         kat.aanHetSpringen = false;
         kat.powerjump = false;
+        kat.opGrond = false;
+        if (toetsen['ArrowUp']) kat.y -= KLIMSNELHEID * dt;
+        if (toetsen['ArrowDown']) kat.y += KLIMSNELHEID * dt;
+        kat.y = klem(kat.y, grondY - paal.hoogte, grondY - voet);
+        kat.stap += KLIMSNELHEID * dt * 0.02;
+
+        // helemaal boven of weer onderaan stap je er vanzelf af, op het
+        // plankje bovenop of terug op het eilandje
+        if (kat.y <= grondY - paal.hoogte + 0.5 || kat.y >= grondY - voet - 0.5) {
+          kat.klimt = false;
+        }
+
+        // met de spatie laat je los, en vasthouden geeft ook hier een powerjump
+        if (sprongToets && !sprongToetsVorige) {
+          kat.klimt = false;
+          kat.snelheidY = -SPRONGKRACHT;
+          kat.aanHetSpringen = true;
+          kat.vasthoudTijd = 0;
+        }
+      } else {
+        // vallen of stijgen
+        kat.snelheidY += ZWAARTEKRACHT * dt;
+        let nieuweY = kat.y + kat.snelheidY * dt;
+        kat.opGrond = false;
+
+        for (const o of obstakels) {
+          if (botst(kat.x, nieuweY, o)) {
+            const v = vak(o);
+            if (kat.snelheidY > 0) {
+              // je valt en landt bovenop het blok
+              nieuweY = v.boven;
+              kat.opGrond = true;
+              kat.aanHetSpringen = false;
+              kat.powerjump = false;
+            } else {
+              // je springt en stoot je kop
+              nieuweY = v.onder + kat.hoogte;
+            }
+            kat.snelheidY = 0;
+          }
+        }
+
+        // de grond
+        if (nieuweY > grondY) {
+          nieuweY = grondY;
+          kat.snelheidY = 0;
+          kat.opGrond = true;
+          kat.aanHetSpringen = false;
+          kat.powerjump = false;
+        }
+        kat.y = nieuweY;
       }
-      kat.y = nieuweY;
 
       // onderweg ingrediënten oprapen
       for (const i of ingredienten) {
@@ -1131,14 +1323,17 @@
         if (i.plop > 0) i.plop = Math.max(0, i.plop - dt);
       }
 
-      // sta je bij het aanrecht? dan kun je met T aan de sushi beginnen
+      // sta je boven bij het aanrecht? dan kun je met T aan de sushi beginnen.
+      // Je moet er echt op de vloer van de winkel staan, dus eerst omhoog.
+      const keukenVloerY = grondY - keuken.vloer;
       inDeKeuken = kat.opGrond &&
+                   Math.abs(kat.y - keukenVloerY) < 6 &&
                    kat.x > keuken.x - 20 &&
                    kat.x < keuken.x + keuken.breedte + 20;
 
       if (inDeKeuken && (toetsen['t'] || toetsen['T'])) {
         kat.x = KOOKPLEK;   // hij stapt achter het aanrecht
-        kat.y = grondY;
+        kat.y = keukenVloerY;
         kat.snelheidX = 0;
         kat.snelheidY = 0;
         openKeukenScherm();
@@ -1151,6 +1346,12 @@
     function volgCamera() {
       const doel = kat.x - canvas.width / 2;
       camera = klem(doel, 0, Math.max(0, LEVELBREEDTE - canvas.width));
+
+      // Klim je hoog, dan schuift het beeld mee naar boven. cameraY is hoeveel
+      // het hele level omlaag getekend wordt.
+      const hoog = grondY - kat.y;
+      const wens = Math.max(0, hoog - canvas.height * 0.42);
+      cameraY += (wens - cameraY) * 0.12;
     }
 
     // De zon is een groot sushi-rolletje dat langzaam ronddraait. De vulling
@@ -1303,8 +1504,8 @@
       for (let x = links; x <= rechts; x += 30) {
         ctx.lineTo(x, grondY + Math.sin(x * 0.03) * 3);
       }
-      ctx.lineTo(rechts, canvas.height + 10);
-      ctx.lineTo(links, canvas.height + 10);
+      ctx.lineTo(rechts, canvas.height + cameraY + 10);
+      ctx.lineTo(links, canvas.height + cameraY + 10);
       ctx.closePath();
       ctx.fillStyle = tema.aarde;
       ctx.fill();
@@ -1332,58 +1533,62 @@
       ctx.stroke();
     }
 
-    // De finishvlag: een paal met een geruite vlag die in de wind wappert.
-    function tekenFinish() {
+    // De wegwijzer op de grond: de sushiwinkel is hierboven.
+    function tekenWegwijzer() {
       const x = finish.x;
-      const top = grondY - finish.hoogte;
 
-      // paal
-      schetsBlok(x - 8, top, 16, finish.hoogte, 11);
-      vulEnOmlijn('#e8ddc8', 5);
+      // de paal
+      schetsBlok(x - 7, grondY - 150, 14, 146, 11);
+      vulEnOmlijn('#b07f4e', 5);
 
-      // vlag, opgebouwd uit zwart-witte vakjes die mee golven
-      const kolommen = 4;
-      const rijen = 3;
-      const vlagB = 132;
-      const vlagH = 84;
-      const vakB = vlagB / kolommen;
-      const vakH = vlagH / rijen;
-      const golf = (c) => Math.sin(tijd * 4 + c * 0.9) * 8;
+      // het bordje met een pijl omhoog
+      schetsBlok(x - 84, grondY - 202, 168, 54, 13);
+      vulEnOmlijn('#ffd968', 5);
+      tekenTekst('SUSHI \u2191', x, grondY - 175, 28);
+      tekenTekst('hierlangs omhoog', x, grondY - 118, 17);
 
-      for (let c = 0; c < kolommen; c++) {
-        for (let r = 0; r < rijen; r++) {
-          const xl = x + 4 + c * vakB;
-          const xr = x + 4 + (c + 1) * vakB;
-          const gl = golf(c);
-          const gr = golf(c + 1);
-          ctx.beginPath();
-          ctx.moveTo(xl, top + 6 + r * vakH + gl);
-          ctx.lineTo(xr, top + 6 + r * vakH + gr);
-          ctx.lineTo(xr, top + 6 + (r + 1) * vakH + gr);
-          ctx.lineTo(xl, top + 6 + (r + 1) * vakH + gl);
-          ctx.closePath();
-          ctx.fillStyle = (c + r) % 2 === 0 ? '#3b2d23' : '#fff';
-          ctx.fill();
-        }
-      }
+      // een klein rolletje erboven, zodat je weet waar je heen moet
+      tekenSushi(x, grondY - 244, 0.55, vullingKleuren()[0]);
+    }
 
-      // inktrand om de hele vlag
-      inktLijn(5);
+    // Een krabpaal: een paal met sisal eromheen en een plankje bovenop. De kat
+    // kan er met de pijltjes omhoog en omlaag langs klimmen.
+    function tekenPaal(pl) {
+      const top = grondY - pl.hoogte;
+      const onder = grondY - (pl.voet || 0);
+
+      // het voetstuk, op de grond of op het eilandje waar hij op staat
+      schetsBlok(pl.x - 36, onder - 18, 72, 22, 801);
+      vulEnOmlijn('#a9713f', 5);
+
+      // de paal met sisal eromheen
+      schetsBlok(pl.x - 15, top + 8, 30, onder - top - 20, 802);
+      vulEnOmlijn('#d9c08a', 5);
+      inktLijn(3);
+      ctx.strokeStyle = '#a9873f';
       ctx.beginPath();
-      ctx.moveTo(x + 4, top + 6 + golf(0));
-      for (let c = 1; c <= kolommen; c++) ctx.lineTo(x + 4 + c * vakB, top + 6 + golf(c));
-      for (let c = kolommen; c >= 0; c--) ctx.lineTo(x + 4 + c * vakB, top + 6 + vlagH + golf(c));
-      ctx.closePath();
+      for (let y = top + 18; y < onder - 18; y += 15) {
+        ctx.moveTo(pl.x - 14, y);
+        ctx.lineTo(pl.x + 14, y + 7);
+      }
       ctx.stroke();
 
-      // bordje onderaan de paal dat naar de keuken wijst
-      schetsBlok(x - 82, grondY - 70, 164, 46, 13);
-      vulEnOmlijn('#ffd968', 5);
-      ctx.fillStyle = INKT;
-      ctx.font = 'bold 26px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('KEUKEN →', x, grondY - 46);
+      // het plankje bovenop, daar kun je op staan
+      schetsBlok(pl.x - 30, top, 60, 16, 803);
+      vulEnOmlijn('#a9713f', 5);
+
+      // een pijltje bij de voet dat zegt dat je hier kunt klimmen
+      const wip = Math.sin(tijd * 3) * 4;
+      inktLijn(4);
+      ctx.strokeStyle = '#ffd43b';
+      ctx.beginPath();
+      ctx.moveTo(pl.x + 32, onder - 54 + wip);
+      ctx.lineTo(pl.x + 32, onder - 90 + wip);
+      ctx.moveTo(pl.x + 24, onder - 80 + wip);
+      ctx.lineTo(pl.x + 32, onder - 92 + wip);
+      ctx.lineTo(pl.x + 40, onder - 80 + wip);
+      ctx.stroke();
+      tekenTekst('klim!', pl.x + 34, onder - 106 + wip, 17);
     }
 
     // ---------- de ingrediënten tekenen ----------
@@ -1544,6 +1749,82 @@
         ctx.moveTo(2, -14);
         ctx.quadraticCurveTo(12, 0, 2, 14);
         ctx.stroke();
+      } else if (soort === 'paling') {
+        // een moot paling met een glazuurlaagje
+        schetsBlok(-26, -15, 52, 30, 271);
+        vulEnOmlijn('#7a4a2f', 5);
+        inktLijn(3);
+        ctx.strokeStyle = '#d9a05a';
+        ctx.beginPath();
+        ctx.moveTo(-18, -6);
+        ctx.quadraticCurveTo(0, -12, 18, -5);
+        ctx.moveTo(-18, 5);
+        ctx.quadraticCurveTo(0, 0, 18, 7);
+        ctx.stroke();
+      } else if (soort === 'kaviaar') {
+        // een hoopje oranje eitjes
+        const plekken = [[-13, 4], [0, 6], [13, 4], [-7, -5], [7, -5], [0, -14]];
+        for (const [kx, ky] of plekken) {
+          schetsOvaal(kx, ky, 9, 9, 281 + kx);
+          vulEnOmlijn('#e0632b', 4);
+          ctx.fillStyle = '#ffb98a';
+          ctx.beginPath();
+          ctx.arc(kx - 3, ky - 3, 2.6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (soort === 'gember') {
+        // twee dunne plakjes gember die een beetje golven
+        for (const [kx, ky] of [[-6, 4], [6, -5]]) {
+          ctx.beginPath();
+          ctx.moveTo(kx - 20, ky + 4);
+          ctx.quadraticCurveTo(kx, ky - 14, kx + 20, ky + 2);
+          ctx.quadraticCurveTo(kx, ky + 12, kx - 20, ky + 4);
+          ctx.closePath();
+          vulEnOmlijn('#f7c9d4', 4);
+        }
+      } else if (soort === 'tofu') {
+        // een blokje tofu met een zacht randje
+        schetsBlok(-22, -20, 44, 40, 291);
+        vulEnOmlijn('#fff4d9', 5);
+        inktLijn(3);
+        ctx.strokeStyle = '#e0d2ae';
+        ctx.beginPath();
+        ctx.moveTo(-14, -8);
+        ctx.lineTo(14, -8);
+        ctx.moveTo(-14, 6);
+        ctx.lineTo(14, 6);
+        ctx.stroke();
+      } else if (soort === 'sesam') {
+        // een klein bergje sesamzaadjes
+        ctx.beginPath();
+        ctx.moveTo(-24, 12);
+        ctx.quadraticCurveTo(0, -18, 24, 12);
+        ctx.closePath();
+        vulEnOmlijn('#efdfb8', 5);
+        ctx.fillStyle = '#a98c5a';
+        for (const [kx, ky] of [[-12, 6], [-4, -2], [5, 4], [12, 7], [0, 8]]) {
+          ctx.beginPath();
+          ctx.ellipse(kx, ky, 3.4, 2.2, 0.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (soort === 'octopus') {
+        // een kopje met twee tentakels eronder
+        schetsOvaal(0, -6, 20, 16, 295);
+        vulEnOmlijn('#c77fb0', 5);
+        inktLijn(6);
+        ctx.strokeStyle = '#c77fb0';
+        ctx.beginPath();
+        ctx.moveTo(-10, 6);
+        ctx.quadraticCurveTo(-16, 18, -6, 22);
+        ctx.moveTo(10, 6);
+        ctx.quadraticCurveTo(16, 18, 6, 22);
+        ctx.stroke();
+        ctx.fillStyle = '#f2d0e6';
+        for (const kx of [-9, 0, 9]) {
+          ctx.beginPath();
+          ctx.arc(kx, -4, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
       } else if (soort === 'wasabi') {
         // een klodder wasabi met een blaadje
         ctx.beginPath();
@@ -1643,7 +1924,8 @@
 
     // Het uithangbord op twee palen. Dit staat achter de kat.
     function tekenKeukenAchter() {
-      const paalTop = grondY - 300;
+      const vloerY = grondY - keuken.vloer;
+      const paalTop = vloerY - 300;
 
       for (const px of [keuken.x + 18, keuken.x + keuken.breedte - 18]) {
         schetsBlok(px - 7, paalTop, 14, 300, 51);
@@ -1658,7 +1940,8 @@
     // Het aanrecht met de snijplank. Dit tekenen we na de kat, zodat hij er
     // echt achter lijkt te staan.
     function tekenKeukenVoor() {
-      const top = grondY - AANRECHT_H;
+      const vloerY = grondY - keuken.vloer;
+      const top = vloerY - AANRECHT_H;
 
       // het blad
       schetsBlok(keuken.x - 8, top, keuken.breedte + 16, 20, 53);
@@ -1670,7 +1953,7 @@
       inktLijn(4);
       ctx.beginPath();
       ctx.moveTo(keuken.x + keuken.breedte / 2, top + 26);
-      ctx.lineTo(keuken.x + keuken.breedte / 2, grondY - 8);
+      ctx.lineTo(keuken.x + keuken.breedte / 2, vloerY - 8);
       ctx.stroke();
       ctx.fillStyle = INKT;
       for (const hx of [keuken.x + keuken.breedte / 2 - 18, keuken.x + keuken.breedte / 2 + 18]) {
@@ -2193,6 +2476,29 @@
           schetsOvaal(ox, -27, 14, 14, 521 + ox);
           vulEnOmlijn(g.kleur, 5);
         }
+      } else if (g.dier === 'konijn') {
+        // twee lange rechtopstaande oren
+        for (const ox of [-15, 15]) {
+          schetsOvaal(ox, -48, 10, 28, 551 + ox);
+          vulEnOmlijn(g.kleur, 5);
+          schetsOvaal(ox, -48, 5, 20, 561 + ox);
+          ctx.fillStyle = '#f0a6ae';
+          ctx.fill();
+        }
+      } else if (g.dier === 'kikker') {
+        // twee bolle ogen die bovenop zijn kop zitten
+        for (const ox of [-22, 22]) {
+          schetsOvaal(ox, -26, 15, 15, 571 + ox);
+          vulEnOmlijn(g.kleur, 5);
+          ctx.fillStyle = INKT;
+          ctx.beginPath();
+          ctx.arc(ox, -26, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.beginPath();
+          ctx.arc(ox - 2, -28, 2.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
 
       // het kopje
@@ -2213,6 +2519,18 @@
         ctx.lineTo(0, blij ? 22 : 18);
         ctx.closePath();
         vulEnOmlijn('#ffb43d', 4);
+      } else if (g.dier === 'kikker') {
+        // een brede mond van oor tot oor
+        inktLijn(4);
+        ctx.beginPath();
+        if (blij) {
+          ctx.moveTo(-26, 4);
+          ctx.quadraticCurveTo(0, 22, 26, 4);
+        } else {
+          ctx.moveTo(-24, 10);
+          ctx.lineTo(24, 10);
+        }
+        ctx.stroke();
       } else {
         // een snuitje met een neusje
         schetsOvaal(0, 10, 15, 11, 541);
@@ -2234,7 +2552,11 @@
         ctx.stroke();
       }
 
-      // ogen met een lichtpuntje
+      // ogen met een lichtpuntje (de kikker heeft die al bovenop zijn kop)
+      if (g.dier === 'kikker') {
+        ctx.restore();
+        return;
+      }
       ctx.fillStyle = INKT;
       for (const ox of [-13, 13]) {
         ctx.beginPath();
@@ -2816,26 +3138,30 @@
 
       // de bergen schuiven het minst mee, de heuvels half zo snel als de rest
       ctx.save();
-      ctx.translate(-camera * 0.25, 0);
+      ctx.translate(-camera * 0.25, cameraY * 0.25);
       tekenBergen(camera * 0.25, camera * 0.25 + canvas.width);
       ctx.restore();
 
       ctx.save();
-      ctx.translate(-camera * 0.5, 0);
+      ctx.translate(-camera * 0.5, cameraY * 0.5);
       tekenHeuvels(camera * 0.5, camera * 0.5 + canvas.width);
       ctx.restore();
 
       // en hier komt het level zelf, dat helemaal met de camera meeschuift
       ctx.save();
-      ctx.translate(-camera, 0);
+      ctx.translate(-camera, cameraY);
       tekenGrond(camera, camera + canvas.width);
       tekenBegroeiing(camera, camera + canvas.width);
+      for (const pl of palen) tekenPaal(pl);
       tekenObstakels();
-      tekenFinish();
+      tekenWegwijzer();
       tekenKeukenAchter();
       tekenIngredienten();
       if (kat.powerjump) tekenVonken(kat.x, kat.y);
-      if (kat.snelheidX !== 0 || !kat.opGrond) {
+      if (kat.klimt) {
+        // aan de paal klimt hij met zijn pootjes langs het hout
+        tekenKatZij(kat.x, kat.y, 1, kat.kijkt, kat.stap, false);
+      } else if (kat.snelheidX !== 0 || !kat.opGrond) {
         tekenKatZij(kat.x, kat.y, 1, kat.kijkt, kat.stap, !kat.opGrond);
       } else {
         tekenKat(kat.x, kat.y, 1);
