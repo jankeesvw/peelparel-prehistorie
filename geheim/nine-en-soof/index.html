@@ -89,25 +89,53 @@
 
     // ---------- de outfits en de muntjes ----------
 
-    // Elke outfit geeft de kat een andere vachtkleur en een andere hoed.
-    // De eerste heb je al, de rest koop je met muntjes in de winkel.
-    const OUTFITS = [
-      { naam: 'Kok',        prijs: 0,  vacht: '#f49cb9', donker: '#dd7fa0', buik: '#fdeef3', roze: '#d9657f', hoed: 'kok' },
-      { naam: 'Ninja',      prijs: 5,  vacht: '#5c6670', donker: '#49525b', buik: '#cfd6dc', roze: '#9aa5ae', hoed: 'band' },
-      { naam: 'Prinses',    prijs: 8,  vacht: '#f7d6e8', donker: '#e3bcd6', buik: '#fffafd', roze: '#d9657f', hoed: 'kroon' },
-      { naam: 'Piraat',     prijs: 12, vacht: '#c08a5a', donker: '#a97548', buik: '#f3e2cd', roze: '#b05a46', hoed: 'piraat' },
-      { naam: 'Feestbeest', prijs: 16, vacht: '#b48ad8', donker: '#9a72bf', buik: '#f1e6fa', roze: '#d9657f', hoed: 'feest' },
-      { naam: 'Sportkat',   prijs: 20, vacht: '#8fd17a', donker: '#75b862', buik: '#eaf7e4', roze: '#d9657f', hoed: 'pet' },
+    // In de winkel koop je drie dingen los van elkaar: een kleur voor de kat,
+    // een hoofddeksel en een gezichtsuitdrukking. De eerste van elk rijtje is
+    // gratis, die heb je dus al.
+    const KLEUREN = [
+      { naam: 'roze',   prijs: 0, vacht: '#f49cb9', donker: '#dd7fa0', buik: '#fdeef3', roze: '#d9657f' },
+      { naam: 'grijs',  prijs: 4, vacht: '#9aa5ae', donker: '#808b94', buik: '#e8edf1', roze: '#7d8891' },
+      { naam: 'wit',    prijs: 5, vacht: '#f6f2ea', donker: '#ded8cc', buik: '#ffffff', roze: '#e39aa8' },
+      { naam: 'oranje', prijs: 6, vacht: '#f2a95a', donker: '#d98b3f', buik: '#ffeccd', roze: '#c56a35' },
+      { naam: 'zwart',  prijs: 7, vacht: '#4a4551', donker: '#393542', buik: '#cdc6d4', roze: '#b86a84' },
+      { naam: 'lila',   prijs: 8, vacht: '#b48ad8', donker: '#9a72bf', buik: '#f1e6fa', roze: '#8d5fb3' },
+    ];
+
+    const HOEDEN = [
+      { naam: 'koksmuts',  prijs: 0,  soort: 'kok' },
+      { naam: 'niks',      prijs: 0,  soort: 'geen' },
+      { naam: 'hoofdband', prijs: 4,  soort: 'band' },
+      { naam: 'pet',       prijs: 5,  soort: 'pet' },
+      { naam: 'kroon',     prijs: 8,  soort: 'kroon' },
+      { naam: 'piraat',    prijs: 10, soort: 'piraat' },
+      { naam: 'feestmuts', prijs: 12, soort: 'feest' },
+    ];
+
+    const GEZICHTEN = [
+      { naam: 'blij',      prijs: 0, soort: 'blij' },
+      { naam: 'knipoog',   prijs: 3, soort: 'knipoog' },
+      { naam: 'stoer',     prijs: 4, soort: 'stoer' },
+      { naam: 'verbaasd',  prijs: 5, soort: 'verbaasd' },
+      { naam: 'boos',      prijs: 6, soort: 'boos' },
+      { naam: 'slaperig',  prijs: 6, soort: 'slaperig' },
     ];
 
     let munten = 0;          // je spaarpot
-    let gekocht = [0];       // welke outfits je al hebt
-    let outfitAan = 0;       // welke je nu draagt
+    let gekochtKleur = [0];  // welke kleuren je al gekocht hebt
+    let gekochtHoed = [0];
+    let gekochtGezicht = [0];
+    let kleurAan = 0;        // wat de kat nu aanheeft
+    let hoedAan = 0;
+    let gezichtAan = 0;
     let laatsteBeloning = 0; // wat je net verdiend hebt, voor op het eindbord
 
-    // De outfit die de kat nu aanheeft.
-    function outfit() {
-      return OUTFITS[outfitAan] || OUTFITS[0];
+    // Hoe de kat er nu uitziet.
+    function huidigeLook() {
+      return {
+        kleur: KLEUREN[kleurAan] || KLEUREN[0],
+        hoed: HOEDEN[hoedAan] || HOEDEN[0],
+        gezicht: GEZICHTEN[gezichtAan] || GEZICHTEN[0],
+      };
     }
 
     // Munten en outfits bewaren we in de browser, zodat je ze na het herladen
@@ -119,10 +147,20 @@
         const bewaard = JSON.parse(localStorage.getItem(BEWAARSLEUTEL));
         if (!bewaard) return;
         munten = bewaard.munten || 0;
-        gekocht = Array.isArray(bewaard.gekocht) ? bewaard.gekocht : [0];
-        outfitAan = bewaard.aan || 0;
-        if (!gekocht.includes(0)) gekocht.push(0);
-        if (!gekocht.includes(outfitAan)) outfitAan = 0;
+        gekochtKleur = Array.isArray(bewaard.kleuren) ? bewaard.kleuren : [0];
+        gekochtHoed = Array.isArray(bewaard.hoeden) ? bewaard.hoeden : [0];
+        gekochtGezicht = Array.isArray(bewaard.gezichten) ? bewaard.gezichten : [0];
+        kleurAan = bewaard.kleurAan || 0;
+        hoedAan = bewaard.hoedAan || 0;
+        gezichtAan = bewaard.gezichtAan || 0;
+        // de gratis eerste moet er altijd in zitten, en je kunt alleen
+        // aanhebben wat je ook echt gekocht hebt
+        for (const lijst of [gekochtKleur, gekochtHoed, gekochtGezicht]) {
+          if (!lijst.includes(0)) lijst.push(0);
+        }
+        if (!gekochtKleur.includes(kleurAan)) kleurAan = 0;
+        if (!gekochtHoed.includes(hoedAan)) hoedAan = 0;
+        if (!gekochtGezicht.includes(gezichtAan)) gezichtAan = 0;
       } catch (e) {
         // geen opslag beschikbaar, niets aan de hand
       }
@@ -130,7 +168,15 @@
 
     function bewaar() {
       try {
-        localStorage.setItem(BEWAARSLEUTEL, JSON.stringify({ munten, gekocht, aan: outfitAan }));
+        localStorage.setItem(BEWAARSLEUTEL, JSON.stringify({
+          munten,
+          kleuren: gekochtKleur,
+          hoeden: gekochtHoed,
+          gezichten: gekochtGezicht,
+          kleurAan,
+          hoedAan,
+          gezichtAan,
+        }));
       } catch (e) {
         // geen opslag beschikbaar, niets aan de hand
       }
@@ -142,11 +188,97 @@
       return bestellingKlopt() ? 3 : 0;
     }
 
+    // Tekent één oog in de gekozen uitdrukking. kant is 1 voor het rechteroog
+    // en -1 voor het linker, zodat boze wenkbrauwen de goede kant op staan.
+    function tekenOog(x, y, soort, dicht, vacht, kant) {
+      // dicht is hij als hij knippert, en slaperig is altijd dicht
+      if (dicht || soort === 'slaperig' || (soort === 'knipoog' && kant < 0)) {
+        inktLijn(4);
+        ctx.beginPath();
+        ctx.moveTo(x - 7, y);
+        ctx.quadraticCurveTo(x, y + 5, x + 7, y);
+        ctx.stroke();
+        return;
+      }
+
+      const groot = soort === 'verbaasd';
+      ctx.fillStyle = INKT;
+      schetsOvaal(x, y, groot ? 9 : 7, groot ? 12 : 9, 700 + x * 3);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x - 2, y - 3, groot ? 3.2 : 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (soort === 'stoer') {
+        // een half dichtgeknepen ooglid eroverheen
+        ctx.fillStyle = vacht;
+        ctx.beginPath();
+        ctx.ellipse(x, y - 8, 10, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        inktLijn(3);
+        ctx.beginPath();
+        ctx.moveTo(x - 9, y - 3);
+        ctx.lineTo(x + 9, y - 4);
+        ctx.stroke();
+      } else if (soort === 'boos') {
+        // een schuine wenkbrauw
+        inktLijn(4);
+        ctx.beginPath();
+        ctx.moveTo(x - 9 * kant, y - 17);
+        ctx.lineTo(x + 8 * kant, y - 11);
+        ctx.stroke();
+      }
+    }
+
+    // Tekent de mond, met (x, y) net onder het neusje.
+    function tekenMond(x, y, soort) {
+      if (soort === 'verbaasd') {
+        schetsOvaal(x, y + 7, 7, 8, 710);
+        vulEnOmlijn('#d9657f', 3);
+        return;
+      }
+      if (soort === 'slaperig') {
+        schetsOvaal(x, y + 7, 6, 5, 711);
+        vulEnOmlijn('#d9657f', 3);
+        return;
+      }
+      inktLijn(3);
+      ctx.beginPath();
+      if (soort === 'boos') {
+        ctx.moveTo(x, y - 4);
+        ctx.lineTo(x, y);
+        ctx.moveTo(x - 9, y + 5);
+        ctx.quadraticCurveTo(x, y - 2, x + 9, y + 5);
+      } else if (soort === 'stoer') {
+        ctx.moveTo(x, y - 4);
+        ctx.lineTo(x, y);
+        ctx.moveTo(x - 10, y + 1);
+        ctx.quadraticCurveTo(x + 2, y + 2, x + 11, y - 3);
+      } else if (soort === 'knipoog') {
+        ctx.moveTo(x, y - 4);
+        ctx.lineTo(x, y);
+        ctx.moveTo(x - 12, y - 1);
+        ctx.quadraticCurveTo(x, y + 10, x + 12, y - 1);
+      } else {
+        // blij: twee boogjes, zoals het altijd was
+        ctx.moveTo(x, y - 4);
+        ctx.lineTo(x, y);
+        ctx.moveTo(x, y);
+        ctx.quadraticCurveTo(x - 5, y + 5, x - 11, y);
+        ctx.moveTo(x, y);
+        ctx.quadraticCurveTo(x + 5, y + 5, x + 11, y);
+      }
+      ctx.stroke();
+    }
+
     // Tekent een hoed. De onderkant van de hoed ligt op y = 0 en hij staat
     // midden boven x = 0, zodat hij zowel op de kat van voren als van opzij
     // past: je zet de tekenpen eerst op de bovenkant van zijn kop.
     function tekenHoed(soort) {
-      if (soort === 'kok') {
+      if (soort === 'geen') {
+        return;   // blootshoofds
+      } else if (soort === 'kok') {
         // koksmuts: eerst de bollen, dan de band eroverheen
         ctx.beginPath();
         ctx.arc(-20, -50, 17, Math.PI * 0.75, Math.PI * 1.85);
@@ -270,15 +402,15 @@
     };
 
     // Tekent een kat met zijn voeten op (x, y). Met schaal maak je hem groter of kleiner.
-    function tekenKat(x, y, schaal, welke) {
-      const o = welke || outfit();
+    function tekenKat(x, y, schaal, look) {
+      const L = look || huidigeLook();
       ctx.save();
       ctx.translate(x, y);
       ctx.scale(schaal, schaal);
 
-      const vacht = o.vacht;
-      const buik = o.buik;
-      const roze = o.roze;
+      const vacht = L.kleur.vacht;
+      const buik = L.kleur.buik;
+      const roze = L.kleur.roze;
 
       // staart, zwaait heen en weer
       const zwaai = Math.sin(tijd * 2) * 0.35;
@@ -339,10 +471,10 @@
       schetsOvaal(0, -92, 40, 34, 50);
       vulEnOmlijn(vacht, 5);
 
-      // de hoed van de outfit, bovenop zijn kop
+      // de hoed, bovenop zijn kop
       ctx.save();
       ctx.translate(0, -116);
-      tekenHoed(o.hoed);
+      tekenHoed(L.hoed.soort);
       ctx.restore();
 
       // wangen
@@ -352,31 +484,10 @@
       schetsOvaal(13, -80, 14, 11, 70);
       ctx.fill();
 
-      // ogen, die af en toe knipperen
+      // de ogen, die af en toe knipperen
       const knippert = Math.sin(tijd * 1.3) > 0.97;
-      if (knippert) {
-        inktLijn(4);
-        ctx.beginPath();
-        ctx.moveTo(-22, -99);
-        ctx.quadraticCurveTo(-15, -95, -8, -99);
-        ctx.moveTo(8, -99);
-        ctx.quadraticCurveTo(15, -95, 22, -99);
-        ctx.stroke();
-      } else {
-        ctx.fillStyle = INKT;
-        schetsOvaal(-15, -99, 7, 9, 80);
-        ctx.fill();
-        schetsOvaal(15, -99, 7, 9, 90);
-        ctx.fill();
-        // lichtpuntjes in de ogen
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(-13, -102, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(17, -102, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      tekenOog(-15, -99, L.gezicht.soort, knippert, vacht, -1);
+      tekenOog(15, -99, L.gezicht.soort, knippert, vacht, 1);
 
       // neusje
       ctx.beginPath();
@@ -387,15 +498,7 @@
       vulEnOmlijn(roze, 3);
 
       // mondje
-      inktLijn(3);
-      ctx.beginPath();
-      ctx.moveTo(0, -76);
-      ctx.lineTo(0, -72);
-      ctx.moveTo(0, -72);
-      ctx.quadraticCurveTo(-5, -67, -11, -72);
-      ctx.moveTo(0, -72);
-      ctx.quadraticCurveTo(5, -67, 11, -72);
-      ctx.stroke();
+      tekenMond(0, -72, L.gezicht.soort);
 
       // snorharen
       inktLijn(2.5);
@@ -413,11 +516,11 @@
     // richting is 1 naar rechts en -1 naar links, stap is waar hij in zijn
     // looppasje zit, en springt zet zijn pootjes in een sprongstand.
     function tekenKatZij(x, y, schaal, richting, stap, springt) {
-      const o = outfit();
-      const vacht = o.vacht;
-      const donker = o.donker;    // de pootjes aan de overkant
-      const buik = o.buik;
-      const roze = o.roze;
+      const L = huidigeLook();
+      const vacht = L.kleur.vacht;
+      const donker = L.kleur.donker;   // de pootjes aan de overkant
+      const buik = L.kleur.buik;
+      const roze = L.kleur.roze;
 
       ctx.save();
       ctx.translate(x, y);
@@ -492,23 +595,9 @@
       ctx.fillStyle = roze;
       ctx.fill();
 
-      // oog, dat af en toe knippert
+      // het oog dat je ziet, dat af en toe knippert
       const knippert = Math.sin(tijd * 1.3) > 0.97;
-      if (knippert) {
-        inktLijn(4);
-        ctx.beginPath();
-        ctx.moveTo(42, -100);
-        ctx.quadraticCurveTo(49, -96, 56, -100);
-        ctx.stroke();
-      } else {
-        ctx.fillStyle = INKT;
-        schetsOvaal(49, -100, 7, 9, 114);
-        ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(51, -103, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      tekenOog(49, -100, L.gezicht.soort, knippert, vacht, 1);
 
       // neusje en mondje
       ctx.beginPath();
@@ -517,11 +606,7 @@
       ctx.lineTo(66, -82);
       ctx.closePath();
       vulEnOmlijn(roze, 3);
-      inktLijn(3);
-      ctx.beginPath();
-      ctx.moveTo(69, -82);
-      ctx.quadraticCurveTo(66, -74, 58, -76);
-      ctx.stroke();
+      tekenMond(64, -80, L.gezicht.soort);
 
       // snorharen naar voren
       inktLijn(2.5);
@@ -534,7 +619,7 @@
       ctx.save();
       ctx.translate(32, -120);
       ctx.rotate(-0.14);
-      tekenHoed(o.hoed);
+      tekenHoed(L.hoed.soort);
       ctx.restore();
 
       ctx.restore();
@@ -1776,7 +1861,7 @@
         }
         for (const v of w.vakken) {
           if (Math.abs(p.x - v.x) < v.breedte / 2 && Math.abs(p.y - v.y) < v.hoogte / 2) {
-            koop(v.n);
+            koop(v.kies, v.n);
             return;
           }
         }
@@ -2494,43 +2579,75 @@
 
     let winkelOpen = false;
 
-    // Waar alle vakjes van de winkel staan, uitgerekend uit de schermgrootte.
-    function winkelMaten() {
-      const kolommen = canvas.width < 660 ? 2 : 3;
-      const b = Math.min(760, canvas.width - 40);
-      const vakB = (b - 40) / kolommen;
-      const vakH = Math.min(158, (canvas.height - 180) / Math.ceil(OUTFITS.length / kolommen));
-      const rijen = Math.ceil(OUTFITS.length / kolommen);
-      const h = 112 + rijen * vakH;
-      const x = canvas.width / 2 - b / 2;
-      const y = Math.max(16, canvas.height / 2 - h / 2);
-      const vakken = OUTFITS.map((o, n) => ({
-        o,
-        n,
-        x: x + 20 + (n % kolommen) * vakB + vakB / 2,
-        y: y + 92 + Math.floor(n / kolommen) * vakH + vakH / 2,
-        breedte: vakB - 14,
-        hoogte: vakH - 14,
-      }));
-      return { x, y, b, h, vakken, sluit: { x: x + b - 36, y: y + 36, r: 20 } };
+    // De drie dingen die je los van elkaar kunt kopen.
+    function winkelDelen() {
+      return [
+        { titel: 'kleur van de kat', lijst: KLEUREN,   bezit: gekochtKleur,   aan: kleurAan,   kies: 'kleur' },
+        { titel: 'hoofddeksel',      lijst: HOEDEN,    bezit: gekochtHoed,    aan: hoedAan,    kies: 'hoed' },
+        { titel: 'gezicht',          lijst: GEZICHTEN, bezit: gekochtGezicht, aan: gezichtAan, kies: 'gezicht' },
+      ];
     }
 
-    // Een outfit kopen, of als je hem al hebt gewoon aantrekken.
-    function koop(n) {
-      const o = OUTFITS[n];
-      if (gekocht.includes(n)) {
-        outfitAan = n;
+    // Waar alle vakjes van de winkel staan, uitgerekend uit de schermgrootte.
+    // Elke categorie krijgt zijn eigen rij.
+    function winkelMaten() {
+      const delen = winkelDelen();
+      const b = Math.min(880, canvas.width - 24);
+      const vakH = klem((canvas.height - 160) / delen.length - 28, 74, 116);
+      const h = 94 + delen.length * (26 + vakH) + 14;
+      const x = canvas.width / 2 - b / 2;
+      const y = Math.max(12, canvas.height / 2 - h / 2);
+
+      const vakken = [];
+      const koppen = [];
+      delen.forEach((d, r) => {
+        const rijY = y + 94 + r * (26 + vakH);
+        koppen.push({ titel: d.titel, x: x + 22, y: rijY - 10 });
+        const vakB = (b - 36) / d.lijst.length;
+        d.lijst.forEach((item, n) => {
+          vakken.push({
+            kies: d.kies,
+            n,
+            item,
+            heb: d.bezit.includes(n),
+            aan: d.aan === n,
+            x: x + 18 + n * vakB + vakB / 2,
+            y: rijY + vakH / 2,
+            breedte: vakB - 8,
+            hoogte: vakH,
+          });
+        });
+      });
+
+      return { x, y, b, h, vakken, koppen, sluit: { x: x + b - 34, y: y + 34, r: 20 } };
+    }
+
+    // Eén ding kopen, of als je het al hebt gewoon aandoen.
+    function koop(kies, n) {
+      const lijst = kies === 'kleur' ? KLEUREN : kies === 'hoed' ? HOEDEN : GEZICHTEN;
+      const bezit = kies === 'kleur' ? gekochtKleur : kies === 'hoed' ? gekochtHoed : gekochtGezicht;
+      const item = lijst[n];
+      if (!item) return;
+
+      const doeAan = () => {
+        if (kies === 'kleur') kleurAan = n;
+        else if (kies === 'hoed') hoedAan = n;
+        else gezichtAan = n;
+      };
+
+      if (bezit.includes(n)) {
+        doeAan();
         bewaar();
         return;
       }
-      if (munten >= o.prijs) {
-        munten -= o.prijs;
-        gekocht.push(n);
-        outfitAan = n;
+      if (munten >= item.prijs) {
+        munten -= item.prijs;
+        bezit.push(n);
+        doeAan();
         bewaar();
       } else {
         foutTijd = 1.6;
-        foutTekst = 'je hebt nog ' + (o.prijs - munten) + ' munten nodig';
+        foutTekst = 'je hebt nog ' + (item.prijs - munten) + ' munten nodig';
       }
     }
 
@@ -2596,7 +2713,7 @@
       }
     }
 
-    // Het winkelscherm met alle outfits.
+    // Het winkelscherm: drie rijen om je kat mee aan te kleden.
     function tekenWinkel() {
       const w = winkelMaten();
 
@@ -2606,9 +2723,10 @@
       schetsBlok(w.x, w.y, w.b, w.h, 621);
       vulEnOmlijn('#fff7e8', 6);
 
-      tekenTekst('de kledingwinkel', w.x + w.b / 2, w.y + 40, 32);
+      tekenTekst('kleed je kat aan', w.x + w.b / 2, w.y + 38, 30);
       tekenMuntje(w.x + 40, w.y + 38, 1);
       tekenTekst(String(munten), w.x + 76, w.y + 38, 24);
+      tekenTekst('klik op het kruisje om te sluiten', w.x + w.b / 2, w.y + 66, 16);
 
       // het kruisje om te sluiten
       schetsOvaal(w.sluit.x, w.sluit.y, w.sluit.r, w.sluit.r, 622);
@@ -2621,33 +2739,60 @@
       ctx.lineTo(w.sluit.x - 7, w.sluit.y + 7);
       ctx.stroke();
 
-      for (const v of w.vakken) {
-        const heb = gekocht.includes(v.n);
-        const aan = v.n === outfitAan;
-        schetsBlok(v.x - v.breedte / 2, v.y - v.hoogte / 2, v.breedte, v.hoogte, 630 + v.n);
-        vulEnOmlijn(aan ? '#ffe9a3' : heb ? '#ffffff' : '#efe6d6', 5);
+      // de kopjes boven de rijen
+      ctx.textAlign = 'left';
+      for (const k of w.koppen) {
+        ctx.font = 'bold 19px sans-serif';
+        ctx.textBaseline = 'middle';
+        ctx.lineWidth = 6;
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#fff7e8';
+        ctx.strokeText(k.titel, k.x, k.y);
+        ctx.fillStyle = INKT;
+        ctx.fillText(k.titel, k.x, k.y);
+      }
+      ctx.textAlign = 'center';
 
-        // de kat met die outfit aan
-        const schaal = Math.min(0.46, (v.hoogte - 56) / 190);
+      for (const v of w.vakken) {
+        const teDuur = !v.heb && munten < v.item.prijs;
+        schetsBlok(v.x - v.breedte / 2, v.y - v.hoogte / 2, v.breedte, v.hoogte, 640 + v.n);
+        vulEnOmlijn(v.aan ? '#ffe9a3' : v.heb ? '#ffffff' : '#efe6d6', 4);
+
+        // de kat met dit onderdeel erop, zodat je ziet wat je koopt
+        const look = huidigeLook();
+        if (v.kies === 'kleur') look.kleur = v.item;
+        else if (v.kies === 'hoed') look.hoed = v.item;
+        else look.gezicht = v.item;
+
         ctx.save();
-        if (!heb && munten < v.o.prijs) ctx.globalAlpha = 0.5;
-        tekenKat(v.x, v.y + v.hoogte / 2 - 30, schaal, v.o);
+        ctx.beginPath();
+        ctx.rect(v.x - v.breedte / 2 + 3, v.y - v.hoogte / 2 + 3, v.breedte - 6, v.hoogte - 6);
+        ctx.clip();
+        if (teDuur) ctx.globalAlpha = 0.45;
+        if (v.kies === 'kleur') {
+          // bij een kleur zie je de hele kat
+          const klein = Math.min(0.34, (v.hoogte - 36) / 190);
+          tekenKat(v.x, v.y + v.hoogte / 2 - 24, klein, look);
+        } else {
+          // bij een hoed of een gezicht zoomen we in op zijn kop
+          const groot = Math.min(0.6, (v.hoogte - 20) / 180);
+          tekenKat(v.x, v.y + 8 + 92 * groot, groot, look);
+        }
         ctx.restore();
 
-        tekenTekst(v.o.naam, v.x, v.y - v.hoogte / 2 + 20, 20);
-        if (aan) {
-          tekenTekst('aan', v.x, v.y + v.hoogte / 2 - 12, 18, '#4f9d3a');
-        } else if (heb) {
-          tekenTekst('klik om aan te doen', v.x, v.y + v.hoogte / 2 - 12, 15);
+        tekenTekst(v.item.naam, v.x, v.y - v.hoogte / 2 + 15, 15);
+        if (v.aan) {
+          tekenTekst('aan', v.x, v.y + v.hoogte / 2 - 12, 16, '#4f9d3a');
+        } else if (v.heb) {
+          tekenTekst('klik', v.x, v.y + v.hoogte / 2 - 12, 15);
         } else {
-          tekenMuntje(v.x - 20, v.y + v.hoogte / 2 - 14, 0.62);
-          tekenTekst(String(v.o.prijs), v.x + 10, v.y + v.hoogte / 2 - 14, 20,
-                     munten >= v.o.prijs ? '#4f9d3a' : '#c0392b');
+          tekenMuntje(v.x - 14, v.y + v.hoogte / 2 - 13, 0.5);
+          tekenTekst(String(v.item.prijs), v.x + 10, v.y + v.hoogte / 2 - 13, 17,
+                     munten >= v.item.prijs ? '#4f9d3a' : '#c0392b');
         }
       }
 
-      if (foutTijd > 0) tekenTekst(foutTekst, w.x + w.b / 2, w.y + w.h - 18, 20, '#c0392b');
-      tekenTekst('klik op het kruisje om te sluiten', w.x + w.b / 2, w.y + 68, 17);
+      if (foutTijd > 0) tekenTekst(foutTekst, w.x + w.b / 2, w.y + w.h - 14, 19, '#c0392b');
     }
 
     function draw() {
