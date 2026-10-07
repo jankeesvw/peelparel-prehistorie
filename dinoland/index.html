@@ -6,7 +6,7 @@
   <title>dinoland</title>
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; color: #111; font-family: sans-serif; }
-    canvas { display: block; background: #fff; }
+    canvas { display: block; background: #1d3b22; }
   </style>
 </head>
 <body>
@@ -20,8 +20,207 @@
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     }
-    pasGrootteAan();
-    window.addEventListener('resize', pasGrootteAan);
+    function herbouw() {
+      pasGrootteAan();
+      maakJungle();
+    }
+    window.addEventListener('resize', herbouw);
+
+
+    // ---- Jungle ----
+    // Alles van de jungle wordt één keer uitgerekend en daarna elke frame getekend,
+    // zodat de bomen en plantjes niet elke frame op een andere plek staan.
+    let grondhoogte = 0;
+    let bomenVer = [];
+    let bomen = [];
+    let lianen = [];
+    let varens = [];
+    let bladeren = [];
+
+    // Eigen toevalsgenerator met een vast begin, zodat de jungle er elke keer
+    // hetzelfde uitziet zolang het venster niet van grootte verandert.
+    function maakToeval(zaad) {
+      let s = zaad;
+      return function () {
+        s = (s * 1103515245 + 12345) % 2147483648;
+        return s / 2147483648;
+      };
+    }
+
+    function maakJungle() {
+      const t = maakToeval(20261007);
+      const b = canvas.width;
+      const h = canvas.height;
+      grondhoogte = h * 0.78;
+
+      // Verre, vage boomtoppen achter de horizon
+      bomenVer = [];
+      for (let x = -40; x < b + 60; x += 50 + t() * 40) {
+        bomenVer.push({ x: x, breedte: 60 + t() * 70, hoogte: 70 + t() * 120 });
+      }
+
+      // Boomstammen op de achtergrond
+      bomen = [];
+      for (let i = 0; i < Math.max(4, Math.round(b / 170)); i++) {
+        bomen.push({
+          x: (i + 0.3 + t() * 0.4) * (b / Math.max(4, Math.round(b / 170))),
+          breedte: 18 + t() * 26,
+          kleur: t() < 0.5 ? '#3a2a1c' : '#4a3524',
+        });
+      }
+
+      // Slingerplanten die van de bovenkant naar beneden hangen
+      lianen = [];
+      for (let i = 0; i < Math.max(6, Math.round(b / 120)); i++) {
+        lianen.push({
+          x: t() * b,
+          lengte: 80 + t() * 320,
+          bocht: (t() - 0.5) * 70,
+          snelheid: 0.3 + t() * 0.5,
+          fase: t() * 6.28,
+        });
+      }
+
+      // Bladeren die vanaf de bovenrand naar binnen hangen
+      bladeren = [];
+      for (let x = -20; x < b + 40; x += 40 + t() * 40) {
+        bladeren.push({ x: x, lengte: 50 + t() * 90, hoek: -1.2 + t() * 2.4, fase: t() * 6.28 });
+      }
+
+      // Varens links en rechts op de voorgrond, het midden blijft vrij voor de dino
+      varens = [];
+      for (let i = 0; i < Math.max(5, Math.round(b / 160)); i++) {
+        const links = i % 2 === 0;
+        varens.push({
+          x: links ? t() * b * 0.3 : b - t() * b * 0.3,
+          y: grondhoogte + 20 + t() * (h - grondhoogte - 20),
+          grootte: 0.7 + t() * 0.9,
+          fase: t() * 6.28,
+        });
+      }
+    }
+
+    // Eén blad: een spitse ovaal met een nerf erin.
+    function tekenBlad(lengte, kleur) {
+      ctx.fillStyle = kleur;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(lengte * 0.4, lengte * 0.32, lengte, 0);
+      ctx.quadraticCurveTo(lengte * 0.4, -lengte * 0.32, 0, 0);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+      ctx.lineWidth = Math.max(1, lengte * 0.03);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(lengte, 0);
+      ctx.stroke();
+    }
+
+    function tekenJungle(tijd) {
+      const b = canvas.width;
+      const h = canvas.height;
+
+      // Lucht: licht zonlicht dat door het bladerdek valt
+      const lucht = ctx.createLinearGradient(0, 0, 0, grondhoogte);
+      lucht.addColorStop(0, '#1b3d22');
+      lucht.addColorStop(0.45, '#4e8a4a');
+      lucht.addColorStop(1, '#a9cf7a');
+      ctx.fillStyle = lucht;
+      ctx.fillRect(0, 0, b, grondhoogte);
+
+      // Zonnestralen die schuin door de bomen schijnen
+      ctx.save();
+      ctx.globalAlpha = 0.12;
+      ctx.fillStyle = '#fff6c8';
+      for (let i = 0; i < 4; i++) {
+        const x = b * (0.15 + i * 0.22);
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x + 70, 0);
+        ctx.lineTo(x + 230, grondhoogte);
+        ctx.lineTo(x + 110, grondhoogte);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // Verre boomtoppen
+      ctx.fillStyle = '#2f6336';
+      for (const bt of bomenVer) {
+        ctx.beginPath();
+        ctx.ellipse(bt.x, grondhoogte - bt.hoogte * 0.5, bt.breedte / 2, bt.hoogte / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Boomstammen met wat groene aanslag
+      for (const boom of bomen) {
+        ctx.fillStyle = boom.kleur;
+        ctx.fillRect(boom.x - boom.breedte / 2, 0, boom.breedte, grondhoogte + 10);
+        ctx.fillStyle = 'rgba(90,150,70,0.25)';
+        ctx.fillRect(boom.x - boom.breedte / 2, 0, boom.breedte * 0.3, grondhoogte + 10);
+      }
+
+      // Slingerplanten, ze wiegen zachtjes heen en weer
+      ctx.strokeStyle = '#2b5c2e';
+      for (const liaan of lianen) {
+        const zwaai = Math.sin(tijd * liaan.snelheid + liaan.fase) * 12;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(liaan.x, -10);
+        ctx.quadraticCurveTo(liaan.x + liaan.bocht + zwaai, liaan.lengte * 0.6, liaan.x + zwaai * 1.5, liaan.lengte);
+        ctx.stroke();
+        // Blaadje aan het uiteinde
+        ctx.save();
+        ctx.translate(liaan.x + zwaai * 1.5, liaan.lengte);
+        ctx.rotate(1.2 + Math.sin(tijd * liaan.snelheid + liaan.fase) * 0.2);
+        tekenBlad(16, '#36713a');
+        ctx.restore();
+      }
+
+      // Grote bladeren langs de bovenrand
+      for (const blad of bladeren) {
+        ctx.save();
+        ctx.translate(blad.x, -6);
+        ctx.rotate(1.57 + blad.hoek * 0.4 + Math.sin(tijd * 0.6 + blad.fase) * 0.05);
+        tekenBlad(blad.lengte, '#2a6130');
+        ctx.restore();
+      }
+
+      // Bosgrond
+      const grond = ctx.createLinearGradient(0, grondhoogte, 0, h);
+      grond.addColorStop(0, '#5f7a3a');
+      grond.addColorStop(1, '#3b4f26');
+      ctx.fillStyle = grond;
+      ctx.fillRect(0, grondhoogte, b, h - grondhoogte);
+
+      // Graspluimpjes op de grens van de grond
+      ctx.strokeStyle = '#7fa848';
+      ctx.lineWidth = 2;
+      for (let x = 0; x < b; x += 11) {
+        const hoogte = 6 + ((x * 7) % 9);
+        ctx.beginPath();
+        ctx.moveTo(x, grondhoogte + 2);
+        ctx.lineTo(x + 3, grondhoogte - hoogte);
+        ctx.stroke();
+      }
+    }
+
+    // De varens staan vóór de dino, dus die worden ná hem getekend.
+    function tekenVoorgrond(tijd) {
+      for (const varen of varens) {
+        ctx.save();
+        ctx.translate(varen.x, varen.y);
+        ctx.scale(varen.grootte, varen.grootte);
+        const wieg = Math.sin(tijd * 0.8 + varen.fase) * 0.06;
+        for (let i = -3; i <= 3; i++) {
+          ctx.save();
+          ctx.rotate(-1.57 + i * 0.38 + wieg);
+          tekenBlad(46 + Math.abs(3 - Math.abs(i)) * 8, i % 2 === 0 ? '#20491f' : '#2a5c27');
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+    }
 
     // De baby dino staat midden op het scherm en wipt zachtjes op en neer.
     const dino = {
@@ -125,16 +324,21 @@
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      tekenJungle(dino.tijd);
 
       // Zacht op en neer wippen, alsof hij ademt.
       const wip = Math.sin(dino.tijd * 2) * 3;
 
       ctx.save();
-      ctx.translate(canvas.width / 2, canvas.height / 2 + 60 + wip);
+      ctx.translate(canvas.width / 2, grondhoogte + 30 + wip);
       ctx.scale(dino.grootte, dino.grootte);
       tekenDino();
       ctx.restore();
+
+      tekenVoorgrond(dino.tijd);
     }
+
+    herbouw();
 
     let vorige = performance.now();
     function loop(nu) {
