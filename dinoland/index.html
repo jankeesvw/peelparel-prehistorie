@@ -107,6 +107,8 @@
           maat: 0.8 + t() * 0.5,
           rx: soort === 'boomstam' ? 58 : soort === 'stronk' ? 26 : 30,
           ry: soort === 'boomstam' ? 13 : 14,
+          // hoe hoog hij opgerekt wordt: de stronk torent boven de dino uit
+          hoog: soort === 'boomstam' ? 2.0 : soort === 'stronk' ? 2.9 : 2.3,
         });
       }
 
@@ -255,6 +257,7 @@
         ctx.beginPath();
         ctx.ellipse(0, 0, 26, 7, 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.scale(1, o.hoog);
         // Keien
         ctx.fillStyle = '#7d7f78';
         ctx.beginPath();
@@ -278,6 +281,7 @@
         ctx.beginPath();
         ctx.ellipse(0, 0, 54, 8, 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.scale(1, o.hoog);
         // Liggende stam
         ctx.fillStyle = '#5a3f28';
         ctx.beginPath();
@@ -306,6 +310,7 @@
         ctx.beginPath();
         ctx.ellipse(0, 0, 24, 7, 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.scale(1, o.hoog);
         // Wortels
         ctx.fillStyle = '#4a3524';
         for (const wx of [-18, -9, 9, 18]) {
