@@ -31,6 +31,9 @@
     // Alles van de jungle wordt één keer uitgerekend en daarna elke frame getekend,
     // zodat de bomen en plantjes niet elke frame op een andere plek staan.
     let grondhoogte = 0;
+    // De jungle is veel breder dan het scherm. De camera schuift mee met de dino.
+    const wereld = { breedte: 0, patroon: 0 };
+    const camera = { x: 0 };
     let bomenVer = [];
     let bomen = [];
     let lianen = [];
@@ -54,19 +57,22 @@
       const t = maakToeval(20261007);
       const b = canvas.width;
       const h = canvas.height;
-      grondhoogte = h * 0.78;
+      grondhoogte = h * 0.6;                      // horizon: de bosgrond is lekker diep
+      wereld.breedte = Math.max(b * 4, 4800);     // zoveel kun je naar links en rechts lopen
+      wereld.patroon = b + 320;                   // de achtergrond herhaalt zich hierna
 
-      // Verre, vage boomtoppen achter de horizon
+      // Verre, vage boomtoppen achter de horizon (herhalen zich tijdens het lopen)
       bomenVer = [];
-      for (let x = -40; x < b + 60; x += 50 + t() * 40) {
+      for (let x = -40; x < wereld.patroon + 60; x += 50 + t() * 40) {
         bomenVer.push({ x: x, breedte: 60 + t() * 70, hoogte: 70 + t() * 120 });
       }
 
       // Boomstammen op de achtergrond
       bomen = [];
-      for (let i = 0; i < Math.max(4, Math.round(b / 170)); i++) {
+      const aantalBomen = Math.max(5, Math.round(wereld.patroon / 170));
+      for (let i = 0; i < aantalBomen; i++) {
         bomen.push({
-          x: (i + 0.3 + t() * 0.4) * (b / Math.max(4, Math.round(b / 170))),
+          x: (i + 0.3 + t() * 0.4) * (wereld.patroon / aantalBomen),
           breedte: 18 + t() * 26,
           kleur: t() < 0.5 ? '#3a2a1c' : '#4a3524',
         });
@@ -74,9 +80,9 @@
 
       // Slingerplanten die van de bovenkant naar beneden hangen
       lianen = [];
-      for (let i = 0; i < Math.max(6, Math.round(b / 120)); i++) {
+      for (let i = 0; i < Math.max(7, Math.round(wereld.patroon / 120)); i++) {
         lianen.push({
-          x: t() * b,
+          x: t() * wereld.patroon,
           lengte: 80 + t() * 320,
           bocht: (t() - 0.5) * 70,
           snelheid: 0.3 + t() * 0.5,
@@ -86,20 +92,20 @@
 
       // Bladeren die vanaf de bovenrand naar binnen hangen
       bladeren = [];
-      for (let x = -20; x < b + 40; x += 40 + t() * 40) {
+      for (let x = -20; x < wereld.patroon + 40; x += 40 + t() * 40) {
         bladeren.push({ x: x, lengte: 50 + t() * 90, hoek: -1.2 + t() * 2.4, fase: t() * 6.28 });
       }
 
-      // Stenen, omgevallen boomstammen en boomstronken op de bosgrond.
+      // Stenen, omgevallen boomstammen en boomstronken, verspreid over de hele wereld.
       // rx en ry zijn hoe breed en hoe diep je er omheen moet lopen.
       obstakels = [];
       const soorten = ['steen', 'steen', 'boomstam', 'stronk'];
-      for (let i = 0; i < Math.max(5, Math.round(b / 190)); i++) {
+      for (let i = 0; i < Math.round(wereld.breedte / 150); i++) {
         const soort = soorten[Math.floor(t() * soorten.length)];
-        const ox = 60 + t() * (b - 120);
+        const ox = 60 + t() * (wereld.breedte - 120);
         const oy = grondhoogte + 15 + t() * (h - grondhoogte - 25);
         // Niet bovenop de startplek van de dino neerzetten
-        if (Math.abs(ox - b / 2) < 90 && Math.abs(oy - (grondhoogte + 40)) < 45) continue;
+        if (Math.abs(ox - wereld.breedte / 2) < 110 && Math.abs(oy - (grondhoogte + 60)) < 60) continue;
         obstakels.push({
           x: ox,
           y: oy,
@@ -124,20 +130,19 @@
           const mx = o.x + Math.cos(hoek) * afstandX;
           const my = o.y + Math.sin(hoek) * afstandY;
           // Alleen als de munt binnen de bosgrond ligt en niet in een ander obstakel
-          if (mx < 25 || mx > b - 25) continue;
+          if (mx < 25 || mx > wereld.breedte - 25) continue;
           if (my < grondhoogte + 12 || my > h - 8) continue;
           if (botst(mx, my)) continue;
           munten.push({ x: mx, y: my, fase: t() * 6.28, gepakt: false });
         }
       }
 
-      // Varens links en rechts op de voorgrond, het midden blijft vrij voor de dino
+      // Varens op de voorgrond, ook over de hele wereld verspreid
       varens = [];
-      for (let i = 0; i < Math.max(5, Math.round(b / 160)); i++) {
-        const links = i % 2 === 0;
+      for (let i = 0; i < Math.round(wereld.breedte / 160); i++) {
         varens.push({
-          x: links ? t() * b * 0.3 : b - t() * b * 0.3,
-          y: grondhoogte + 20 + t() * (h - grondhoogte - 20),
+          x: t() * wereld.breedte,
+          y: grondhoogte + 30 + t() * (h - grondhoogte - 30),
           grootte: 0.7 + t() * 0.9,
           fase: t() * 6.28,
         });
@@ -158,6 +163,20 @@
       ctx.moveTo(0, 0);
       ctx.lineTo(lengte, 0);
       ctx.stroke();
+    }
+
+    // Een achtergrondlaag twee keer naast elkaar tekenen, zodat hij netjes
+    // doorloopt terwijl je naar links of rechts loopt. Een kleine factor is
+    // ver weg (schuift langzaam), een grote factor is dichtbij.
+    function metParallax(factor, tekenLaag) {
+      const P = wereld.patroon;
+      const schuif = -((((camera.x * factor) % P) + P) % P);
+      for (const extra of [0, P]) {
+        ctx.save();
+        ctx.translate(schuif + extra, 0);
+        tekenLaag();
+        ctx.restore();
+      }
     }
 
     function tekenJungle(tijd) {
@@ -188,23 +207,28 @@
       }
       ctx.restore();
 
-      // Verre boomtoppen
-      ctx.fillStyle = '#2f6336';
-      for (const bt of bomenVer) {
-        ctx.beginPath();
-        ctx.ellipse(bt.x, grondhoogte - bt.hoogte * 0.5, bt.breedte / 2, bt.hoogte / 2, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      // Verre boomtoppen, die schuiven het langzaamst mee
+      metParallax(0.2, function () {
+        ctx.fillStyle = '#2f6336';
+        for (const bt of bomenVer) {
+          ctx.beginPath();
+          ctx.ellipse(bt.x, grondhoogte - bt.hoogte * 0.5, bt.breedte / 2, bt.hoogte / 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
 
       // Boomstammen met wat groene aanslag
-      for (const boom of bomen) {
-        ctx.fillStyle = boom.kleur;
-        ctx.fillRect(boom.x - boom.breedte / 2, 0, boom.breedte, grondhoogte + 10);
-        ctx.fillStyle = 'rgba(90,150,70,0.25)';
-        ctx.fillRect(boom.x - boom.breedte / 2, 0, boom.breedte * 0.3, grondhoogte + 10);
-      }
+      metParallax(0.5, function () {
+        for (const boom of bomen) {
+          ctx.fillStyle = boom.kleur;
+          ctx.fillRect(boom.x - boom.breedte / 2, 0, boom.breedte, grondhoogte + 10);
+          ctx.fillStyle = 'rgba(90,150,70,0.25)';
+          ctx.fillRect(boom.x - boom.breedte / 2, 0, boom.breedte * 0.3, grondhoogte + 10);
+        }
+      });
 
       // Slingerplanten, ze wiegen zachtjes heen en weer
+      metParallax(0.7, function () {
       ctx.strokeStyle = '#2b5c2e';
       for (const liaan of lianen) {
         const zwaai = Math.sin(tijd * liaan.snelheid + liaan.fase) * 12;
@@ -220,15 +244,18 @@
         tekenBlad(16, '#36713a');
         ctx.restore();
       }
+      });
 
       // Grote bladeren langs de bovenrand
-      for (const blad of bladeren) {
-        ctx.save();
-        ctx.translate(blad.x, -6);
-        ctx.rotate(1.57 + blad.hoek * 0.4 + Math.sin(tijd * 0.6 + blad.fase) * 0.05);
-        tekenBlad(blad.lengte, '#2a6130');
-        ctx.restore();
-      }
+      metParallax(0.85, function () {
+        for (const blad of bladeren) {
+          ctx.save();
+          ctx.translate(blad.x, -6);
+          ctx.rotate(1.57 + blad.hoek * 0.4 + Math.sin(tijd * 0.6 + blad.fase) * 0.05);
+          tekenBlad(blad.lengte, '#2a6130');
+          ctx.restore();
+        }
+      });
 
       // Bosgrond
       const grond = ctx.createLinearGradient(0, grondhoogte, 0, h);
@@ -240,8 +267,10 @@
       // Graspluimpjes op de grens van de grond
       ctx.strokeStyle = '#7fa848';
       ctx.lineWidth = 2;
-      for (let x = 0; x < b; x += 11) {
-        const hoogte = 6 + ((x * 7) % 9);
+      const eersteGras = Math.floor(camera.x / 11) * 11;
+      for (let wx = eersteGras; wx < camera.x + b; wx += 11) {
+        const hoogte = 6 + ((Math.abs(wx) * 7) % 9);
+        const x = wx - camera.x;
         ctx.beginPath();
         ctx.moveTo(x, grondhoogte + 2);
         ctx.lineTo(x + 3, grondhoogte - hoogte);
@@ -686,7 +715,44 @@
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 26px sans-serif';
       ctx.textBaseline = 'middle';
-      ctx.fillText(String(aantalMunten), 22, 1);
+      ctx.fillText(aantalMunten + ' / ' + munten.length, 22, 1);
+      ctx.restore();
+    }
+
+    // Klein kaartje rechtsonder: de hele jungle in één streep, met de munten
+    // die er nog liggen en een stip voor jezelf.
+    function tekenKaartje() {
+      const b = 240;
+      const h = 30;
+      const x = canvas.width - b - 20;
+      const y = canvas.height - h - 20;
+      ctx.save();
+      ctx.fillStyle = 'rgba(20,40,20,0.72)';
+      ctx.strokeStyle = 'rgba(246,198,46,0.8)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(x, y, b, h, 8);
+      ctx.fill();
+      ctx.stroke();
+
+      // Het stuk jungle dat je nu ziet
+      ctx.fillStyle = 'rgba(255,255,255,0.14)';
+      ctx.fillRect(x + (camera.x / wereld.breedte) * b, y + 3, (canvas.width / wereld.breedte) * b, h - 6);
+
+      // Munten die er nog liggen
+      ctx.fillStyle = '#f6c62e';
+      for (const munt of munten) {
+        if (munt.gepakt) continue;
+        ctx.beginPath();
+        ctx.arc(x + (munt.x / wereld.breedte) * b, y + h / 2, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Jijzelf
+      ctx.fillStyle = '#8ee06a';
+      ctx.beginPath();
+      ctx.arc(x + (dino.x / wereld.breedte) * b, y + h / 2, 4, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
     }
 
@@ -703,6 +769,7 @@
     // De varens staan vóór de dino, dus die worden ná hem getekend.
     function tekenVoorgrond(tijd) {
       for (const varen of varens) {
+        if (varen.x < camera.x - 120 || varen.x > camera.x + canvas.width + 120) continue;
         ctx.save();
         ctx.translate(varen.x, varen.y);
         ctx.scale(varen.grootte, varen.grootte);
@@ -834,7 +901,7 @@
           schot.weg = true;
         }
         // Buiten het beeld of te ver gevlogen: opruimen
-        if (schot.x < -60 || schot.x > canvas.width + 60 || schot.afstand > 900) schot.weg = true;
+        if (schot.x < -60 || schot.x > wereld.breedte + 60 || schot.afstand > 900) schot.weg = true;
       }
       schoten = schoten.filter(function (schot) { return !schot.weg; });
 
@@ -850,10 +917,14 @@
         }
       }
 
-      // Hij blijft op de bosgrond en loopt niet het beeld uit
+      // Hij blijft op de bosgrond en binnen de wereld
       const rand = 30 * dinoGrootte();
-      dino.x = Math.min(canvas.width - rand, Math.max(rand, dino.x));
+      dino.x = Math.min(wereld.breedte - rand, Math.max(rand, dino.x));
       dino.y = Math.min(canvas.height - 10, Math.max(grondhoogte + 6, dino.y));
+
+      // De camera houdt de dino in het midden, maar stopt bij de rand van de wereld
+      const doel = dino.x - canvas.width / 2;
+      camera.x = Math.max(0, Math.min(wereld.breedte - canvas.width, doel));
     }
 
     // Tekent de baby dino met (0, 0) bij zijn voeten, in zijn eigen kleine maten.
@@ -971,19 +1042,30 @@
 
       const grootte = dinoGrootte();
 
+      // Alles in de wereld schuift mee met de camera.
+      ctx.save();
+      ctx.translate(-camera.x, 0);
+
+      // Is dit stukje wereld nu in beeld? Anders hoeven we het niet te tekenen.
+      function inBeeld(x) {
+        return x > camera.x - 160 && x < camera.x + canvas.width + 160;
+      }
+
       // Wat verder naar voren staat, tekenen we later, zodat het ervoor lijkt te staan.
-      const laag = obstakels.map(function (o) {
-        return { y: o.y, teken: function () {
+      const laag = [];
+      for (const o of obstakels) {
+        if (!inBeeld(o.x)) continue;
+        laag.push({ y: o.y, teken: function () {
           const maat = o.maat * (1.3 + (o.y - grondhoogte) / Math.max(1, canvas.height - grondhoogte));
           ctx.save();
           ctx.translate(o.x, o.y);
           ctx.scale(maat, maat);
           tekenObstakel(o);
           ctx.restore();
-        } };
-      });
+        } });
+      }
       for (const munt of munten) {
-        if (munt.gepakt) continue;
+        if (munt.gepakt || !inBeeld(munt.x)) continue;
         laag.push({ y: munt.y, teken: function () { tekenMunt(munt, dino.tijd); } });
       }
       for (const schot of schoten) {
@@ -1002,14 +1084,18 @@
       for (const pluim of pluimen) tekenPluim(pluim);
 
       tekenVoorgrond(dino.tijd);
+      ctx.restore();
+
       tekenTeller();
+      tekenKaartje();
       tekenWinkelknop();
       if (winkelOpen) tekenWinkel();
     }
 
     herbouw();
-    dino.x = canvas.width / 2;
-    dino.y = grondhoogte + 40;
+    dino.x = wereld.breedte / 2;
+    dino.y = grondhoogte + 60;
+    camera.x = Math.max(0, Math.min(wereld.breedte - canvas.width, dino.x - canvas.width / 2));
 
     let vorige = performance.now();
     function loop(nu) {
