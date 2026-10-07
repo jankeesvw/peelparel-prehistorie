@@ -57,6 +57,11 @@
     let lianen = [];
     let varens = [];
     let bladeren = [];
+    let bomenVerst = [];        // de verste, vaagste bomen aan de horizon
+    let struiken = [];          // struiken langs de horizon en op de bosgrond
+    let bosvloer = [];          // blaadjes, takjes, steentjes en zonnevlekken
+    let vlinders = [];
+    let vallend = [];           // blaadjes die naar beneden dwarrelen
     let obstakels = [];
     let munten = [];
     let aantalMunten = 0;
@@ -78,6 +83,12 @@
       grondhoogte = h * 0.6;                      // horizon: de bosgrond is lekker diep
       wereld.breedte = Math.max(b * 4, 4800);     // zoveel kun je naar links en rechts lopen
       wereld.patroon = b + 320;                   // de achtergrond herhaalt zich hierna
+
+      // De verste bomen: nauwelijks nog kleur, dat maakt de jungle diep
+      bomenVerst = [];
+      for (let x = -60; x < wereld.patroon + 80; x += 70 + t() * 60) {
+        bomenVerst.push({ x: x, breedte: 90 + t() * 120, hoogte: 110 + t() * 170 });
+      }
 
       // Verre, vage boomtoppen achter de horizon (herhalen zich tijdens het lopen)
       bomenVer = [];
@@ -112,6 +123,64 @@
       bladeren = [];
       for (let x = -20; x < wereld.patroon + 40; x += 40 + t() * 40) {
         bladeren.push({ x: x, lengte: 50 + t() * 90, hoek: -1.2 + t() * 2.4, fase: t() * 6.28 });
+      }
+
+      // Struiken: een rij langs de horizon zodat de overgang niet zo hard is,
+      // en losse struiken verder naar voren op de bosgrond.
+      struiken = [];
+      for (let i = 0; i < Math.round(wereld.breedte / 55); i++) {
+        const achteraan = t() < 0.62;
+        struiken.push({
+          x: t() * wereld.breedte,
+          y: achteraan ? grondhoogte + 2 + t() * 26 : grondhoogte + 30 + t() * (h - grondhoogte - 40),
+          maat: achteraan ? 0.5 + t() * 0.4 : 0.7 + t() * 0.8,
+          donker: t() < 0.5,
+          bloemen: t() < 0.25,
+          fase: t() * 6.28,
+        });
+      }
+
+      // De bosvloer: afgevallen blad, takjes, steentjes, plekken aarde en
+      // zonnevlekken die door het bladerdek vallen.
+      bosvloer = [];
+      const soortenVloer = ['blad', 'blad', 'blad', 'takje', 'steentje', 'plek', 'licht', 'licht'];
+      for (let i = 0; i < Math.round(wereld.breedte / 6); i++) {
+        bosvloer.push({
+          x: t() * wereld.breedte,
+          y: grondhoogte + 4 + t() * (h - grondhoogte - 4),
+          soort: soortenVloer[Math.floor(t() * soortenVloer.length)],
+          maat: 0.6 + t() * 1.1,
+          hoek: t() * 6.28,
+          tint: Math.floor(t() * 4),
+          fase: t() * 6.28,
+        });
+      }
+
+      // Vlinders die boven de bosgrond fladderen
+      vlinders = [];
+      for (let i = 0; i < Math.round(wereld.breedte / 500); i++) {
+        vlinders.push({
+          x: t() * wereld.breedte,
+          y: grondhoogte + 20 + t() * (h - grondhoogte - 40),
+          hoogte: 30 + t() * 70,
+          fase: t() * 6.28,
+          snelheid: 0.6 + t() * 0.8,
+          kleur: ['#f2e06a', '#e78fc0', '#9fd8ff', '#ffb45e'][Math.floor(t() * 4)],
+        });
+      }
+
+      // Blaadjes die naar beneden dwarrelen
+      vallend = [];
+      for (let i = 0; i < 26; i++) {
+        vallend.push({
+          x: t() * wereld.breedte,
+          y: t() * h,
+          val: 22 + t() * 30,
+          zwaai: 20 + t() * 40,
+          fase: t() * 6.28,
+          maat: 0.7 + t() * 0.7,
+          kleur: ['#6f9a3e', '#3f7a35', '#8a7a2e', '#b06a2e'][Math.floor(t() * 4)],
+        });
       }
 
       // Stenen, omgevallen boomstammen en boomstronken, verspreid over de hele wereld.
@@ -275,29 +344,24 @@
       const b = canvas.width;
       const h = canvas.height;
 
-      // Lucht: licht zonlicht dat door het bladerdek valt
+      // Lucht onder het bladerdek: donker bovenin, lichte nevel bij de horizon
       const lucht = ctx.createLinearGradient(0, 0, 0, grondhoogte);
-      lucht.addColorStop(0, '#1b3d22');
-      lucht.addColorStop(0.45, '#4e8a4a');
-      lucht.addColorStop(1, '#a9cf7a');
+      lucht.addColorStop(0, '#132a1a');
+      lucht.addColorStop(0.3, '#2c5730');
+      lucht.addColorStop(0.72, '#6f9c5e');
+      lucht.addColorStop(1, '#bfd5a4');
       ctx.fillStyle = lucht;
       ctx.fillRect(0, 0, b, grondhoogte);
 
-      // Zonnestralen die schuin door de bomen schijnen
-      ctx.save();
-      ctx.globalAlpha = 0.12;
-      ctx.fillStyle = '#fff6c8';
-      for (let i = 0; i < 4; i++) {
-        const x = b * (0.15 + i * 0.22);
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x + 70, 0);
-        ctx.lineTo(x + 230, grondhoogte);
-        ctx.lineTo(x + 110, grondhoogte);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.restore();
+      // De verste bomen, bijna opgelost in de nevel
+      metParallax(0.1, function () {
+        ctx.fillStyle = 'rgba(120,160,120,0.55)';
+        for (const bt of bomenVerst) {
+          ctx.beginPath();
+          ctx.ellipse(bt.x, grondhoogte - bt.hoogte * 0.45, bt.breedte / 2, bt.hoogte / 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
 
       // Verre boomtoppen, die schuiven het langzaamst mee
       metParallax(0.2, function () {
@@ -308,6 +372,24 @@
           ctx.fill();
         }
       });
+
+      // Zonnestralen die schuin door de bomen vallen, met zachte randen
+      ctx.save();
+      for (let i = 0; i < 5; i++) {
+        const x = ((i * 0.23 + 0.08) * b) - ((camera.x * 0.3) % b) + (i % 2 ? 0 : b * 0.05);
+        const straal = ctx.createLinearGradient(x, 0, x + 180, grondhoogte);
+        straal.addColorStop(0, 'rgba(255,248,205,0.22)');
+        straal.addColorStop(1, 'rgba(255,248,205,0)');
+        ctx.fillStyle = straal;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x + 60, 0);
+        ctx.lineTo(x + 250, grondhoogte);
+        ctx.lineTo(x + 120, grondhoogte);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
 
       // Boomstammen met wat groene aanslag
       metParallax(0.5, function () {
@@ -349,24 +431,142 @@
         }
       });
 
-      // Bosgrond
+      // Bosgrond: vochtige aarde die naar voren toe donkerder wordt
       const grond = ctx.createLinearGradient(0, grondhoogte, 0, h);
-      grond.addColorStop(0, '#5f7a3a');
-      grond.addColorStop(1, '#3b4f26');
+      grond.addColorStop(0, '#7d8f52');
+      grond.addColorStop(0.25, '#5e6f39');
+      grond.addColorStop(1, '#39421f');
       ctx.fillStyle = grond;
       ctx.fillRect(0, grondhoogte, b, h - grondhoogte);
 
-      // Graspluimpjes op de grens van de grond
-      ctx.strokeStyle = '#7fa848';
-      ctx.lineWidth = 2;
-      const eersteGras = Math.floor(camera.x / 11) * 11;
-      for (let wx = eersteGras; wx < camera.x + b; wx += 11) {
-        const hoogte = 6 + ((Math.abs(wx) * 7) % 9);
-        const x = wx - camera.x;
+      tekenStruiken(tijd, true);    // de rij struiken langs de horizon
+      tekenBosvloer(tijd);
+      tekenGras(tijd);
+      tekenStruiken(tijd, false);   // losse struiken verder naar voren
+    }
+
+    // Blaadjes, takjes, steentjes, plekken aarde en zonnevlekken op de grond.
+    function tekenBosvloer(tijd) {
+      const bladkleuren = ['#5e7a34', '#7d6b2c', '#8a5a2e', '#3f5a28'];
+      ctx.save();
+      for (const d of bosvloer) {
+        const x = d.x - camera.x;
+        if (x < -40 || x > canvas.width + 40) continue;
+        // Verder weg is kleiner
+        const diep = 0.45 + ((d.y - grondhoogte) / Math.max(1, canvas.height - grondhoogte)) * 0.9;
+        const m = d.maat * diep;
+
+        if (d.soort === 'licht') {
+          // Zonnevlek die zachtjes beweegt als de bladeren wiegen
+          ctx.globalAlpha = 0.13 + Math.sin(tijd * 0.7 + d.fase) * 0.05;
+          ctx.fillStyle = '#fff6c8';
+          ctx.beginPath();
+          ctx.ellipse(x + Math.sin(tijd * 0.4 + d.fase) * 6, d.y, 34 * m, 13 * m, d.hoek, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (d.soort === 'plek') {
+          // Donkere plek vochtige aarde
+          ctx.globalAlpha = 0.3;
+          ctx.fillStyle = '#2f3a1c';
+          ctx.beginPath();
+          ctx.ellipse(x, d.y, 30 * m, 11 * m, d.hoek, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (d.soort === 'takje') {
+          ctx.globalAlpha = 0.85;
+          ctx.strokeStyle = '#4a3a24';
+          ctx.lineWidth = 1.6 * m;
+          ctx.beginPath();
+          ctx.moveTo(x - 9 * m, d.y);
+          ctx.quadraticCurveTo(x, d.y - 3 * m, x + 10 * m, d.y + 1 * m);
+          ctx.stroke();
+        } else if (d.soort === 'steentje') {
+          ctx.globalAlpha = 0.8;
+          ctx.fillStyle = '#8a8c84';
+          ctx.beginPath();
+          ctx.ellipse(x, d.y, 3.2 * m, 2.2 * m, d.hoek, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Afgevallen blad
+          ctx.globalAlpha = 0.9;
+          ctx.fillStyle = bladkleuren[d.tint];
+          ctx.save();
+          ctx.translate(x, d.y);
+          ctx.rotate(d.hoek);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 6 * m, 2.6 * m, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+      ctx.restore();
+    }
+
+    // Graspollen in meerdere rijen: verder weg kleiner en blauwer.
+    function tekenGras(tijd) {
+      ctx.save();
+      for (const rij of [0, 1, 2, 3]) {
+        const y = grondhoogte + 4 + rij * rij * 34;
+        if (y > canvas.height) break;
+        const m = 0.6 + rij * 0.38;
+        ctx.strokeStyle = ['#8aa857', '#7fa348', '#6d913c', '#5d7d33'][rij];
+        ctx.lineWidth = 1.6 * m;
+        const stap = 9 + rij * 3;
+        const eerste = Math.floor(camera.x / stap) * stap;
+        for (let wx = eerste; wx < camera.x + canvas.width + stap; wx += stap) {
+          const x = wx - camera.x;
+          const hoog = (7 + ((Math.abs(wx) * 7) % 9)) * m;
+          const wieg = Math.sin(tijd * 0.9 + wx * 0.05) * 1.6 * m;
+          ctx.beginPath();
+          ctx.moveTo(x, y + 2);
+          ctx.quadraticCurveTo(x + wieg, y - hoog * 0.6, x + 2.5 * m + wieg * 1.6, y - hoog);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
+    // Een struik: een bosje overlappende bladmassa's, soms met bloemetjes.
+    function tekenStruiken(tijd, achteraan) {
+      for (const st of struiken) {
+        if (st.y < grondhoogte + 28 !== achteraan) continue;
+        const x = st.x - camera.x;
+        if (x < -90 || x > canvas.width + 90) continue;
+        const wieg = Math.sin(tijd * 0.8 + st.fase) * 2;
+        ctx.save();
+        ctx.translate(x + wieg, st.y);
+        ctx.scale(st.maat, st.maat);
+
+        // Schaduw onder de struik
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
         ctx.beginPath();
-        ctx.moveTo(x, grondhoogte + 2);
-        ctx.lineTo(x + 3, grondhoogte - hoogte);
-        ctx.stroke();
+        ctx.ellipse(0, 2, 42, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bladmassa
+        const donker = st.donker ? '#24501f' : '#2e5d26';
+        const licht = st.donker ? '#3a6b2c' : '#477d33';
+        for (const [bx, by, br] of [[-26, -14, 20], [0, -24, 26], [24, -15, 19], [-12, -8, 16], [13, -7, 15]]) {
+          ctx.fillStyle = donker;
+          ctx.beginPath();
+          ctx.ellipse(bx, by, br, br * 0.78, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // Licht van bovenaf
+        ctx.fillStyle = licht;
+        for (const [bx, by, br] of [[-4, -32, 15], [18, -22, 11], [-22, -22, 10]]) {
+          ctx.beginPath();
+          ctx.ellipse(bx, by, br, br * 0.6, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // Bloemetjes
+        if (st.bloemen) {
+          ctx.fillStyle = '#f0e2a8';
+          for (const [bx, by] of [[-16, -26], [6, -36], [20, -24], [-2, -18]]) {
+            ctx.beginPath();
+            ctx.arc(bx, by, 2.6, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        ctx.restore();
       }
     }
 
@@ -1399,6 +1599,66 @@
       return inHunebed(x, y) || botstObstakel(x, y);
     }
 
+    // Nevel over de verte: alles bij de horizon verdwijnt een beetje in de damp.
+    function tekenNevel() {
+      const nevel = ctx.createLinearGradient(0, grondhoogte - 24, 0, grondhoogte + 150);
+      nevel.addColorStop(0, 'rgba(206,222,196,0.5)');
+      nevel.addColorStop(0.45, 'rgba(206,222,196,0.22)');
+      nevel.addColorStop(1, 'rgba(206,222,196,0)');
+      ctx.fillStyle = nevel;
+      ctx.fillRect(camera.x, grondhoogte - 24, canvas.width, 174);
+    }
+
+    // Vlinders die rondjes fladderen boven de bosgrond.
+    function tekenVlinders(tijd) {
+      for (const v of vlinders) {
+        const x = v.x - camera.x + Math.sin(tijd * v.snelheid + v.fase) * 70;
+        if (x < -30 || x > canvas.width + 30) continue;
+        const y = v.y - v.hoogte + Math.cos(tijd * v.snelheid * 1.7 + v.fase) * 18;
+        const klap = Math.abs(Math.sin(tijd * 11 + v.fase));
+        ctx.save();
+        ctx.translate(v.x + Math.sin(tijd * v.snelheid + v.fase) * 70, y);
+        ctx.fillStyle = v.kleur;
+        ctx.beginPath();
+        ctx.ellipse(-2.5, 0, 3.4, 1 + klap * 3.4, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(2.5, 0, 3.4, 1 + klap * 3.4, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#4a3a24';
+        ctx.fillRect(-0.6, -2, 1.2, 4);
+        ctx.restore();
+      }
+    }
+
+    // Blaadjes die van boven naar beneden dwarrelen.
+    function tekenVallend(tijd) {
+      for (const bl of vallend) {
+        const x = bl.x + Math.sin(tijd * 0.8 + bl.fase) * bl.zwaai;
+        if (x - camera.x < -30 || x - camera.x > canvas.width + 30) continue;
+        ctx.save();
+        ctx.translate(x, bl.y);
+        ctx.rotate(tijd * 1.6 + bl.fase);
+        ctx.fillStyle = bl.kleur;
+        ctx.globalAlpha = 0.85;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 7 * bl.maat, 3 * bl.maat, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // De randen van het beeld iets donkerder, dat maakt het rustiger om naar te kijken.
+    function tekenRand() {
+      const r = ctx.createRadialGradient(
+        canvas.width / 2, canvas.height / 2, Math.min(canvas.width, canvas.height) * 0.42,
+        canvas.width / 2, canvas.height / 2, Math.max(canvas.width, canvas.height) * 0.78);
+      r.addColorStop(0, 'rgba(0,0,0,0)');
+      r.addColorStop(1, 'rgba(10,20,10,0.42)');
+      ctx.fillStyle = r;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
     // De varens staan vóór de dino, dus die worden ná hem getekend.
     function tekenVoorgrond(tijd) {
       for (const varen of varens) {
@@ -1785,6 +2045,15 @@
       }
       schoten = schoten.filter(function (schot) { return !schot.weg; });
 
+      // Dwarrelende blaadjes zakken naar beneden en beginnen bovenaan opnieuw
+      for (const bl of vallend) {
+        bl.y += bl.val * dt;
+        if (bl.y > canvas.height + 20) {
+          bl.y = -20;
+          bl.x = camera.x + Math.random() * canvas.width;
+        }
+      }
+
       for (const pluim of pluimen) pluim.leeftijd += dt;
       pluimen = pluimen.filter(function (pluim) { return pluim.leeftijd < 0.4; });
 
@@ -2042,8 +2311,13 @@
 
       for (const pluim of pluimen) tekenPluim(pluim);
 
+      tekenNevel();
       tekenVoorgrond(dino.tijd);
+      tekenVlinders(dino.tijd);
+      tekenVallend(dino.tijd);
       ctx.restore();
+
+      tekenRand();
 
       tekenTeller();
       tekenKaartje();
