@@ -145,17 +145,18 @@
       // bovenaan een grot in de rotswand: daar ga je naar het volgende level.
       balken = [];
       // De bovenste balk moet nog wel op het scherm passen, met de grot erboven.
+      // De balken zijn lekker breed en de treden zijn laag, zodat klimmen makkelijk is.
       const ruimte = Math.max(90, grondhoogte - 240);
-      const aantalBalken = Math.max(3, Math.min(9, 5 + level, Math.floor(ruimte / 72) + 1));
-      const stap = Math.max(40, Math.min(72, ruimte / (aantalBalken - 1)));
+      const aantalBalken = Math.max(3, Math.min(7, 4 + Math.floor(level / 2), Math.floor(ruimte / 55) + 1));
+      const stap = Math.max(36, Math.min(55, ruimte / (aantalBalken - 1)));
       const grotX = 500 + t() * (wereld.breedte - 1000);
       for (let i = 0; i < aantalBalken; i++) {
         balken.push({
-          x: grotX - (aantalBalken - i) * 100,
-          y: grondhoogte + 150 - i * (60 / (aantalBalken - 1)),
-          z: 70 + i * stap,                // hoe hoog de balk boven de grond hangt
-          breedte: 100,
-          diepte: 48,
+          x: grotX - (aantalBalken - i) * 80,
+          y: grondhoogte + 140 - i * (30 / (aantalBalken - 1)),
+          z: 55 + i * stap,                // hoe hoog de balk boven de grond hangt
+          breedte: 130,
+          diepte: 76,
         });
       }
       const bovenste = balken[balken.length - 1];
@@ -980,6 +981,7 @@
       hoogte: 0,         // hoe hoog hij boven de bosgrond zit
       vz: 0,             // hoe snel hij omhoog of omlaag gaat
       opGrond: true,
+      netNogGrond: 0,    // kort na het van de balk stappen mag je nog springen
       kijktRechts: true,
       loopt: false,
     };
@@ -1071,10 +1073,14 @@
         dino.stap += dt * 9;
       }
 
-      // Springen met de Z, en daarna trekt de zwaartekracht hem weer naar beneden
-      if (toetsen['z'] && dino.opGrond) {
+      // Springen met de Z, en daarna trekt de zwaartekracht hem weer naar beneden.
+      // Stap je net van een balk af, dan mag je nog een klein momentje springen.
+      if (dino.opGrond) dino.netNogGrond = 0.14;
+      else if (dino.netNogGrond > 0) dino.netNogGrond -= dt;
+      if (toetsen['z'] && dino.netNogGrond > 0) {
         dino.vz = SPRONGKRACHT;
         dino.opGrond = false;
+        dino.netNogGrond = 0;
       }
       const vorigeHoogte = dino.hoogte;
       dino.vz -= ZWAARTEKRACHT * dt;
