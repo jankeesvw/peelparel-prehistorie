@@ -342,6 +342,32 @@
       }
     }
 
+    // Een geweer, met (0, 0) bij de hand en de loop naar rechts.
+    function tekenGeweer(g) {
+      // Kolf van hout
+      ctx.fillStyle = g.hout;
+      ctx.beginPath();
+      ctx.moveTo(-9, -1);
+      ctx.lineTo(-2, -3);
+      ctx.lineTo(-2, 3.5);
+      ctx.lineTo(-8, 4.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillRect(-3, -2.5, 8, 5);
+      // Greep
+      ctx.fillRect(0, 2, 3, 5.5);
+      // Loop
+      ctx.fillStyle = g.kleur;
+      ctx.fillRect(4, -1.5, g.loop, 3);
+      // Mond van de loop
+      ctx.fillRect(4 + g.loop, -2.5, 2.5, 5);
+      // Vizier bovenop
+      ctx.fillRect(7, -4, 2, 2);
+      // Touwtje om de kolf
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(-5, -2, 1.5, 6);
+    }
+
     // Een munt: een gouden rondje dat om zijn as draait en boven de grond zweeft.
     function tekenMunt(munt, tijd) {
       const zweef = Math.sin(tijd * 3 + munt.fase) * 5;
@@ -378,6 +404,170 @@
       }
       ctx.restore();
     }
+
+    // Waar de winkelknop en de vakjes in de winkel staan. Zowel het tekenen als
+    // het klikken gebruikt deze maten, zo zitten ze altijd op dezelfde plek.
+    function winkelIndeling() {
+      const knop = { x: canvas.width - 160, y: 20, b: 140, h: 44 };
+      const breedte = 440;
+      const rijHoogte = 78;
+      const x = (canvas.width - breedte) / 2;
+      const y = Math.max(20, canvas.height / 2 - (90 + geweren.length * rijHoogte) / 2);
+      const rijen = geweren.map(function (g, i) {
+        return { g: g, x: x + 16, y: y + 70 + i * rijHoogte, b: breedte - 32, h: rijHoogte - 10 };
+      });
+      return {
+        knop: knop,
+        paneel: { x: x, y: y, b: breedte, h: 90 + geweren.length * rijHoogte },
+        rijen: rijen,
+        sluit: { x: x + breedte - 52, y: y + 14, b: 36, h: 32 },
+      };
+    }
+
+    function tekenWinkelknop() {
+      const k = winkelIndeling().knop;
+      ctx.save();
+      ctx.fillStyle = 'rgba(20,40,20,0.8)';
+      ctx.strokeStyle = '#f6c62e';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(k.x, k.y, k.b, k.h, 10);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Winkel (S)', k.x + k.b / 2, k.y + k.h / 2 + 1);
+      ctx.restore();
+    }
+
+    function tekenWinkel() {
+      const w = winkelIndeling();
+      ctx.save();
+
+      // Donker vlak over het spel heen
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Paneel
+      ctx.fillStyle = '#20331f';
+      ctx.strokeStyle = '#f6c62e';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.roundRect(w.paneel.x, w.paneel.y, w.paneel.b, w.paneel.h, 16);
+      ctx.fill();
+      ctx.stroke();
+
+      // Titel en je munten
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 26px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Wapenwinkel', w.paneel.x + 20, w.paneel.y + 32);
+      ctx.fillStyle = '#f6c62e';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillText(aantalMunten + ' munten', w.paneel.x + 200, w.paneel.y + 33);
+
+      // Kruisje om te sluiten
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(w.sluit.x + 10, w.sluit.y + 9);
+      ctx.lineTo(w.sluit.x + 26, w.sluit.y + 23);
+      ctx.moveTo(w.sluit.x + 26, w.sluit.y + 9);
+      ctx.lineTo(w.sluit.x + 10, w.sluit.y + 23);
+      ctx.stroke();
+
+      // Eén rij per geweer
+      for (const rij of w.rijen) {
+        const g = rij.g;
+        const inHanden = gekozenGeweer === g;
+        ctx.fillStyle = inHanden ? '#2f5a2b' : '#2a4227';
+        ctx.strokeStyle = inHanden ? '#8ee06a' : 'rgba(255,255,255,0.18)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(rij.x, rij.y, rij.b, rij.h, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        // Plaatje van het geweer
+        ctx.save();
+        ctx.translate(rij.x + 46, rij.y + rij.h / 2);
+        ctx.scale(1.7, 1.7);
+        tekenGeweer(g);
+        ctx.restore();
+
+        // Naam
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(g.naam, rij.x + 110, rij.y + rij.h / 2 - 9);
+
+        // Prijs of wat je ermee kunt
+        ctx.font = '17px sans-serif';
+        if (inHanden) {
+          ctx.fillStyle = '#8ee06a';
+          ctx.fillText('in je handen, klik om weg te leggen', rij.x + 110, rij.y + rij.h / 2 + 13);
+        } else if (g.gekocht) {
+          ctx.fillStyle = '#cfe6bf';
+          ctx.fillText('gekocht, klik om vast te pakken', rij.x + 110, rij.y + rij.h / 2 + 13);
+        } else {
+          ctx.fillStyle = aantalMunten >= g.prijs ? '#f6c62e' : '#b08a8a';
+          ctx.fillText(g.prijs + ' munten', rij.x + 110, rij.y + rij.h / 2 + 13);
+        }
+      }
+
+      // Kort berichtje onderaan
+      if (melding && meldingTijd > 0) {
+        ctx.fillStyle = '#ffd9a0';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(melding, w.paneel.x + w.paneel.b / 2, w.paneel.y + w.paneel.h - 16);
+      }
+      ctx.restore();
+    }
+
+    // Zit dit punt in dit vakje?
+    function inVak(px, py, vak) {
+      return px >= vak.x && px <= vak.x + vak.b && py >= vak.y && py <= vak.y + vak.h;
+    }
+
+    canvas.addEventListener('mousedown', function (e) {
+      const px = e.clientX;
+      const py = e.clientY;
+      const w = winkelIndeling();
+
+      if (!winkelOpen) {
+        if (inVak(px, py, w.knop)) winkelOpen = true;
+        return;
+      }
+
+      if (inVak(px, py, w.sluit)) { winkelOpen = false; return; }
+
+      for (const rij of w.rijen) {
+        if (!inVak(px, py, rij)) continue;
+        const g = rij.g;
+        if (gekozenGeweer === g) {
+          gekozenGeweer = null;            // weer wegleggen
+        } else if (g.gekocht) {
+          gekozenGeweer = g;               // al gekocht, dus gewoon vastpakken
+        } else if (aantalMunten >= g.prijs) {
+          aantalMunten -= g.prijs;
+          g.gekocht = true;
+          gekozenGeweer = g;
+          melding = g.naam + ' gekocht!';
+          meldingTijd = 2;
+        } else {
+          melding = 'Te weinig munten, zoek er nog ' + (g.prijs - aantalMunten) + '!';
+          meldingTijd = 2;
+        }
+        return;
+      }
+
+      // Buiten het paneel geklikt: winkel weer dicht
+      if (!inVak(px, py, w.paneel)) winkelOpen = false;
+    });
 
     // Het aantal gepakte munten linksboven in beeld.
     function tekenTeller() {
@@ -435,6 +625,18 @@
       loopt: false,
     };
 
+    // ---- Wapenwinkel ----
+    // Drie geweren, gemaakt van bot, steen en vuur. Je koopt ze met je munten.
+    const geweren = [
+      { naam: 'Bottenbuks',   prijs: 3,  loop: 12, kleur: '#e8e0cf', hout: '#8a6440', gekocht: false },
+      { naam: 'Steenschutter', prijs: 6, loop: 16, kleur: '#9a9c94', hout: '#5a3f28', gekocht: false },
+      { naam: 'Vuurspuwer',   prijs: 10, loop: 20, kleur: '#d14a1f', hout: '#4a3524', gekocht: false },
+    ];
+    let winkelOpen = false;
+    let gekozenGeweer = null;   // het geweer dat de dino in zijn handen heeft
+    let melding = '';           // kort tekstje in de winkel, bijv. te weinig munten
+    let meldingTijd = 0;
+
     const SNELHEID = 190;   // hoe snel hij loopt, in beeldpunten per seconde
 
     // Welke pijltjes op dit moment ingedrukt zijn.
@@ -444,6 +646,8 @@
         toetsen[e.key] = true;
         e.preventDefault();   // anders scrollt de pagina mee
       }
+      if (e.key === 's' || e.key === 'S') winkelOpen = !winkelOpen;
+      if (e.key === 'Escape') winkelOpen = false;
     });
     window.addEventListener('keyup', function (e) {
       toetsen[e.key] = false;
@@ -457,6 +661,13 @@
 
     function update(dt) {
       dino.tijd += dt;
+      if (meldingTijd > 0) meldingTijd -= dt;
+
+      // Met de winkel open loopt de dino niet, dan sta je rustig te kiezen.
+      if (winkelOpen) {
+        dino.loopt = false;
+        return;
+      }
 
       // Richting bepalen uit de ingedrukte pijltjes
       let dx = 0;
@@ -589,6 +800,16 @@
       ctx.beginPath();
       ctx.ellipse(8, -18, 4, 2.5, -0.4, 0, Math.PI * 2);
       ctx.fill();
+
+      // Het gekochte geweer houdt hij voor zich
+      if (gekozenGeweer) {
+        ctx.save();
+        ctx.translate(7, -17);
+        ctx.rotate(-0.12);
+        ctx.scale(0.8, 0.8);
+        tekenGeweer(gekozenGeweer);
+        ctx.restore();
+      }
     }
 
     function draw() {
@@ -629,6 +850,8 @@
 
       tekenVoorgrond(dino.tijd);
       tekenTeller();
+      tekenWinkelknop();
+      if (winkelOpen) tekenWinkel();
     }
 
     herbouw();
