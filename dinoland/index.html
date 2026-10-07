@@ -34,7 +34,10 @@
     // De jungle is veel breder dan het scherm. De camera schuift mee met de dino.
     const wereld = { breedte: 0, patroon: 0 };
     const camera = { x: 0 };
+    const AANTAL_LEVELS = 30;   // zoveel levels zijn er, en 30 is het discolevel
     let level = 1;
+    let disco = false;          // staat het discolevel aan?
+    let gewonnen = false;
     let balken = [];            // houten balken waar je op kunt springen
     let grot = null;            // de grot bovenaan de balken: de uitgang naar het volgende level
     let lift = null;            // houten lift naast de trap, voor wie niet wil springen
@@ -80,6 +83,7 @@
 
     function maakJungle() {
       const t = maakToeval(20261007 + level * 7919);
+      disco = level >= AANTAL_LEVELS;
       const b = canvas.width;
       const h = canvas.height;
       grondhoogte = h * 0.6;                      // horizon: de bosgrond is lekker diep
@@ -361,6 +365,9 @@
       const b = canvas.width;
       const h = canvas.height;
 
+      if (disco) {
+        tekenDiscoLucht(tijd);
+      } else {
       // Lucht onder het bladerdek: donker bovenin, lichte nevel bij de horizon
       const lucht = ctx.createLinearGradient(0, 0, 0, grondhoogte);
       lucht.addColorStop(0, '#132a1a');
@@ -369,6 +376,8 @@
       lucht.addColorStop(1, '#bfd5a4');
       ctx.fillStyle = lucht;
       ctx.fillRect(0, 0, b, grondhoogte);
+
+      }
 
       // De verste bomen, bijna opgelost in de nevel
       metParallax(0.1, function () {
@@ -448,6 +457,16 @@
         }
       });
 
+      if (disco) {
+        // De bomen worden donkere silhouetten, zoals in een echte zaal
+        ctx.fillStyle = 'rgba(12,6,30,0.5)';
+        ctx.fillRect(0, 0, b, grondhoogte);
+        tekenDansvloer(tijd);
+        tekenStruiken(tijd, true);
+        tekenDiscobal(tijd);
+        return;
+      }
+
       // Bosgrond: vochtige aarde die naar voren toe donkerder wordt
       const grond = ctx.createLinearGradient(0, grondhoogte, 0, h);
       grond.addColorStop(0, '#7d8f52');
@@ -460,6 +479,129 @@
       tekenBosvloer(tijd);
       tekenGras(tijd);
       tekenStruiken(tijd, false);   // losse struiken verder naar voren
+    }
+
+    // ---- Het discolevel ----
+    // De maat van de muziek: elke tel springt dit getal een hele op.
+    function tel(tijd) {
+      return tijd * 2;
+    }
+
+    // Donkere zaal met zoeklichten die heen en weer zwaaien.
+    function tekenDiscoLucht(tijd) {
+      const b = canvas.width;
+      const klop = Math.abs(Math.sin(tel(tijd) * Math.PI));
+
+      const lucht = ctx.createLinearGradient(0, 0, 0, grondhoogte);
+      lucht.addColorStop(0, '#120a22');
+      lucht.addColorStop(0.55, '#24104a');
+      lucht.addColorStop(1, 'hsl(' + Math.floor(tijd * 60 % 360) + ' 60% ' + (26 + klop * 10) + '%)');
+      ctx.fillStyle = lucht;
+      ctx.fillRect(0, 0, b, grondhoogte);
+
+      // Zoeklichten vanaf het plafond
+      ctx.save();
+      for (let i = 0; i < 5; i++) {
+        const hoek = Math.sin(tijd * (0.5 + i * 0.17) + i) * 0.7;
+        const top = b * (0.12 + i * 0.19);
+        const onder = top + Math.tan(hoek) * grondhoogte;
+        const kleur = 'hsl(' + Math.floor((tijd * 90 + i * 72) % 360) + ' 95% 60%)';
+        const straal = ctx.createLinearGradient(top, 0, onder, grondhoogte);
+        straal.addColorStop(0, kleur);
+        straal.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.globalAlpha = 0.3 + klop * 0.2;
+        ctx.fillStyle = straal;
+        ctx.beginPath();
+        ctx.moveTo(top - 18, 0);
+        ctx.lineTo(top + 18, 0);
+        ctx.lineTo(onder + 150, grondhoogte);
+        ctx.lineTo(onder - 150, grondhoogte);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // De bosgrond is een dansvloer van gekleurde vakken die op de maat wisselen.
+    function tekenDansvloer(tijd) {
+      const b = canvas.width;
+      const h = canvas.height;
+      const beat = Math.floor(tel(tijd));
+      const kleuren = ['#ff3d7f', '#ffd23d', '#3dffb0', '#3d9bff', '#c43dff', '#ff8a3d'];
+
+      ctx.save();
+      const vakB = 78;
+      const vakH = 44;
+      const eerste = Math.floor(camera.x / vakB) * vakB;
+      for (let wx = eerste; wx < camera.x + b + vakB; wx += vakB) {
+        for (let y = grondhoogte; y < h; y += vakH) {
+          const kol = Math.floor(wx / vakB);
+          const rij = Math.floor((y - grondhoogte) / vakH);
+          const kleur = kleuren[(kol + rij * 2 + beat) % kleuren.length];
+          ctx.globalAlpha = 0.85;
+          ctx.fillStyle = kleur;
+          ctx.fillRect(wx - camera.x, y, vakB - 2, vakH - 2);
+          // Glans op het vak
+          ctx.globalAlpha = 0.18;
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(wx - camera.x, y, vakB - 2, (vakH - 2) / 3);
+        }
+      }
+      ctx.restore();
+    }
+
+    // De discobal hangt midden boven de dansvloer en draait rond.
+    function tekenDiscobal(tijd) {
+      const x = canvas.width / 2;
+      const y = 86;
+      const r = 40;
+      const draai = tijd * 1.2;
+
+      // Ketting naar het plafond
+      ctx.strokeStyle = '#8a8c84';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, y - r);
+      ctx.stroke();
+
+      // Lichtstralen die met de bal meedraaien
+      ctx.save();
+      ctx.globalAlpha = 0.22;
+      for (let i = 0; i < 12; i++) {
+        const hoek = draai + (i / 12) * Math.PI * 2;
+        ctx.fillStyle = 'hsl(' + Math.floor((i * 30 + tijd * 60) % 360) + ' 95% 65%)';
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + Math.cos(hoek) * 1400, y + Math.abs(Math.sin(hoek)) * 900);
+        ctx.lineTo(x + Math.cos(hoek + 0.08) * 1400, y + Math.abs(Math.sin(hoek + 0.08)) * 900);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // De bal zelf
+      ctx.fillStyle = '#9aa3b0';
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      // Spiegeltjes
+      for (let rij = -3; rij <= 3; rij++) {
+        for (let kol = -4; kol <= 4; kol++) {
+          const hoek = draai + kol * 0.38;
+          const px = x + Math.sin(hoek) * r * 0.86 * Math.cos(rij * 0.38);
+          const py = y + Math.sin(rij * 0.38) * r * 0.86;
+          if (Math.cos(hoek) < 0) continue;
+          const licht = 40 + Math.cos(hoek) * 45;
+          ctx.fillStyle = 'hsl(' + Math.floor((kol * 24 + rij * 12 + tijd * 90) % 360) + ' 70% ' + licht + '%)';
+          ctx.fillRect(px - 4, py - 3.5, 8, 7);
+        }
+      }
+      // Glanslichtje
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.beginPath();
+      ctx.ellipse(x - 12, y - 16, 8, 5, -0.5, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     // Blaadjes, takjes, steentjes, plekken aarde en zonnevlekken op de grond.
@@ -1680,17 +1822,50 @@
       ctx.restore();
     }
 
+    // Je hebt alle levels gehaald: feesttekst in beeld.
+    function tekenGewonnen(tijd) {
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const hoek = Math.sin(tijd * 3) * 0.03;
+      ctx.translate(canvas.width / 2, canvas.height * 0.17);
+      ctx.rotate(hoek);
+      ctx.font = 'bold 54px sans-serif';
+      ctx.lineWidth = 9;
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.strokeText('GEHAALD!', 0, 0);
+      ctx.fillStyle = 'hsl(' + Math.floor(tijd * 180 % 360) + ' 95% 62%)';
+      ctx.fillText('GEHAALD!', 0, 0);
+      ctx.rotate(-hoek);
+      ctx.font = 'bold 22px sans-serif';
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.strokeText('alle 30 levels uit · dans lekker door · R om opnieuw te beginnen', 0, 44);
+      ctx.fillStyle = '#fff';
+      ctx.fillText('alle 30 levels uit · dans lekker door · R om opnieuw te beginnen', 0, 44);
+      ctx.restore();
+    }
+
     // Welk level je speelt en welke toetsen er zijn, linksonder in beeld.
     function tekenUitleg() {
       ctx.save();
-      ctx.fillStyle = 'rgba(255,255,255,0.8)';
-      ctx.font = 'bold 19px sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'alphabetic';
-      ctx.fillText('Level ' + level, 20, canvas.height - 44);
-      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+
+      const boven = 'Level ' + level + ' / ' + AANTAL_LEVELS + (disco ? '  ·  DISCO!' : '');
+      ctx.font = 'bold 19px sans-serif';
+      ctx.lineWidth = 4;
+      ctx.strokeText(boven, 20, canvas.height - 44);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(boven, 20, canvas.height - 44);
+
+      const onder = 'pijltjes lopen · Z springen · spatie gooien · S winkel · op de balken pakken ze je niet';
       ctx.font = '15px sans-serif';
-      ctx.fillText('pijltjes lopen · Z springen · spatie gooien · S winkel · op de balken pakken ze je niet', 20, canvas.height - 22);
+      ctx.lineWidth = 3.5;
+      ctx.strokeText(onder, 20, canvas.height - 22);
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.fillText(onder, 20, canvas.height - 22);
       ctx.restore();
     }
 
@@ -1746,6 +1921,7 @@
 
     // Nevel over de verte: alles bij de horizon verdwijnt een beetje in de damp.
     function tekenNevel() {
+      if (disco) return;   // in de zaal hangt geen bosnevel
       const nevel = ctx.createLinearGradient(0, grondhoogte - 24, 0, grondhoogte + 150);
       nevel.addColorStop(0, 'rgba(206,222,196,0.5)');
       nevel.addColorStop(0.45, 'rgba(206,222,196,0.22)');
@@ -1784,7 +1960,9 @@
         ctx.save();
         ctx.translate(x, bl.y);
         ctx.rotate(tijd * 1.6 + bl.fase);
-        ctx.fillStyle = bl.kleur;
+        ctx.fillStyle = disco
+          ? 'hsl(' + Math.floor((bl.fase * 57 + tijd * 120) % 360) + ' 95% 62%)'
+          : bl.kleur;
         ctx.globalAlpha = 0.85;
         ctx.beginPath();
         ctx.ellipse(0, 0, 7 * bl.maat, 3 * bl.maat, 0, 0, Math.PI * 2);
@@ -1872,6 +2050,21 @@
         toetsen['z'] = true;
         e.preventDefault();
       }
+      if (e.key.toLowerCase() === 'r' && gewonnen) {
+        // Opnieuw beginnen, je munten en wapens houd je
+        level = 1;
+        gewonnen = false;
+        gevangen = false;
+        schoten = [];
+        pluimen = [];
+        herbouw();
+        dino.x = wereld.breedte / 2;
+        dino.y = grondhoogte + 60;
+        dino.hoogte = 0;
+        dino.vz = 0;
+        levelTekst = 'Level 1';
+        levelTekstTijd = 2;
+      }
       if (e.key === 's' || e.key === 'S') winkelOpen = !winkelOpen;
       if (e.key === 'Escape') winkelOpen = false;
     });
@@ -1930,7 +2123,7 @@
           continue;
         }
         // Raak je hem aan, dan pakt hij je
-        if (!gevangen && dino.hoogte < 30
+        if (!gevangen && !disco && dino.hoogte < 30
             && Math.abs(dino.x - bewaker.x) < 30 && Math.abs(dino.y - bewaker.y) < 24) {
           vangMij();
           return;
@@ -1947,14 +2140,16 @@
 
     // De mensen en hun honden: rondlopen, jagen of bang weglopen.
     function werkJagersBij(dt) {
-      const pakbaar = !gevangen && dino.hoogte < 30;
+      const pakbaar = !disco && !gevangen && dino.hoogte < 30;
 
       for (const jager of jagers) {
         const dx = dino.x - jager.x;
         const dy = dino.y - jager.y;
         const afstand = Math.hypot(dx, dy * 1.6);
 
-        if (jager.bangTijd > 0) {
+        if (disco) {
+          jager.toestand = 'patrouille';   // ze staan te dansen, niet te jagen
+        } else if (jager.bangTijd > 0) {
           jager.bangTijd -= dt;
           jager.toestand = 'bang';
         } else if (pakbaar && afstand < 340) {
@@ -2119,10 +2314,22 @@
       }
 
       // Bovenaan de balken de grot in: door naar het volgende level
-      if (!gevangen && grot && Math.abs(dino.x - grot.x) < 60 && Math.abs(dino.y - grot.y) < 55
-          && dino.hoogte > grot.z - 45) {
+      if (!gevangen && !gewonnen && grot && Math.abs(dino.x - grot.x) < 60
+          && Math.abs(dino.y - grot.y) < 55 && dino.hoogte > grot.z - 45) {
+        if (level >= AANTAL_LEVELS) {
+          // Dit was het laatste level: feest op de dansvloer
+          gewonnen = true;
+          levelTekst = 'Alle 30 levels gehaald!';
+          levelTekstTijd = 6;
+          dino.x = wereld.breedte / 2;
+          dino.y = grondhoogte + 80;
+          dino.hoogte = 0;
+          dino.vz = 0;
+          camera.x = Math.max(0, Math.min(wereld.breedte - canvas.width, dino.x - canvas.width / 2));
+          return;
+        }
         level += 1;
-        levelTekst = 'Level ' + level + '!';
+        levelTekst = level >= AANTAL_LEVELS ? 'DISCOLEVEL!' : 'Level ' + level + '!';
         levelTekstTijd = 2.5;
         schoten = [];
         pluimen = [];
@@ -2345,7 +2552,7 @@
       // Stilstaand ademt hij zachtjes, lopend wipt hij op het ritme van zijn stappen.
       const wip = dino.loopt
         ? Math.abs(Math.sin(dino.stap)) * -4
-        : Math.sin(dino.tijd * 2) * 3;
+        : (disco ? -Math.abs(Math.sin(tel(dino.tijd) * Math.PI)) * 9 : Math.sin(dino.tijd * 2) * 3);
 
       const grootte = dinoGrootte();
 
@@ -2394,12 +2601,15 @@
         laag.push({ y: bewaker.y, teken: function () {
           const maat = grootteOpDiepte(bewaker.y) * 1.05;
           ctx.save();
-          ctx.translate(bewaker.x, bewaker.y);
+          ctx.translate(bewaker.x, bewaker.y + dansWip);
           ctx.scale(bewaker.kijktRechts ? maat : -maat, maat);
           tekenBewaker(bewaker, dino.tijd);
           ctx.restore();
         } });
       }
+
+      // In de disco wipt iedereen op de maat mee
+      const dansWip = disco ? -Math.abs(Math.sin(tel(dino.tijd) * Math.PI)) * 10 : 0;
 
       // Mensen met honden
       for (const jager of jagers) {
@@ -2407,7 +2617,7 @@
           laag.push({ y: jager.y, teken: function () {
             const maat = grootteOpDiepte(jager.y) * 0.95;
             ctx.save();
-            ctx.translate(jager.x, jager.y);
+            ctx.translate(jager.x, jager.y + dansWip);
             ctx.scale(jager.kijktRechts ? maat : -maat, maat);
             tekenJager(jager);
             ctx.restore();
@@ -2417,7 +2627,7 @@
           laag.push({ y: jager.hondY, teken: function () {
             const maat = grootteOpDiepte(jager.hondY) * 0.95;
             ctx.save();
-            ctx.translate(jager.hondX, jager.hondY);
+            ctx.translate(jager.hondX, jager.hondY + dansWip * 0.6);
             ctx.scale(jager.hondKijktRechts ? maat : -maat, maat);
             tekenHond(jager);
             ctx.restore();
@@ -2499,6 +2709,7 @@
       tekenUitleg();
       if (gevangen) tekenGevangenTekst();
       if (levelTekstTijd > 0) tekenLevelTekst();
+      if (gewonnen) tekenGewonnen(dino.tijd);
       tekenWinkelknop();
       if (winkelOpen) tekenWinkel();
     }
