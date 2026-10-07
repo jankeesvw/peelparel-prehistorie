@@ -37,6 +37,8 @@
     let level = 1;
     let balken = [];            // houten balken waar je op kunt springen
     let grot = null;            // de grot bovenaan de balken: de uitgang naar het volgende level
+    let lift = null;            // houten lift naast de trap, voor wie niet wil springen
+    let bordje = null;          // het bordje dat naar de lift wijst
     let levelTekst = '';        // grote tekst als je een level haalt
     let levelTekstTijd = 0;
     let jagers = [];            // mensen met honden die je willen vangen
@@ -243,6 +245,21 @@
       }
       const bovenste = balken[balken.length - 1];
       grot = { x: bovenste.x + 30, y: bovenste.y - 38, z: bovenste.z };
+
+      // Een houten lift naast de trap: hij gaat rustig op en neer, dus je kunt
+      // ook naar boven zonder van balk naar balk te springen.
+      lift = {
+        x: bovenste.x + 100,     // net naast de bovenste balk, zodat je er zo op stapt
+        y: bovenste.y + 10,
+        z: 2,
+        laag: 2,                 // zo laag dat je er gewoon op kunt lopen
+        hoog: bovenste.z,
+        breedte: 96,
+        diepte: 58,
+      };
+
+      // Het bordje dat naar de lift wijst
+      bordje = { x: lift.x + 80, y: lift.y + 96 };
 
       // Op elke balk ligt een munt, dus klimmen levert iets op
       for (const balk of balken) {
@@ -708,6 +725,121 @@
       ctx.ellipse(-b / 4, 8, 12, 3, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
+    }
+
+    // De houten lift: een platform aan twee touwen, met (0, 0) op de grond eronder.
+    function tekenLift(tijd) {
+      const b = lift.breedte;
+      const d = lift.diepte;
+
+      // Schaduw van het platform op de grond
+      ctx.save();
+      ctx.globalAlpha = Math.max(0.08, 0.3 - lift.z / 900);
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, b / 2, d / 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Twee staande palen met bovenop een katrol
+      ctx.fillStyle = '#4a3524';
+      ctx.fillRect(-b / 2 - 6, -lift.hoog - 40, 8, lift.hoog + 40);
+      ctx.fillRect(b / 2 - 2, -lift.hoog - 40, 8, lift.hoog + 40);
+      // Dwarsbalk bovenaan
+      ctx.fillStyle = '#5a3f28';
+      ctx.fillRect(-b / 2 - 10, -lift.hoog - 48, b + 20, 10);
+      // Katrollen
+      ctx.fillStyle = '#8a6440';
+      for (const px of [-b / 2 + 4, b / 2 - 4]) {
+        ctx.beginPath();
+        ctx.arc(px, -lift.hoog - 38, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#5a3f28';
+        ctx.beginPath();
+        ctx.arc(px, -lift.hoog - 38, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#8a6440';
+      }
+
+      // Touwen van de katrollen naar het platform
+      ctx.strokeStyle = '#d6c89a';
+      ctx.lineWidth = 2;
+      for (const px of [-b / 2 + 4, b / 2 - 4]) {
+        ctx.beginPath();
+        ctx.moveTo(px, -lift.hoog - 38);
+        ctx.lineTo(px, -lift.z - 6);
+        ctx.stroke();
+      }
+
+      // Het platform zelf
+      ctx.save();
+      ctx.translate(0, -lift.z);
+      ctx.fillStyle = '#6d4e32';
+      ctx.fillRect(-b / 2, -5, b, 13);
+      ctx.fillStyle = '#8a6440';
+      ctx.beginPath();
+      ctx.ellipse(0, -5, b / 2, d / 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Planken
+      ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+      ctx.lineWidth = 2;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * (b / 6), -5 - d / 3.4);
+        ctx.lineTo(i * (b / 6), -5 + d / 3.4);
+        ctx.stroke();
+      }
+      // Touw om de rand, net als bij een echte vlonder
+      ctx.strokeStyle = '#d6c89a';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(0, -5, b / 2 - 2, d / 3 - 1, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Het bordje dat naar de lift wijst.
+    function tekenBordje() {
+      // Schaduw
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 20, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Twee stokken
+      ctx.fillStyle = '#5a3f28';
+      ctx.fillRect(-13, -26, 4, 26);
+      ctx.fillRect(9, -26, 4, 26);
+
+      // De plank
+      ctx.fillStyle = '#8a6440';
+      ctx.beginPath();
+      ctx.moveTo(-24, -48);
+      ctx.lineTo(24, -46);
+      ctx.lineTo(24, -24);
+      ctx.lineTo(-24, -26);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#5a3f28';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // De tekst, er met een steen in gekrast
+      ctx.fillStyle = '#4a3524';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('NOOBS', 0, -40);
+      // Pijl naar de lift
+      ctx.fillText('\u2191', 0, -30);
+
+      // Spijkertjes
+      ctx.fillStyle = '#6a6c66';
+      for (const [nx, ny] of [[-19, -42], [19, -40], [-19, -29], [19, -27]]) {
+        ctx.beginPath();
+        ctx.arc(nx, ny, 1.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     // De grot in de rotswand bovenaan de balken.
@@ -1502,8 +1634,21 @@
     }
 
     // De hoogste balk waar je op deze plek op kunt staan, of 0 voor de bosgrond.
+    // Sta je op dit moment op het platform van de lift?
+    function opLift(x, y, hoogte) {
+      if (!lift) return false;
+      return Math.abs(x - lift.x) < lift.breedte / 2
+        && Math.abs(y - lift.y) < lift.diepte / 2
+        && Math.abs(hoogte - lift.z) < 6;
+    }
+
     function vloerOnder(x, y, vanaf) {
       let vloer = 0;
+      if (lift && Math.abs(x - lift.x) < lift.breedte / 2
+          && Math.abs(y - lift.y) < lift.diepte / 2
+          && lift.z <= vanaf + 3) {
+        vloer = lift.z;
+      }
       for (const balk of balken) {
         if (Math.abs(x - balk.x) > balk.breedte / 2) continue;
         if (Math.abs(y - balk.y) > balk.diepte / 2) continue;
@@ -1932,6 +2077,18 @@
         dino.stap += dt * 9;
       }
 
+      // De lift gaat rustig op en neer. Sta je erop, dan ga je mee naar boven.
+      if (lift) {
+        const meeOmhoog = opLift(dino.x, dino.y, dino.hoogte) && dino.vz <= 0;
+        const golf = 0.5 - 0.5 * Math.cos(dino.tijd * 0.8);
+        lift.z = lift.laag + (lift.hoog - lift.laag) * golf;
+        if (meeOmhoog) {
+          dino.hoogte = lift.z;
+          dino.vz = 0;
+          dino.opGrond = true;
+        }
+      }
+
       // Springen met de Z, en daarna trekt de zwaartekracht hem weer naar beneden.
       // Stap je net van een balk af, dan mag je nog een klein momentje springen.
       if (dino.opGrond) dino.netNogGrond = 0.14;
@@ -2271,6 +2428,24 @@
       // De grot staat ver naar achter, dus die komt vroeg in de rij
       if (grot && inBeeld(grot.x)) {
         laag.push({ y: grot.y - 1, teken: function () { tekenGrot(dino.tijd); } });
+      }
+      if (lift && inBeeld(lift.x)) {
+        laag.push({ y: lift.y, teken: function () {
+          ctx.save();
+          ctx.translate(lift.x, lift.y);
+          tekenLift(dino.tijd);
+          ctx.restore();
+        } });
+      }
+      if (bordje && inBeeld(bordje.x)) {
+        laag.push({ y: bordje.y, teken: function () {
+          const maat = grootteOpDiepte(bordje.y) * 0.5;
+          ctx.save();
+          ctx.translate(bordje.x, bordje.y);
+          ctx.scale(maat, maat);
+          tekenBordje();
+          ctx.restore();
+        } });
       }
       for (const balk of balken) {
         if (!inBeeld(balk.x)) continue;
