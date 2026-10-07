@@ -342,33 +342,127 @@
       }
     }
 
-    // Een geweer, met (0, 0) bij de hand en de loop naar rechts.
-    function tekenGeweer(g) {
-      // Kolf van hout
-      ctx.fillStyle = g.hout;
-      ctx.beginPath();
-      ctx.moveTo(-9, -1);
-      ctx.lineTo(-2, -3);
-      ctx.lineTo(-2, 3.5);
-      ctx.lineTo(-8, 4.5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillRect(-3, -2.5, 8, 5);
-      // Greep
-      ctx.fillRect(0, 2, 3, 5.5);
-      // Loop
-      ctx.fillStyle = g.kleur;
-      ctx.fillRect(4, -1.5, g.loop, 3);
-      // Mond van de loop
-      ctx.fillRect(4 + g.loop, -2.5, 2.5, 5);
-      // Vizier bovenop
-      ctx.fillRect(7, -4, 2, 2);
-      // Touwtje om de kolf
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.fillRect(-5, -2, 1.5, 6);
+    // Een wapen, met (0, 0) bij de hand en de punt naar rechts.
+    function tekenWapen(w) {
+      if (w.soort === 'speer') {
+        // Houten steel
+        ctx.fillStyle = '#8a6440';
+        ctx.fillRect(-12, -1.1, 34, 2.2);
+        // Touwtje waarmee de punt vastzit
+        ctx.fillStyle = '#5a3f28';
+        ctx.fillRect(19, -1.6, 3, 3.2);
+        // Stenen punt
+        ctx.fillStyle = '#d8d3c4';
+        ctx.beginPath();
+        ctx.moveTo(22, -3.4);
+        ctx.lineTo(31, 0);
+        ctx.lineTo(22, 3.4);
+        ctx.closePath();
+        ctx.fill();
+      } else if (w.soort === 'bijl') {
+        // Steel
+        ctx.fillStyle = '#8a6440';
+        ctx.fillRect(-10, -1.2, 24, 2.4);
+        // Touwtje
+        ctx.fillStyle = '#5a3f28';
+        ctx.fillRect(9, -2, 3, 4);
+        // Stenen blad
+        ctx.fillStyle = '#9a9c94';
+        ctx.beginPath();
+        ctx.moveTo(11, -7);
+        ctx.lineTo(19, -4.5);
+        ctx.lineTo(19, 4.5);
+        ctx.lineTo(11, 7);
+        ctx.closePath();
+        ctx.fill();
+        // Geslepen snede
+        ctx.fillStyle = '#d8d3c4';
+        ctx.beginPath();
+        ctx.moveTo(17, -4.8);
+        ctx.lineTo(20, -3.5);
+        ctx.lineTo(20, 3.5);
+        ctx.lineTo(17, 4.8);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        // Boog: een gebogen tak met een pees
+        ctx.strokeStyle = '#8a6440';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.arc(2, 0, 11, -1.9, 1.9);
+        ctx.stroke();
+        ctx.strokeStyle = '#e4ddc8';
+        ctx.lineWidth = 0.9;
+        ctx.beginPath();
+        ctx.moveTo(-1.5, -10.4);
+        ctx.lineTo(-1.5, 10.4);
+        ctx.stroke();
+        // Pijl op de pees
+        tekenPijl();
+      }
     }
 
-    // Een munt: een gouden rondje dat om zijn as draait en boven de grond zweeft.
+    // Een pijl, punt naar rechts, met (0, 0) halverwege de schacht.
+    function tekenPijl() {
+      ctx.fillStyle = '#8a6440';
+      ctx.fillRect(-11, -0.7, 24, 1.4);
+      ctx.fillStyle = '#d8d3c4';
+      ctx.beginPath();
+      ctx.moveTo(13, -2.4);
+      ctx.lineTo(18, 0);
+      ctx.lineTo(13, 2.4);
+      ctx.closePath();
+      ctx.fill();
+      // Veertjes achteraan
+      ctx.fillStyle = '#e8e0cf';
+      ctx.beginPath();
+      ctx.moveTo(-11, -0.7);
+      ctx.lineTo(-7, -3.2);
+      ctx.lineTo(-5, -0.7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-11, 0.7);
+      ctx.lineTo(-7, 3.2);
+      ctx.lineTo(-5, 0.7);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Iets dat door de lucht vliegt.
+    function tekenSchot(schot) {
+      ctx.save();
+      ctx.translate(schot.x, schot.y - schot.hoogte);
+      ctx.scale(schot.richting * schot.maat, schot.maat);
+      if (schot.soort === 'bijl') {
+        // Een gegooide bijl tolt rond
+        ctx.rotate(schot.draai);
+        tekenWapen({ soort: 'bijl' });
+      } else if (schot.soort === 'speer') {
+        tekenWapen({ soort: 'speer' });
+      } else {
+        tekenPijl();
+      }
+      ctx.restore();
+    }
+
+    // Stofwolkje waar een speer, bijl of pijl inslaat.
+    function tekenPluim(pluim) {
+      const f = pluim.leeftijd / 0.4;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1 - f);
+      ctx.fillStyle = '#d9cdb0';
+      for (let i = 0; i < 5; i++) {
+        const hoek = (i / 5) * Math.PI * 2;
+        const r = 4 + f * 16;
+        ctx.beginPath();
+        ctx.arc(pluim.x + Math.cos(hoek) * r, pluim.y - 20 + Math.sin(hoek) * r * 0.5, 5 - f * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // Een munt: een gouden rondje    // Een munt: een gouden rondje dat om zijn as draait en boven de grond zweeft.
     function tekenMunt(munt, tijd) {
       const zweef = Math.sin(tijd * 3 + munt.fase) * 5;
       const draai = Math.cos(tijd * 2.5 + munt.fase);   // van -1 (zijkant) tot 1 (voorkant)
@@ -412,13 +506,13 @@
       const breedte = 440;
       const rijHoogte = 78;
       const x = (canvas.width - breedte) / 2;
-      const y = Math.max(20, canvas.height / 2 - (90 + geweren.length * rijHoogte) / 2);
-      const rijen = geweren.map(function (g, i) {
+      const y = Math.max(20, canvas.height / 2 - (90 + wapens.length * rijHoogte) / 2);
+      const rijen = wapens.map(function (g, i) {
         return { g: g, x: x + 16, y: y + 70 + i * rijHoogte, b: breedte - 32, h: rijHoogte - 10 };
       });
       return {
         knop: knop,
-        paneel: { x: x, y: y, b: breedte, h: 90 + geweren.length * rijHoogte },
+        paneel: { x: x, y: y, b: breedte, h: 90 + wapens.length * rijHoogte },
         rijen: rijen,
         sluit: { x: x + breedte - 52, y: y + 14, b: 36, h: 32 },
       };
@@ -479,10 +573,10 @@
       ctx.lineTo(w.sluit.x + 10, w.sluit.y + 23);
       ctx.stroke();
 
-      // Eén rij per geweer
+      // Eén rij per wapen
       for (const rij of w.rijen) {
         const g = rij.g;
-        const inHanden = gekozenGeweer === g;
+        const inHanden = gekozenWapen === g;
         ctx.fillStyle = inHanden ? '#2f5a2b' : '#2a4227';
         ctx.strokeStyle = inHanden ? '#8ee06a' : 'rgba(255,255,255,0.18)';
         ctx.lineWidth = 2;
@@ -491,11 +585,11 @@
         ctx.fill();
         ctx.stroke();
 
-        // Plaatje van het geweer
+        // Plaatje van het wapen
         ctx.save();
         ctx.translate(rij.x + 46, rij.y + rij.h / 2);
         ctx.scale(1.7, 1.7);
-        tekenGeweer(g);
+        tekenWapen(g);
         ctx.restore();
 
         // Naam
@@ -508,7 +602,7 @@
         ctx.font = '17px sans-serif';
         if (inHanden) {
           ctx.fillStyle = '#8ee06a';
-          ctx.fillText('in je handen, klik om weg te leggen', rij.x + 110, rij.y + rij.h / 2 + 13);
+          ctx.fillText('in je handen, gooi met de spatiebalk', rij.x + 110, rij.y + rij.h / 2 + 13);
         } else if (g.gekocht) {
           ctx.fillStyle = '#cfe6bf';
           ctx.fillText('gekocht, klik om vast te pakken', rij.x + 110, rij.y + rij.h / 2 + 13);
@@ -516,6 +610,14 @@
           ctx.fillStyle = aantalMunten >= g.prijs ? '#f6c62e' : '#b08a8a';
           ctx.fillText(g.prijs + ' munten', rij.x + 110, rij.y + rij.h / 2 + 13);
         }
+      }
+
+      // Uitleg onderaan het paneel
+      if (!melding || meldingTijd <= 0) {
+        ctx.fillStyle = 'rgba(255,255,255,0.65)';
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Pijltjes om te lopen, spatiebalk om te gooien', w.paneel.x + w.paneel.b / 2, w.paneel.y + w.paneel.h - 16);
       }
 
       // Kort berichtje onderaan
@@ -548,14 +650,14 @@
       for (const rij of w.rijen) {
         if (!inVak(px, py, rij)) continue;
         const g = rij.g;
-        if (gekozenGeweer === g) {
-          gekozenGeweer = null;            // weer wegleggen
+        if (gekozenWapen === g) {
+          gekozenWapen = null;            // weer wegleggen
         } else if (g.gekocht) {
-          gekozenGeweer = g;               // al gekocht, dus gewoon vastpakken
+          gekozenWapen = g;               // al gekocht, dus gewoon vastpakken
         } else if (aantalMunten >= g.prijs) {
           aantalMunten -= g.prijs;
           g.gekocht = true;
-          gekozenGeweer = g;
+          gekozenWapen = g;
           melding = g.naam + ' gekocht!';
           meldingTijd = 2;
         } else {
@@ -626,14 +728,19 @@
     };
 
     // ---- Wapenwinkel ----
-    // Drie geweren, gemaakt van bot, steen en vuur. Je koopt ze met je munten.
-    const geweren = [
-      { naam: 'Bottenbuks',   prijs: 3,  loop: 12, kleur: '#e8e0cf', hout: '#8a6440', gekocht: false },
-      { naam: 'Steenschutter', prijs: 6, loop: 16, kleur: '#9a9c94', hout: '#5a3f28', gekocht: false },
-      { naam: 'Vuurspuwer',   prijs: 10, loop: 20, kleur: '#d14a1f', hout: '#4a3524', gekocht: false },
+    // Drie wapens uit de prehistorie. Je koopt ze met je munten en gooit of
+    // schiet ze weg met de spatiebalk.
+    const wapens = [
+      { naam: 'Speer',        soort: 'speer', prijs: 3,  snelheid: 520, wachttijd: 0.55, gekocht: false },
+      { naam: 'Bijl',         soort: 'bijl',  prijs: 6,  snelheid: 430, wachttijd: 0.45, gekocht: false },
+      { naam: 'Pijl-en-boog', soort: 'boog',  prijs: 10, snelheid: 720, wachttijd: 0.22, gekocht: false },
     ];
+    let schoten = [];      // alles wat er door de lucht vliegt
+    let pluimen = [];      // stofwolkjes waar iets inslaat
+    let wachtNogOp = 0;    // hoe lang het nog duurt voor je weer mag gooien
+
     let winkelOpen = false;
-    let gekozenGeweer = null;   // het geweer dat de dino in zijn handen heeft
+    let gekozenWapen = null;   // het wapen dat de dino in zijn handen heeft
     let melding = '';           // kort tekstje in de winkel, bijv. te weinig munten
     let meldingTijd = 0;
 
@@ -645,6 +752,10 @@
       if (e.key.startsWith('Arrow')) {
         toetsen[e.key] = true;
         e.preventDefault();   // anders scrollt de pagina mee
+      }
+      if (e.key === ' ') {
+        toetsen[' '] = true;
+        e.preventDefault();
       }
       if (e.key === 's' || e.key === 'S') winkelOpen = !winkelOpen;
       if (e.key === 'Escape') winkelOpen = false;
@@ -692,6 +803,43 @@
         if (!botst(dino.x, dino.y + stapY)) dino.y += stapY;
         dino.stap += dt * 9;
       }
+
+      // Met de spatiebalk gooi je je wapen, zolang je niet net gegooid hebt
+      if (wachtNogOp > 0) wachtNogOp -= dt;
+      if (toetsen[' '] && gekozenWapen && wachtNogOp <= 0) {
+        const richting = dino.kijktRechts ? 1 : -1;
+        const maat = dinoGrootte() * 0.75;
+        schoten.push({
+          soort: gekozenWapen.soort === 'boog' ? 'pijl' : gekozenWapen.soort,
+          x: dino.x + richting * 24 * maat,
+          y: dino.y,
+          hoogte: 17 * dinoGrootte(),      // hoe hoog boven de grond het vliegt
+          richting: richting,
+          snelheid: gekozenWapen.snelheid,
+          maat: maat,
+          draai: 0,
+          afstand: 0,
+        });
+        wachtNogOp = gekozenWapen.wachttijd;
+      }
+
+      // Alles wat vliegt een stukje verder zetten
+      for (const schot of schoten) {
+        schot.x += schot.richting * schot.snelheid * dt;
+        schot.afstand += schot.snelheid * dt;
+        schot.draai += dt * 16;
+        // Raakt het een steen, stam of stronk? Dan slaat het in.
+        if (botst(schot.x, schot.y)) {
+          pluimen.push({ x: schot.x, y: schot.y, leeftijd: 0 });
+          schot.weg = true;
+        }
+        // Buiten het beeld of te ver gevlogen: opruimen
+        if (schot.x < -60 || schot.x > canvas.width + 60 || schot.afstand > 900) schot.weg = true;
+      }
+      schoten = schoten.filter(function (schot) { return !schot.weg; });
+
+      for (const pluim of pluimen) pluim.leeftijd += dt;
+      pluimen = pluimen.filter(function (pluim) { return pluim.leeftijd < 0.4; });
 
       // Munten oppakken waar hij langs loopt
       for (const munt of munten) {
@@ -801,13 +949,13 @@
       ctx.ellipse(8, -18, 4, 2.5, -0.4, 0, Math.PI * 2);
       ctx.fill();
 
-      // Het gekochte geweer houdt hij voor zich
-      if (gekozenGeweer) {
+      // Het gekochte wapen houdt hij voor zich
+      if (gekozenWapen) {
         ctx.save();
         ctx.translate(7, -17);
         ctx.rotate(-0.12);
         ctx.scale(0.8, 0.8);
-        tekenGeweer(gekozenGeweer);
+        tekenWapen(gekozenWapen);
         ctx.restore();
       }
     }
@@ -838,6 +986,9 @@
         if (munt.gepakt) continue;
         laag.push({ y: munt.y, teken: function () { tekenMunt(munt, dino.tijd); } });
       }
+      for (const schot of schoten) {
+        laag.push({ y: schot.y + 1, teken: function () { tekenSchot(schot); } });
+      }
       laag.push({ y: dino.y, teken: function () {
         ctx.save();
         ctx.translate(dino.x, dino.y + wip);
@@ -847,6 +998,8 @@
       } });
       laag.sort(function (a, b) { return a.y - b.y; });
       for (const item of laag) item.teken();
+
+      for (const pluim of pluimen) tekenPluim(pluim);
 
       tekenVoorgrond(dino.tijd);
       tekenTeller();
