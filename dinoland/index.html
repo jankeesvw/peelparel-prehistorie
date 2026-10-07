@@ -42,7 +42,16 @@
     let jagers = [];            // mensen met honden die je willen vangen
     let hunebed = null;         // de stenen gevangenis waar ze je in zetten
     let gevangen = false;
-    let wriemel = 0;            // hoe vaak je al op Z getikt hebt om los te komen
+    let bewakers = [];          // de twee bewakers bij de ingang van het hunebed
+
+    // De maten van het hunebed. Je loopt aan de voorkant tussen de stenen naar binnen.
+    const HB = {
+      halfBreed: 170,    // van het midden tot de buitenste steen
+      achter: -20,       // de achterwand
+      voor: 90,          // de voorkant met de ingang
+      poort: 60,         // de helft van de opening waar je door naar binnen loopt
+      dik: 22,           // hoe dik de stenen muren zijn
+    };
     let bomenVer = [];
     let bomen = [];
     let lianen = [];
@@ -140,7 +149,7 @@
           // Alleen als de munt binnen de bosgrond ligt en niet in een ander obstakel
           if (mx < 25 || mx > wereld.breedte - 25) continue;
           if (my < grondhoogte + 12 || my > h - 8) continue;
-          if (botst(mx, my)) continue;
+          if (botstObstakel(mx, my)) continue;
           munten.push({ x: mx, y: my, hoogte: 0, fase: t() * 6.28, gepakt: false });
         }
       }
@@ -175,11 +184,27 @@
       // de jagers je in als ze je pakken.
       hunebed = {
         x: 400 + t() * (wereld.breedte - 800),
-        y: grondhoogte + 120 + t() * 60,
+        y: Math.min(h - 240, grondhoogte + 110 + t() * 60),
       };
       if (Math.abs(hunebed.x - wereld.breedte / 2) < 450) {
         // Te dicht bij de startplek: een stuk opzij, maar wel binnen de wereld
         hunebed.x += hunebed.x < wereld.breedte / 2 ? -800 : 800;
+      }
+
+      // Twee bewakers, links en rechts van de ingang. Ze blijven bij het hunebed
+      // staan en pakken je als je ze aanraakt. Versla ze allebei en je bent vrij.
+      bewakers = [];
+      for (const kant of [-1, 1]) {
+        bewakers.push({
+          x: hunebed.x + kant * 95,
+          y: hunebed.y + 104,
+          kijktRechts: kant < 0,
+          leven: 2,
+          schrik: 0,          // kort rood als hij geraakt is
+          verslagen: false,
+          valTijd: 0,         // omvallen duurt even
+          wieg: kant * 2,
+        });
       }
 
       // Mensen met honden. Ze lopen rond tot ze je zien, dan gaan ze jagen.
@@ -677,63 +702,196 @@
       ctx.fill();
     }
 
-    // Het hunebed: dikke staande stenen met een platte deksteen erop.
+    // Het hunebed: een grote kamer van staande stenen met platte dekstenen erop.
+    // Aan de voorkant zit een opening waar je naar binnen kunt lopen.
+    // Eén staande steen, met (0, 0) onderaan in het midden.
+    function tekenStaandeSteen(breed, hoog, licht) {
+      ctx.fillStyle = licht ? '#8b8d85' : '#6a6c66';
+      ctx.beginPath();
+      ctx.moveTo(-breed / 2, 8);
+      ctx.lineTo(-breed / 2 - 3, -hoog + 6);
+      ctx.lineTo(breed / 2 - 2, -hoog);
+      ctx.lineTo(breed / 2 + 2, 8);
+      ctx.closePath();
+      ctx.fill();
+      // Lichte kant
+      ctx.fillStyle = licht ? '#9a9c94' : '#7d7f78';
+      ctx.beginPath();
+      ctx.moveTo(-breed / 2, 8);
+      ctx.lineTo(-breed / 2 - 3, -hoog + 6);
+      ctx.lineTo(-breed / 6, -hoog + 3);
+      ctx.lineTo(-breed / 6, 8);
+      ctx.closePath();
+      ctx.fill();
+    }
+
     function tekenHunebed(voorkant) {
-      // Achterste stenen en de deksteen
+      const B = HB.halfBreed;
+
       if (!voorkant) {
-        ctx.fillStyle = 'rgba(0,0,0,0.22)';
+        // Schaduw van het hele bouwwerk op de bosgrond
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
         ctx.beginPath();
-        ctx.ellipse(0, 0, 86, 16, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, HB.voor / 2, B + 14, (HB.voor - HB.achter) / 2 + 10, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = '#6a6c66';
-        for (const sx of [-62, -20, 22, 62]) {
-          ctx.beginPath();
-          ctx.moveTo(sx - 15, -16);
-          ctx.lineTo(sx - 18, -96);
-          ctx.lineTo(sx + 16, -100);
-          ctx.lineTo(sx + 15, -16);
-          ctx.closePath();
-          ctx.fill();
-        }
-        // Deksteen
-        ctx.fillStyle = '#8b8d85';
+        // De donkere vloer binnen het hunebed
+        ctx.fillStyle = '#2a2721';
         ctx.beginPath();
-        ctx.moveTo(-86, -98);
-        ctx.lineTo(-70, -126);
-        ctx.lineTo(74, -124);
-        ctx.lineTo(88, -96);
-        ctx.closePath();
+        ctx.ellipse(0, (HB.achter + HB.voor) / 2, B - 20, (HB.voor - HB.achter) / 2, 0, 0, Math.PI * 2);
         ctx.fill();
+
+        // Achterwand: een rij dikke stenen
+        ctx.save();
+        ctx.translate(0, HB.achter);
+        for (const dx of [-130, -65, 0, 65, 130]) {
+          ctx.save();
+          ctx.translate(dx, 0);
+          tekenStaandeSteen(62, 150 + (dx % 3 === 0 ? 10 : 0), dx === -65 || dx === 65);
+          ctx.restore();
+        }
+        ctx.restore();
+
+        // Dekstenen op de achterwand
+        ctx.save();
+        ctx.translate(0, HB.achter - 150);
         ctx.fillStyle = '#9a9c94';
         ctx.beginPath();
-        ctx.moveTo(-70, -126);
-        ctx.lineTo(74, -124);
-        ctx.lineTo(60, -112);
-        ctx.lineTo(-58, -114);
+        ctx.moveTo(-B - 6, 16);
+        ctx.lineTo(-B + 10, -22);
+        ctx.lineTo(B - 6, -20);
+        ctx.lineTo(B + 8, 18);
         ctx.closePath();
         ctx.fill();
-        // Donker binnenin
-        ctx.fillStyle = '#20201c';
-        ctx.fillRect(-46, -92, 92, 78);
-      } else {
-        // Twee stenen die vóór de dino staan, zodat hij er echt in zit
-        ctx.fillStyle = '#7d7f78';
-        for (const sx of [-40, 42]) {
-          ctx.beginPath();
-          ctx.moveTo(sx - 16, 6);
-          ctx.lineTo(sx - 14, -86);
-          ctx.lineTo(sx + 15, -90);
-          ctx.lineTo(sx + 17, 6);
-          ctx.closePath();
-          ctx.fill();
-        }
-        // Mosje
+        ctx.fillStyle = '#aeb0a8';
+        ctx.beginPath();
+        ctx.moveTo(-B + 10, -22);
+        ctx.lineTo(B - 6, -20);
+        ctx.lineTo(B - 24, -4);
+        ctx.lineTo(-B + 26, -6);
+        ctx.closePath();
+        ctx.fill();
+        // Mos op de deksteen
         ctx.fillStyle = '#4e7f3c';
         ctx.beginPath();
-        ctx.ellipse(-40, -80, 12, 4, 0.1, 0, Math.PI * 2);
+        ctx.ellipse(-40, -12, 34, 6, 0.02, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
+
+        // Zijwanden: stenen langs de linker- en rechterkant
+        for (const kant of [-1, 1]) {
+          for (const dy of [10, 55]) {
+            ctx.save();
+            ctx.translate(kant * (B - 18), HB.achter + dy);
+            tekenStaandeSteen(50, 128, dy === 55);
+            ctx.restore();
+          }
+        }
+      } else {
+        // De voorkant: twee brede stenen met de ingang ertussen
+        for (const kant of [-1, 1]) {
+          ctx.save();
+          ctx.translate(kant * (HB.poort + 52), HB.voor);
+          tekenStaandeSteen(104, 132, kant > 0);
+          ctx.restore();
+        }
+        // Mosje onderaan
+        ctx.fillStyle = '#4e7f3c';
+        ctx.beginPath();
+        ctx.ellipse(-HB.poort - 52, HB.voor + 4, 40, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Zit je erin? Dan rollen ze een grote steen voor de opening.
+        if (gevangen) {
+          ctx.save();
+          ctx.translate(0, HB.voor - 4);
+          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+          ctx.beginPath();
+          ctx.ellipse(0, 10, 56, 12, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#7d7f78';
+          ctx.beginPath();
+          ctx.arc(0, -40, 52, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#95978f';
+          ctx.beginPath();
+          ctx.arc(-16, -52, 26, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#4e7f3c';
+          ctx.beginPath();
+          ctx.ellipse(22, -62, 16, 6, -0.4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
       }
+    }
+
+    // Een bewaker: groter dan een gewone jager, met een speer in zijn hand.
+    function tekenBewaker(bewaker, tijd) {
+      ctx.save();
+      // Omgevallen bewaker kantelt en verdwijnt langzaam
+      if (bewaker.verslagen) {
+        const f = 1 - bewaker.valTijd;
+        ctx.globalAlpha = Math.max(0, bewaker.valTijd);
+        ctx.translate(0, -2);
+        ctx.rotate(f * 1.5);
+      } else {
+        ctx.rotate(Math.sin(tijd * 1.6 + bewaker.wieg) * 0.03);
+      }
+
+      const geraakt = bewaker.schrik > 0;
+
+      // Benen
+      ctx.fillStyle = geraakt ? '#d98a7a' : '#9b6b43';
+      ctx.fillRect(-6, -16, 5, 16);
+      ctx.fillRect(2, -16, 5, 16);
+      ctx.fillStyle = '#4a3524';
+      ctx.fillRect(-7, -2.5, 8, 2.8);
+      ctx.fillRect(1, -2.5, 8, 2.8);
+
+      // Vacht met een bontrand
+      ctx.fillStyle = geraakt ? '#e09a86' : '#6f4a2a';
+      ctx.beginPath();
+      ctx.moveTo(-9, -16);
+      ctx.lineTo(-8, -36);
+      ctx.lineTo(9, -36);
+      ctx.lineTo(10, -16);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#c8b89a';
+      ctx.fillRect(-9, -36, 19, 4);
+
+      // Hoofd met helm van bot
+      ctx.fillStyle = '#d9a071';
+      ctx.beginPath();
+      ctx.arc(1, -42, 6.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#e8e0cf';
+      ctx.beginPath();
+      ctx.arc(1, -44, 7, Math.PI, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#222';
+      ctx.beginPath();
+      ctx.arc(4.5, -42, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Speer rechtop in zijn hand
+      ctx.save();
+      ctx.translate(11, -30);
+      ctx.rotate(-1.35);
+      tekenWapen({ soort: 'speer' });
+      ctx.restore();
+
+      // Hoeveel klappen hij nog kan hebben
+      if (!bewaker.verslagen) {
+        for (let i = 0; i < bewaker.leven; i++) {
+          ctx.fillStyle = '#ff5a3c';
+          ctx.beginPath();
+          ctx.arc(-4 + i * 8, -56, 2.6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
     }
 
     // Een wapen, met (0, 0) bij de hand en de punt naar rechts.
@@ -1154,35 +1312,26 @@
       return vloer;
     }
 
-    // Zit je in het hunebed? Dan zie je hoe hard je nog moet wriemelen.
-    function tekenWriemelbalk() {
-      const b = 320;
-      const h = 26;
-      const x = (canvas.width - b) / 2;
-      const y = canvas.height * 0.24;
+    // Zit je in het hunebed? Dan vertellen we wat je moet doen.
+    function tekenGevangenTekst() {
       ctx.save();
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+      ctx.font = 'bold 32px sans-serif';
+      ctx.strokeText('Ze hebben je in het hunebed gezet!', canvas.width / 2, 70);
       ctx.fillStyle = '#fff';
-      ctx.font = 'bold 28px sans-serif';
-      ctx.fillText('Ze hebben je in het hunebed gezet!', canvas.width / 2, y - 54);
-      ctx.font = 'bold 20px sans-serif';
-      ctx.fillStyle = '#f6c62e';
-      ctx.fillText('tik snel op Z om de steen weg te duwen', canvas.width / 2, y - 22);
+      ctx.fillText('Ze hebben je in het hunebed gezet!', canvas.width / 2, 70);
 
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.beginPath();
-      ctx.roundRect(x, y, b, h, 8);
-      ctx.fill();
-      ctx.fillStyle = '#8ee06a';
-      ctx.beginPath();
-      ctx.roundRect(x + 3, y + 3, Math.max(0, (b - 6) * (wriemel / 10)), h - 6, 6);
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.roundRect(x, y, b, h, 8);
-      ctx.stroke();
+      const over = bewakers.filter(function (b) { return !b.verslagen; }).length;
+      ctx.font = 'bold 22px sans-serif';
+      ctx.lineWidth = 5;
+      ctx.strokeText('Versla de bewakers met de spatiebalk · nog ' + over + ' te gaan',
+        canvas.width / 2, 106);
+      ctx.fillStyle = '#f6c62e';
+      ctx.fillText('Versla de bewakers met de spatiebalk · nog ' + over + ' te gaan',
+        canvas.width / 2, 106);
       ctx.restore();
     }
 
@@ -1216,15 +1365,38 @@
     }
 
     // Loopt de dino op deze plek tegen een obstakel aan?
-    function botst(x, y) {
-      // De stenen van het hunebed staan ook in de weg
-      if (hunebed && Math.abs(x - hunebed.x) < 84 && Math.abs(y - hunebed.y) < 20) return true;
+    // Staat er een muur van het hunebed op deze plek? De opening in de voorkant
+    // is vrij, daar loop je naar binnen. Zit je gevangen, dan zit er een steen voor.
+    function inHunebed(x, y) {
+      if (!hunebed) return false;
+      const dx = x - hunebed.x;
+      const dy = y - hunebed.y;
+      if (Math.abs(dx) > HB.halfBreed + 10 || dy < HB.achter - 30 || dy > HB.voor + 24) return false;
+      // Achterwand
+      if (dy < HB.achter + HB.dik) return true;
+      // Zijwanden
+      if (Math.abs(dx) > HB.halfBreed - HB.dik) return true;
+      // Voorkant, behalve de opening in het midden
+      if (dy > HB.voor - HB.dik) {
+        if (Math.abs(dx) > HB.poort) return true;
+        if (gevangen) return true;      // de grote rolsteen voor de opening
+      }
+      return false;
+    }
+
+    // Alleen de stenen, stammen en stronken. Speren en pijlen botsen hierop.
+    function botstObstakel(x, y) {
       for (const o of obstakels) {
         const dx = (x - o.x) / (o.rx * o.maat + 12);
         const dy = (y - o.y) / (o.ry * o.maat + 7);
         if (dx * dx + dy * dy < 1) return true;
       }
       return false;
+    }
+
+    // Alles waar de dino tegenaan loopt.
+    function botst(x, y) {
+      return inHunebed(x, y) || botstObstakel(x, y);
     }
 
     // De varens staan vóór de dino, dus die worden ná hem getekend.
@@ -1294,7 +1466,6 @@
       if (e.key.toLowerCase() === 'z') {
         toetsen['z'] = true;
         e.preventDefault();
-        if (gevangen && !e.repeat) wriemel += 1;   // tikken om los te komen
       }
       if (e.key === 's' || e.key === 'S') winkelOpen = !winkelOpen;
       if (e.key === 'Escape') winkelOpen = false;
@@ -1317,26 +1488,56 @@
     // De jagers zetten je in het hunebed.
     function vangMij() {
       gevangen = true;
-      wriemel = 0;
       dino.x = hunebed.x;
-      dino.y = hunebed.y - 6;
+      dino.y = hunebed.y + 40;
       dino.hoogte = 0;
       dino.vz = 0;
       dino.loopt = false;
       camera.x = Math.max(0, Math.min(wereld.breedte - canvas.width, dino.x - canvas.width / 2));
+      // Zonder wapen kun je niets: er ligt een speer van de bewakers in het hunebed.
+      if (!gekozenWapen) gekozenWapen = wapens[0];
     }
 
-    // Je hebt genoeg gewriemeld: de steen schuift net genoeg opzij.
-    function komLos() {
-      gevangen = false;
-      dino.y = Math.min(canvas.height - 10, hunebed.y + 70);
-      // De jagers schrikken ervan en blijven even weg
+    // Beide bewakers verslagen: de steen rolt weg en je krijgt een speer.
+    function maakVrij() {
+      const kreegSpeer = !wapens[0].gekocht;
+      wapens[0].gekocht = true;
+      if (!gekozenWapen) gekozenWapen = wapens[0];
+      if (gevangen) {
+        gevangen = false;
+        dino.y = Math.min(canvas.height - 10, hunebed.y + HB.voor + 60);
+      }
+      // De andere jagers schrikken en blijven even weg
       for (const jager of jagers) {
         jager.bangTijd = 4;
         jager.hondBangTijd = 4;
       }
-      levelTekst = 'Ontsnapt!';
-      levelTekstTijd = 1.6;
+      levelTekst = kreegSpeer ? 'Vrij! Je krijgt een speer!' : 'Vrij!';
+      levelTekstTijd = 2.2;
+    }
+
+    // De twee bewakers bij de ingang: ze staan te wachten tot je ze aanraakt.
+    function werkBewakersBij(dt) {
+      for (const bewaker of bewakers) {
+        if (bewaker.schrik > 0) bewaker.schrik -= dt;
+        if (bewaker.verslagen) {
+          bewaker.valTijd -= dt;
+          continue;
+        }
+        // Raak je hem aan, dan pakt hij je
+        if (!gevangen && dino.hoogte < 30
+            && Math.abs(dino.x - bewaker.x) < 30 && Math.abs(dino.y - bewaker.y) < 24) {
+          vangMij();
+          return;
+        }
+      }
+
+      // Omgevallen bewakers die helemaal weggezakt zijn, halen we weg
+      const voor = bewakers.length;
+      bewakers = bewakers.filter(function (bewaker) {
+        return !bewaker.verslagen || bewaker.valTijd > 0;
+      });
+      if (bewakers.length === 0 && voor > 0) maakVrij();
     }
 
     // De mensen en hun honden: rondlopen, jagen of bang weglopen.
@@ -1411,15 +1612,19 @@
         jager.hondY = Math.min(canvas.height - 8, Math.max(grondhoogte + 8, jager.hondY));
 
         // Heeft hij je te pakken?
-        if (pakbaar && jager.bangTijd <= 0
-            && Math.abs(dino.x - jager.x) < 30 && Math.abs(dino.y - jager.y) < 24) {
-          vangMij();
-          return;
-        }
-        if (pakbaar && jager.hondBangTijd <= 0
-            && Math.abs(dino.x - jager.hondX) < 26 && Math.abs(dino.y - jager.hondY) < 20) {
-          vangMij();
-          return;
+        const raaktJou = pakbaar && jager.bangTijd <= 0
+          && Math.abs(dino.x - jager.x) < 30 && Math.abs(dino.y - jager.y) < 24;
+        const raaktHond = pakbaar && jager.hondBangTijd <= 0
+          && Math.abs(dino.x - jager.hondX) < 26 && Math.abs(dino.y - jager.hondY) < 20;
+        if (raaktJou || raaktHond) {
+          if (bewakers.length === 0) {
+            // Zonder bewakers kan niemand je nog opsluiten, dus ze schrikken alleen
+            jager.bangTijd = 2.5;
+            jager.hondBangTijd = 2.5;
+          } else {
+            vangMij();
+            return;
+          }
         }
       }
     }
@@ -1435,15 +1640,11 @@
         return;
       }
 
-      // Zit je in het hunebed? Dan kun je alleen wriemelen, niet lopen.
-      if (gevangen) {
-        dino.loopt = false;
-        if (wriemel >= 10) komLos();
-        return;
+      werkBewakersBij(dt);
+      if (!gevangen) {
+        werkJagersBij(dt);
+        if (gevangen) return;
       }
-
-      werkJagersBij(dt);
-      if (gevangen) return;
 
       // Richting bepalen uit de ingedrukte pijltjes
       let dx = 0;
@@ -1494,8 +1695,14 @@
         dino.opGrond = false;
       }
 
+      // Gevangen? Dan kom je niet voorbij de rolsteen. Gooien kan nog wel,
+      // dat is juist hoe je loskomt.
+      if (gevangen) {
+        dino.y = Math.min(hunebed.y + HB.voor - HB.dik - 6, dino.y);
+      }
+
       // Bovenaan de balken de grot in: door naar het volgende level
-      if (grot && Math.abs(dino.x - grot.x) < 60 && Math.abs(dino.y - grot.y) < 55
+      if (!gevangen && grot && Math.abs(dino.x - grot.x) < 60 && Math.abs(dino.y - grot.y) < 55
           && dino.hoogte > grot.z - 45) {
         level += 1;
         levelTekst = 'Level ' + level + '!';
@@ -1503,7 +1710,6 @@
         schoten = [];
         pluimen = [];
         gevangen = false;
-        wriemel = 0;
         herbouw();
         dino.x = wereld.breedte / 2;
         dino.y = grondhoogte + 60;
@@ -1538,6 +1744,22 @@
         schot.x += schot.richting * schot.snelheid * dt;
         schot.afstand += schot.snelheid * dt;
         schot.draai += dt * 16;
+        // Raakt het een bewaker? Twee treffers en hij gaat om.
+        for (const bewaker of bewakers) {
+          if (bewaker.verslagen || bewaker.schrik > 0) continue;
+          if (Math.abs(schot.x - bewaker.x) < 30 && Math.abs(schot.y - bewaker.y) < 50) {
+            bewaker.leven -= 1;
+            bewaker.schrik = 0.35;
+            bewaker.x += schot.richting * 10;          // hij deinst achteruit
+            pluimen.push({ x: schot.x, y: schot.y, leeftijd: 0 });
+            schot.weg = true;
+            if (bewaker.leven <= 0) {
+              bewaker.verslagen = true;
+              bewaker.valTijd = 1.1;
+            }
+          }
+        }
+
         // Raakt het een jager of een hond? Die schrikt zich een hoedje en loopt weg.
         for (const jager of jagers) {
           if (jager.bangTijd <= 0 && Math.abs(schot.x - jager.x) < 28 && Math.abs(schot.y - jager.y) < 26) {
@@ -1554,7 +1776,7 @@
         }
 
         // Raakt het een steen, stam of stronk? Dan slaat het in.
-        if (botst(schot.x, schot.y)) {
+        if (botstObstakel(schot.x, schot.y)) {
           pluimen.push({ x: schot.x, y: schot.y, leeftijd: 0 });
           schot.weg = true;
         }
@@ -1726,16 +1948,29 @@
       // Het hunebed: de achterste stenen eerst, de voorste stenen later, zodat
       // je er echt tussen staat als je gevangen bent.
       if (hunebed && inBeeld(hunebed.x)) {
-        laag.push({ y: hunebed.y - 40, teken: function () {
+        laag.push({ y: hunebed.y + HB.achter - 10, teken: function () {
           ctx.save();
           ctx.translate(hunebed.x, hunebed.y);
           tekenHunebed(false);
           ctx.restore();
         } });
-        laag.push({ y: hunebed.y + 30, teken: function () {
+        laag.push({ y: hunebed.y + HB.voor, teken: function () {
           ctx.save();
           ctx.translate(hunebed.x, hunebed.y);
           tekenHunebed(true);
+          ctx.restore();
+        } });
+      }
+
+      // De twee bewakers bij de ingang
+      for (const bewaker of bewakers) {
+        if (!inBeeld(bewaker.x)) continue;
+        laag.push({ y: bewaker.y, teken: function () {
+          const maat = grootteOpDiepte(bewaker.y) * 1.05;
+          ctx.save();
+          ctx.translate(bewaker.x, bewaker.y);
+          ctx.scale(bewaker.kijktRechts ? maat : -maat, maat);
+          tekenBewaker(bewaker, dino.tijd);
           ctx.restore();
         } });
       }
@@ -1813,7 +2048,7 @@
       tekenTeller();
       tekenKaartje();
       tekenUitleg();
-      if (gevangen) tekenWriemelbalk();
+      if (gevangen) tekenGevangenTekst();
       if (levelTekstTijd > 0) tekenLevelTekst();
       tekenWinkelknop();
       if (winkelOpen) tekenWinkel();
