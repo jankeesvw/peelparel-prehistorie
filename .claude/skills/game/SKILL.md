@@ -9,6 +9,16 @@ args: "[naam]"
 
 Alle games staan in deze repo, elk in een eigen map met één `index.html`. Het overzicht van alle games staat online op https://peelparel-games.site/ en wordt automatisch bijgewerkt door `bin/new-game`.
 
+## Hoe je antwoordt
+
+De kinderen die de game maken lezen mee. Schrijf daarom in gewone taal over het spel, niet over de code. Vertel wat er nu gebeurt als ze spelen en welke toets of klik daarbij hoort, en houd het bij een paar regels: ze willen spelen, niet lezen.
+
+Laat uit je antwoord weg: functienamen, bestandsnamen, regelnummers, commit-hashes, kleurcodes, pixelmaten, namen van technieken en verslagen van wat je hebt getest. "De kat springt nu hoger als je de spatie langer vasthoudt" is goed. "Ik heb SPRONGKRACHT verhoogd naar 470 en EXTRA_SPRONGKRACHT toegevoegd in de update-lus" niet.
+
+De code zelf mag wel gewoon technisch zijn, daar kijken ze niet naar. Alleen hoe je het uitlegt moet simpel.
+
+Zeg het wel als er iets is wat ze moeten weten om verder te kunnen: een nieuwe toets, iets wat anders werkt dan ze verwachtten, of iets wat je niet gelukt is.
+
 ## Stap 1: Naam bepalen
 
 Kies samen met de gebruiker een korte naam in kebab-case (kleine letters, cijfers, koppeltekens), bijvoorbeeld `dino-run` of `mammoet-jacht`. Als er een argument is meegegeven, gebruik dat. Controleer dat de map nog niet bestaat.
@@ -43,7 +53,21 @@ Werk daarna in `<naam>/index.html`. Regels:
 
 - Alles in één `index.html` met inline JavaScript en het `<canvas>`, geen frameworks, geen build-tools, geen npm. Afbeeldingen of geluiden mogen als losse bestanden in de game-map.
 - Laat `<script src="../livereload.js"></script>` onderaan de body staan, anders werkt de auto-reload niet.
-- Houd de code leesbaar voor leerlingen: korte functies, Nederlandse variabelenamen mag, kleine stappen per wijziging zodat ze het effect direct in de browser zien.
+- Gebruik Nederlandse namen in de code en zet er korte comments bij, zodat je er later zelf nog uit komt. De code mag zo technisch worden als nodig is: de leerlingen kijken naar het spel, niet naar het bestand. Maak per prompt wel één duidelijke wijziging, zodat ze het effect in de browser direct zien.
+
+## Stap 4a: Even controleren, niet uitgebreid testen
+
+De klas zit te wachten om te spelen, dus houd het controleren bij een paar seconden. Een syntaxcheck op het script in de pagina is genoeg: dan weet je dat het spel niet op een zwart scherm blijft staan.
+
+```bash
+cd "$(git rev-parse --show-toplevel)"
+python3 -c "import io,re; s=io.open('<naam>/index.html',encoding='utf-8').read(); io.open('/tmp/check.js','w').write(re.search(r'<script>(.*?)</script>',s,re.S).group(1))"
+node --check /tmp/check.js
+```
+
+Verder testen zij het zelf: de game staat met livereload al open, dus elke wijziging is meteen te zien. Bouw geen testopstellingen om het spel na te spelen: geen bots die een level uitlopen, geen nagebouwde natuurkunde, geen headless browser, geen screenshots. Dat kost minuten en die heb je niet.
+
+Verander je iets waardoor een level misschien niet meer te halen is (sprongafstanden, zwevende platformen, een nieuwe route), dan kun je dat beter gewoon vragen: "lukt het je om boven te komen?" Zij zien het in één poging, en ondertussen spelen ze.
 
 ## Stap 4b: Na elke prompt committen
 
