@@ -224,12 +224,61 @@
 
     // De baby dino staat midden op het scherm en wipt zachtjes op en neer.
     const dino = {
-      grootte: 4,   // hoeveel groter de dino getekend wordt
-      tijd: 0,      // loopt door, voor het wippen en knipperen
+      x: 0,              // plek van links naar rechts
+      y: 0,              // plek op de bosgrond: lager op het scherm is dichterbij
+      tijd: 0,           // loopt door, voor het wippen en knipperen
+      stap: 0,           // tikt op bij elke stap, daarmee bewegen de beentjes
+      kijktRechts: true,
+      loopt: false,
     };
+
+    const SNELHEID = 190;   // hoe snel hij loopt, in beeldpunten per seconde
+
+    // Welke pijltjes op dit moment ingedrukt zijn.
+    const toetsen = {};
+    window.addEventListener('keydown', function (e) {
+      if (e.key.startsWith('Arrow')) {
+        toetsen[e.key] = true;
+        e.preventDefault();   // anders scrollt de pagina mee
+      }
+    });
+    window.addEventListener('keyup', function (e) {
+      toetsen[e.key] = false;
+    });
+
+    // Verder weg op de bosgrond is hij kleiner, dichterbij groter.
+    function dinoGrootte() {
+      const diepte = (dino.y - grondhoogte) / Math.max(1, canvas.height - grondhoogte);
+      return 2.4 + diepte * 2.2;
+    }
 
     function update(dt) {
       dino.tijd += dt;
+
+      // Richting bepalen uit de ingedrukte pijltjes
+      let dx = 0;
+      let dy = 0;
+      if (toetsen['ArrowLeft']) dx -= 1;
+      if (toetsen['ArrowRight']) dx += 1;
+      if (toetsen['ArrowUp']) dy -= 1;
+      if (toetsen['ArrowDown']) dy += 1;
+
+      dino.loopt = dx !== 0 || dy !== 0;
+      if (dx < 0) dino.kijktRechts = false;
+      if (dx > 0) dino.kijktRechts = true;
+
+      if (dino.loopt) {
+        // Schuin lopen gaat niet sneller dan rechtdoor
+        const lengte = Math.hypot(dx, dy);
+        dino.x += (dx / lengte) * SNELHEID * dt;
+        dino.y += (dy / lengte) * SNELHEID * dt;
+        dino.stap += dt * 9;
+      }
+
+      // Hij blijft op de bosgrond en loopt niet het beeld uit
+      const rand = 30 * dinoGrootte();
+      dino.x = Math.min(canvas.width - rand, Math.max(rand, dino.x));
+      dino.y = Math.min(canvas.height - 10, Math.max(grondhoogte + 6, dino.y));
     }
 
     // Tekent de baby dino met (0, 0) bij zijn voeten, in zijn eigen kleine maten.
@@ -243,15 +292,19 @@
       ctx.closePath();
       ctx.fill();
 
-      // Benen
-      ctx.fillStyle = '#4aa83c';
-      ctx.fillRect(-7, -8, 5, 8);
-      ctx.fillRect(2, -8, 5, 8);
+      // Benen en voeten: tijdens het lopen gaan ze om en om naar voren
+      const zwaai = dino.loopt ? Math.sin(dino.stap) * 4 : 0;
+      const til = dino.loopt ? Math.max(0, Math.sin(dino.stap)) * 2 : 0;
+      const zwaai2 = dino.loopt ? Math.sin(dino.stap + Math.PI) * 4 : 0;
+      const til2 = dino.loopt ? Math.max(0, Math.sin(dino.stap + Math.PI)) * 2 : 0;
 
-      // Voeten
+      ctx.fillStyle = '#4aa83c';
+      ctx.fillRect(-7 + zwaai, -8, 5, 8 - til);
+      ctx.fillRect(2 + zwaai2, -8, 5, 8 - til2);
+
       ctx.fillStyle = '#3d8f31';
-      ctx.fillRect(-9, -2, 8, 2);
-      ctx.fillRect(1, -2, 8, 2);
+      ctx.fillRect(-9 + zwaai, -2 - til, 8, 2);
+      ctx.fillRect(1 + zwaai2, -2 - til2, 8, 2);
 
       // Lijf
       ctx.fillStyle = '#5bbf4a';
@@ -326,12 +379,15 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       tekenJungle(dino.tijd);
 
-      // Zacht op en neer wippen, alsof hij ademt.
-      const wip = Math.sin(dino.tijd * 2) * 3;
+      // Stilstaand ademt hij zachtjes, lopend wipt hij op het ritme van zijn stappen.
+      const wip = dino.loopt
+        ? Math.abs(Math.sin(dino.stap)) * -4
+        : Math.sin(dino.tijd * 2) * 3;
 
+      const grootte = dinoGrootte();
       ctx.save();
-      ctx.translate(canvas.width / 2, grondhoogte + 30 + wip);
-      ctx.scale(dino.grootte, dino.grootte);
+      ctx.translate(dino.x, dino.y + wip);
+      ctx.scale(dino.kijktRechts ? grootte : -grootte, grootte);
       tekenDino();
       ctx.restore();
 
@@ -339,6 +395,8 @@
     }
 
     herbouw();
+    dino.x = canvas.width / 2;
+    dino.y = grondhoogte + 40;
 
     let vorige = performance.now();
     function loop(nu) {
