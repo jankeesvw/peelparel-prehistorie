@@ -37,6 +37,8 @@
     let varens = [];
     let bladeren = [];
     let obstakels = [];
+    let munten = [];
+    let aantalMunten = 0;
 
     // Eigen toevalsgenerator met een vast begin, zodat de jungle er elke keer
     // hetzelfde uitziet zolang het venster niet van grootte verandert.
@@ -106,6 +108,25 @@
           rx: soort === 'boomstam' ? 58 : soort === 'stronk' ? 26 : 30,
           ry: soort === 'boomstam' ? 13 : 14,
         });
+      }
+
+      // Bij elk obstakel liggen een of twee munten, net buiten de steen of stam.
+      munten = [];
+      aantalMunten = 0;
+      for (const o of obstakels) {
+        const hoeveel = 1 + Math.round(t());
+        for (let n = 0; n < hoeveel; n++) {
+          const hoek = t() * Math.PI * 2;
+          const afstandX = o.rx * o.maat + 38;
+          const afstandY = o.ry * o.maat + 24;
+          const mx = o.x + Math.cos(hoek) * afstandX;
+          const my = o.y + Math.sin(hoek) * afstandY;
+          // Alleen als de munt binnen de bosgrond ligt en niet in een ander obstakel
+          if (mx < 25 || mx > b - 25) continue;
+          if (my < grondhoogte + 12 || my > h - 8) continue;
+          if (botst(mx, my)) continue;
+          munten.push({ x: mx, y: my, fase: t() * 6.28, gepakt: false });
+        }
       }
 
       // Varens links en rechts op de voorgrond, het midden blijft vrij voor de dino
@@ -316,6 +337,62 @@
       }
     }
 
+    // Een munt: een gouden rondje dat om zijn as draait en boven de grond zweeft.
+    function tekenMunt(munt, tijd) {
+      const zweef = Math.sin(tijd * 3 + munt.fase) * 5;
+      const draai = Math.cos(tijd * 2.5 + munt.fase);   // van -1 (zijkant) tot 1 (voorkant)
+      const breedte = Math.max(2, Math.abs(draai) * 13);
+
+      ctx.save();
+      ctx.translate(munt.x, munt.y);
+
+      // Schaduwtje op de grond
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 9, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.translate(0, -22 + zweef);
+
+      // Rand van de munt
+      ctx.fillStyle = '#c08a16';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, breedte, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Goud
+      ctx.fillStyle = '#f6c62e';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, breedte * 0.78, 10.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Glimlichtje, alleen als je de munt van voren ziet
+      if (breedte > 7) {
+        ctx.fillStyle = '#fff2a8';
+        ctx.beginPath();
+        ctx.ellipse(-breedte * 0.25, -4, breedte * 0.2, 3.5, -0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // Het aantal gepakte munten linksboven in beeld.
+    function tekenTeller() {
+      ctx.save();
+      ctx.translate(26, 34);
+      ctx.fillStyle = '#c08a16';
+      ctx.beginPath();
+      ctx.arc(0, 0, 13, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f6c62e';
+      ctx.beginPath();
+      ctx.arc(0, 0, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 26px sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(aantalMunten), 22, 1);
+      ctx.restore();
+    }
+
     // Loopt de dino op deze plek tegen een obstakel aan?
     function botst(x, y) {
       for (const o of obstakels) {
@@ -398,6 +475,15 @@
         if (!botst(dino.x + stapX, dino.y)) dino.x += stapX;
         if (!botst(dino.x, dino.y + stapY)) dino.y += stapY;
         dino.stap += dt * 9;
+      }
+
+      // Munten oppakken waar hij langs loopt
+      for (const munt of munten) {
+        if (munt.gepakt) continue;
+        if (Math.abs(dino.x - munt.x) < 26 && Math.abs(dino.y - munt.y) < 16) {
+          munt.gepakt = true;
+          aantalMunten += 1;
+        }
       }
 
       // Hij blijft op de bosgrond en loopt niet het beeld uit
@@ -522,6 +608,10 @@
           ctx.restore();
         } };
       });
+      for (const munt of munten) {
+        if (munt.gepakt) continue;
+        laag.push({ y: munt.y, teken: function () { tekenMunt(munt, dino.tijd); } });
+      }
       laag.push({ y: dino.y, teken: function () {
         ctx.save();
         ctx.translate(dino.x, dino.y + wip);
@@ -533,6 +623,7 @@
       for (const item of laag) item.teken();
 
       tekenVoorgrond(dino.tijd);
+      tekenTeller();
     }
 
     herbouw();
