@@ -34,6 +34,11 @@
     // De jungle is veel breder dan het scherm. De camera schuift mee met de dino.
     const wereld = { breedte: 0, patroon: 0 };
     const camera = { x: 0 };
+    let level = 1;
+    let balken = [];            // houten balken waar je op kunt springen
+    let grot = null;            // de grot bovenaan de balken: de uitgang naar het volgende level
+    let levelTekst = '';        // grote tekst als je een level haalt
+    let levelTekstTijd = 0;
     let bomenVer = [];
     let bomen = [];
     let lianen = [];
@@ -54,7 +59,7 @@
     }
 
     function maakJungle() {
-      const t = maakToeval(20261007);
+      const t = maakToeval(20261007 + level * 7919);
       const b = canvas.width;
       const h = canvas.height;
       grondhoogte = h * 0.6;                      // horizon: de bosgrond is lekker diep
@@ -120,7 +125,6 @@
 
       // Bij elk obstakel liggen een of twee munten, net buiten de steen of stam.
       munten = [];
-      aantalMunten = 0;
       for (const o of obstakels) {
         const hoeveel = 1 + Math.round(t());
         for (let n = 0; n < hoeveel; n++) {
@@ -133,8 +137,33 @@
           if (mx < 25 || mx > wereld.breedte - 25) continue;
           if (my < grondhoogte + 12 || my > h - 8) continue;
           if (botst(mx, my)) continue;
-          munten.push({ x: mx, y: my, fase: t() * 6.28, gepakt: false });
+          munten.push({ x: mx, y: my, hoogte: 0, fase: t() * 6.28, gepakt: false });
         }
+      }
+
+      // Een trap van houten balken die omhoog en naar achter loopt, met
+      // bovenaan een grot in de rotswand: daar ga je naar het volgende level.
+      balken = [];
+      // De bovenste balk moet nog wel op het scherm passen, met de grot erboven.
+      const ruimte = Math.max(90, grondhoogte - 240);
+      const aantalBalken = Math.max(3, Math.min(9, 5 + level, Math.floor(ruimte / 72) + 1));
+      const stap = Math.max(40, Math.min(72, ruimte / (aantalBalken - 1)));
+      const grotX = 500 + t() * (wereld.breedte - 1000);
+      for (let i = 0; i < aantalBalken; i++) {
+        balken.push({
+          x: grotX - (aantalBalken - i) * 100,
+          y: grondhoogte + 150 - i * (60 / (aantalBalken - 1)),
+          z: 70 + i * stap,                // hoe hoog de balk boven de grond hangt
+          breedte: 100,
+          diepte: 48,
+        });
+      }
+      const bovenste = balken[balken.length - 1];
+      grot = { x: bovenste.x + 30, y: bovenste.y - 38, z: bovenste.z };
+
+      // Op elke balk ligt een munt, dus klimmen levert iets op
+      for (const balk of balken) {
+        munten.push({ x: balk.x, y: balk.y, hoogte: balk.z + 10, fase: balk.z, gepakt: false });
       }
 
       // Varens op de voorgrond, ook over de hele wereld verspreid
@@ -371,6 +400,116 @@
       }
     }
 
+    // Een houten balk die in de lucht hangt, met (0, 0) op de grond eronder.
+    function tekenBalk(balk) {
+      const b = balk.breedte;
+      const d = balk.diepte;
+
+      // Schaduw op de bosgrond, vager als de balk hoger hangt
+      ctx.save();
+      ctx.globalAlpha = Math.max(0.08, 0.3 - balk.z / 900);
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, b / 2, d / 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(0, -balk.z);
+
+      // Twee palen die de balk omhoog houden
+      ctx.fillStyle = '#4a3524';
+      ctx.fillRect(-b / 2 + 10, 0, 9, balk.z);
+      ctx.fillRect(b / 2 - 19, 0, 9, balk.z);
+
+      // Zijkant van de balk
+      ctx.fillStyle = '#6d4e32';
+      ctx.fillRect(-b / 2, -4, b, 14);
+      // Bovenkant waar je op staat
+      ctx.fillStyle = '#8a6440';
+      ctx.beginPath();
+      ctx.ellipse(0, -4, b / 2, d / 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Plankjes op de bovenkant
+      ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+      ctx.lineWidth = 2;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * (b / 6), -4 - d / 3.4);
+        ctx.lineTo(i * (b / 6), -4 + d / 3.4);
+        ctx.stroke();
+      }
+      // Mosje op de rand
+      ctx.fillStyle = '#4e7f3c';
+      ctx.beginPath();
+      ctx.ellipse(-b / 4, 8, 12, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // De grot in de rotswand bovenaan de balken.
+    function tekenGrot(tijd) {
+      ctx.save();
+      ctx.translate(grot.x, grot.y - grot.z);
+
+      // Rotswand
+      ctx.fillStyle = '#6a6c66';
+      ctx.beginPath();
+      ctx.moveTo(-90, 30);
+      ctx.lineTo(-70, -80);
+      ctx.lineTo(-20, -120);
+      ctx.lineTo(50, -110);
+      ctx.lineTo(85, -40);
+      ctx.lineTo(80, 30);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#7d7f78';
+      ctx.beginPath();
+      ctx.moveTo(-70, -80);
+      ctx.lineTo(-20, -120);
+      ctx.lineTo(20, -95);
+      ctx.lineTo(-45, -55);
+      ctx.closePath();
+      ctx.fill();
+
+      // De donkere opening
+      ctx.fillStyle = '#17120f';
+      ctx.beginPath();
+      ctx.moveTo(-34, 26);
+      ctx.quadraticCurveTo(-34, -46, 0, -46);
+      ctx.quadraticCurveTo(34, -46, 34, 26);
+      ctx.closePath();
+      ctx.fill();
+
+      // Zacht licht in de opening, het klopt een beetje
+      ctx.save();
+      ctx.globalAlpha = 0.18 + Math.sin(tijd * 2) * 0.07;
+      ctx.fillStyle = '#ffe9a8';
+      ctx.beginPath();
+      ctx.ellipse(0, 4, 20, 26, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Druipstenen boven de ingang
+      ctx.fillStyle = '#5d5f59';
+      for (const dx of [-22, -8, 8, 22]) {
+        ctx.beginPath();
+        ctx.moveTo(dx - 4, -40);
+        ctx.lineTo(dx, -26);
+        ctx.lineTo(dx + 4, -40);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Bordje met het volgende level
+      ctx.fillStyle = '#f6c62e';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('level ' + (level + 1), 0, -62);
+      ctx.restore();
+    }
+
     // Een wapen, met (0, 0) bij de hand en de punt naar rechts.
     function tekenWapen(w) {
       if (w.soort === 'speer') {
@@ -498,7 +637,7 @@
       const breedte = Math.max(2, Math.abs(draai) * 13);
 
       ctx.save();
-      ctx.translate(munt.x, munt.y);
+      ctx.translate(munt.x, munt.y - (munt.hoogte || 0));
 
       // Schaduwtje op de grond
       ctx.fillStyle = 'rgba(0,0,0,0.25)';
@@ -748,11 +887,59 @@
         ctx.fill();
       }
 
+      // De grot naar het volgende level
+      if (grot) {
+        ctx.fillStyle = '#fff2a8';
+        ctx.beginPath();
+        ctx.arc(x + (grot.x / wereld.breedte) * b, y + 7, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       // Jijzelf
       ctx.fillStyle = '#8ee06a';
       ctx.beginPath();
       ctx.arc(x + (dino.x / wereld.breedte) * b, y + h / 2, 4, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
+    }
+
+    // De hoogste balk waar je op deze plek op kunt staan, of 0 voor de bosgrond.
+    function vloerOnder(x, y, vanaf) {
+      let vloer = 0;
+      for (const balk of balken) {
+        if (Math.abs(x - balk.x) > balk.breedte / 2) continue;
+        if (Math.abs(y - balk.y) > balk.diepte / 2) continue;
+        if (balk.z <= vanaf + 3 && balk.z > vloer) vloer = balk.z;
+      }
+      return vloer;
+    }
+
+    // Welk level je speelt en welke toetsen er zijn, linksonder in beeld.
+    function tekenUitleg() {
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.font = 'bold 19px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText('Level ' + level, 20, canvas.height - 44);
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.font = '15px sans-serif';
+      ctx.fillText('pijltjes lopen · Z springen · spatie gooien · S winkel', 20, canvas.height - 22);
+      ctx.restore();
+    }
+
+    // Grote tekst als je een level gehaald hebt.
+    function tekenLevelTekst() {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, levelTekstTijd);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = 'bold 64px sans-serif';
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+      ctx.strokeText(levelTekst, canvas.width / 2, canvas.height * 0.3);
+      ctx.fillStyle = '#f6c62e';
+      ctx.fillText(levelTekst, canvas.width / 2, canvas.height * 0.3);
       ctx.restore();
     }
 
@@ -790,6 +977,9 @@
       y: 0,              // plek op de bosgrond: lager op het scherm is dichterbij
       tijd: 0,           // loopt door, voor het wippen en knipperen
       stap: 0,           // tikt op bij elke stap, daarmee bewegen de beentjes
+      hoogte: 0,         // hoe hoog hij boven de bosgrond zit
+      vz: 0,             // hoe snel hij omhoog of omlaag gaat
+      opGrond: true,
       kijktRechts: true,
       loopt: false,
     };
@@ -811,7 +1001,9 @@
     let melding = '';           // kort tekstje in de winkel, bijv. te weinig munten
     let meldingTijd = 0;
 
-    const SNELHEID = 190;   // hoe snel hij loopt, in beeldpunten per seconde
+    const SNELHEID = 190;      // hoe snel hij loopt, in beeldpunten per seconde
+    const SPRONGKRACHT = 660;  // hoe hard hij zich afzet
+    const ZWAARTEKRACHT = 1500;
 
     // Welke pijltjes op dit moment ingedrukt zijn.
     const toetsen = {};
@@ -824,11 +1016,16 @@
         toetsen[' '] = true;
         e.preventDefault();
       }
+      if (e.key.toLowerCase() === 'z') {
+        toetsen['z'] = true;
+        e.preventDefault();
+      }
       if (e.key === 's' || e.key === 'S') winkelOpen = !winkelOpen;
       if (e.key === 'Escape') winkelOpen = false;
     });
     window.addEventListener('keyup', function (e) {
       toetsen[e.key] = false;
+      if (e.key.toLowerCase() === 'z') toetsen['z'] = false;
     });
 
     // Verder weg op de bosgrond is hij kleiner, dichterbij groter.
@@ -840,6 +1037,7 @@
     function update(dt) {
       dino.tijd += dt;
       if (meldingTijd > 0) meldingTijd -= dt;
+      if (levelTekstTijd > 0) levelTekstTijd -= dt;
 
       // Met de winkel open loopt de dino niet, dan sta je rustig te kiezen.
       if (winkelOpen) {
@@ -866,9 +1064,48 @@
         const stapY = (dy / lengte) * SNELHEID * dt;
         // Allebei de richtingen los proberen: zo kun je langs een steen schuiven
         // in plaats van er helemaal tegen vast te zitten.
-        if (!botst(dino.x + stapX, dino.y)) dino.x += stapX;
-        if (!botst(dino.x, dino.y + stapY)) dino.y += stapY;
+        // Spring je hoog genoeg, dan vlieg je er gewoon over
+        const laag = dino.hoogte < 25;
+        if (!laag || !botst(dino.x + stapX, dino.y)) dino.x += stapX;
+        if (!laag || !botst(dino.x, dino.y + stapY)) dino.y += stapY;
         dino.stap += dt * 9;
+      }
+
+      // Springen met de Z, en daarna trekt de zwaartekracht hem weer naar beneden
+      if (toetsen['z'] && dino.opGrond) {
+        dino.vz = SPRONGKRACHT;
+        dino.opGrond = false;
+      }
+      const vorigeHoogte = dino.hoogte;
+      dino.vz -= ZWAARTEKRACHT * dt;
+      dino.hoogte += dino.vz * dt;
+
+      // Landt hij op een balk of op de bosgrond?
+      const vloer = vloerOnder(dino.x, dino.y, vorigeHoogte);
+      if (dino.hoogte <= vloer) {
+        dino.hoogte = vloer;
+        dino.vz = 0;
+        dino.opGrond = true;
+      } else {
+        dino.opGrond = false;
+      }
+
+      // Bovenaan de balken de grot in: door naar het volgende level
+      if (grot && Math.abs(dino.x - grot.x) < 60 && Math.abs(dino.y - grot.y) < 55
+          && dino.hoogte > grot.z - 45) {
+        level += 1;
+        levelTekst = 'Level ' + level + '!';
+        levelTekstTijd = 2.5;
+        schoten = [];
+        pluimen = [];
+        herbouw();
+        dino.x = wereld.breedte / 2;
+        dino.y = grondhoogte + 60;
+        dino.hoogte = 0;
+        dino.vz = 0;
+        dino.opGrond = true;
+        camera.x = Math.max(0, Math.min(wereld.breedte - canvas.width, dino.x - canvas.width / 2));
+        return;
       }
 
       // Met de spatiebalk gooi je je wapen, zolang je niet net gegooid hebt
@@ -880,7 +1117,7 @@
           soort: gekozenWapen.soort === 'boog' ? 'pijl' : gekozenWapen.soort,
           x: dino.x + richting * 24 * maat,
           y: dino.y,
-          hoogte: 17 * dinoGrootte(),      // hoe hoog boven de grond het vliegt
+          hoogte: 17 * dinoGrootte() + dino.hoogte,   // hoe hoog boven de grond het vliegt
           richting: richting,
           snelheid: gekozenWapen.snelheid,
           maat: maat,
@@ -911,7 +1148,8 @@
       // Munten oppakken waar hij langs loopt
       for (const munt of munten) {
         if (munt.gepakt) continue;
-        if (Math.abs(dino.x - munt.x) < 26 && Math.abs(dino.y - munt.y) < 16) {
+        if (Math.abs(dino.x - munt.x) < 26 && Math.abs(dino.y - munt.y) < 20
+            && Math.abs(dino.hoogte - (munt.hoogte || 0)) < 45) {
           munt.gepakt = true;
           aantalMunten += 1;
         }
@@ -1064,6 +1302,19 @@
           ctx.restore();
         } });
       }
+      // De grot staat ver naar achter, dus die komt vroeg in de rij
+      if (grot && inBeeld(grot.x)) {
+        laag.push({ y: grot.y - 1, teken: function () { tekenGrot(dino.tijd); } });
+      }
+      for (const balk of balken) {
+        if (!inBeeld(balk.x)) continue;
+        laag.push({ y: balk.y, teken: function () {
+          ctx.save();
+          ctx.translate(balk.x, balk.y);
+          tekenBalk(balk);
+          ctx.restore();
+        } });
+      }
       for (const munt of munten) {
         if (munt.gepakt || !inBeeld(munt.x)) continue;
         laag.push({ y: munt.y, teken: function () { tekenMunt(munt, dino.tijd); } });
@@ -1071,9 +1322,20 @@
       for (const schot of schoten) {
         laag.push({ y: schot.y + 1, teken: function () { tekenSchot(schot); } });
       }
-      laag.push({ y: dino.y, teken: function () {
+      // Sta je op een balk, dan hoor je er net vóór getekend te worden.
+      laag.push({ y: dino.y + (dino.hoogte > 0 ? 25 : 0), teken: function () {
+        // Schaduw op de bosgrond, kleiner als hij hoger zit
+        if (dino.hoogte > 2) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0.1, 0.32 - dino.hoogte / 1400);
+          ctx.fillStyle = '#000';
+          ctx.beginPath();
+          ctx.ellipse(dino.x, dino.y, 11 * grootte, 3.5 * grootte, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
         ctx.save();
-        ctx.translate(dino.x, dino.y + wip);
+        ctx.translate(dino.x, dino.y + wip - dino.hoogte);
         ctx.scale(dino.kijktRechts ? grootte : -grootte, grootte);
         tekenDino();
         ctx.restore();
@@ -1088,6 +1350,8 @@
 
       tekenTeller();
       tekenKaartje();
+      tekenUitleg();
+      if (levelTekstTijd > 0) tekenLevelTekst();
       tekenWinkelknop();
       if (winkelOpen) tekenWinkel();
     }
