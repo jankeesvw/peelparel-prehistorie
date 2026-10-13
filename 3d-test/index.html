@@ -58,7 +58,7 @@
     const TAFEL_DIKTE = 0.5;
     const BAL_STRAAL = 0.4;
     const GAT_STRAAL = 0.65;
-    const MAX_KANTEL = 0.5;      // hoe schuin de tafel maximaal mag (radialen)
+    const MAX_KANTEL = Math.PI / 2;   // de tafel mag helemaal rechtop (90 graden)
     const KANTEL_SNELHEID = 1.6;
     const ZWAARTEKRACHT = 20;
     const WRIJVING = 0.6;
@@ -236,17 +236,17 @@
     }
 
     // D20, D12, D8 en D4
-    nieuweVorm('d20', maakVeelvlak('d20', 3, 20, 0.54, '#5b2a86', '#ffd54f'), { kantel: 0.65, grip: 1 });
-    nieuweVorm('d12', maakVeelvlak('d12', 2, 12, 0.5, '#26c6da', '#0b2e33', 90), { kantel: 0.70, grip: 0.9 });
-    nieuweVorm('d8', maakVeelvlak('d8', 1, 8, 0.52, '#c62828', '#ffffff', 80), { kantel: 0.75, grip: 0.8 });
-    nieuweVorm('d4', maakVeelvlak('d4', 0, 4, 0.6, '#d4a017', '#3e2723', 90), { kantel: 0.75, grip: 0.3 });
+    nieuweVorm('d20', maakVeelvlak('d20', 3, 20, 0.54, '#5b2a86', '#ffd54f'), { grip: 1 });
+    nieuweVorm('d12', maakVeelvlak('d12', 2, 12, 0.5, '#26c6da', '#0b2e33', 90), { grip: 0.9 });
+    nieuweVorm('d8', maakVeelvlak('d8', 1, 8, 0.52, '#c62828', '#ffffff', 80), { grip: 0.8 });
+    nieuweVorm('d4', maakVeelvlak('d4', 0, 4, 0.6, '#d4a017', '#3e2723', 90), { grip: 0.3 });
 
     // D6: een gewone kubus, die glijdt eerder dan dat hij rolt
     {
       const { plaatje, vlakken } = dobbelPlaatje('d6Plaatje', 6, '#fafafa', '#c62828', 150);
       const kubus = BABYLON.MeshBuilder.CreateBox('d6', { size: 0.7, faceUV: vlakken }, scene);
       kubus.material = vormMateriaal('d6Mat', plaatje);
-      nieuweVorm('d6', kubus, { kantel: 0.75, grip: 0.35 });
+      nieuweVorm('d6', kubus, { grip: 0.35 });
     }
 
     // Donut met roze glazuur en spikkels
@@ -262,7 +262,7 @@
       });
       const donut = BABYLON.MeshBuilder.CreateTorus('donut', { diameter: 0.7, thickness: 0.32, tessellation: 40 }, scene);
       donut.material = vormMateriaal('donutMat', plaatje, { ruw: 0.4 });
-      nieuweVorm('donut', donut, { kantel: 0.60, grip: 0.8 });
+      nieuweVorm('donut', donut, { grip: 0.8 });
     }
 
     // Blikje frisdrank: rolt alleen dwars, en staat hij rechtop dan glijdt hij
@@ -281,7 +281,7 @@
         faceUV: [new BABYLON.Vector4(0.9, 0.1, 0.98, 0.9), new BABYLON.Vector4(0, 0, 0.875, 1), new BABYLON.Vector4(0.9, 0.1, 0.98, 0.9)],
       }, scene);
       blik.material = vormMateriaal('blikMat', plaatje, { metaal: 0.8, ruw: 0.25, lak: false });
-      nieuweVorm('blikje', blik, { kantel: 0.55, grip: 0.6 });
+      nieuweVorm('blikje', blik, { grip: 0.6 });
     }
 
     // Pil: half rood, half wit
@@ -292,7 +292,7 @@
       });
       const pil = BABYLON.MeshBuilder.CreateCapsule('pil', { height: 0.95, radius: 0.22, tessellation: 24, capSubdivisions: 8 }, scene);
       pil.material = vormMateriaal('pilMat', plaatje, { ruw: 0.15 });
-      nieuweVorm('pil', pil, { kantel: 0.55, grip: 0.7 });
+      nieuweVorm('pil', pil, { grip: 0.7 });
     }
 
     // ---------- Nog rarere vormen, in elkaar gezet uit losse onderdelen ----------
@@ -334,7 +334,7 @@
         onderdeel(MB.CreateTorus('oor', { diameter: 0.28, thickness: 0.05, tessellation: 24 }, scene), blauw, V3(-0.32, 0.02, 0), V3(Math.PI / 2, 0, 0)),
         onderdeel(MB.CreateSphere('knop', { diameter: 0.1 }, scene), blauw, V3(0, 0.26, 0)),
       ]);
-      nieuweVorm('theepot', pot, { kantel: 0.65, grip: 0.6 });
+      nieuweVorm('theepot', pot, { grip: 0.6 });
     }
 
     // Banaan: een kromme, dikke buis met dunne puntjes
@@ -346,7 +346,7 @@
       }
       const banaan = MB.CreateTube('banaan', { path: pad, radiusFunction: (i) => 0.025 + 0.11 * Math.sin(Math.PI * i / 20), cap: BABYLON.Mesh.CAP_ALL, tessellation: 7 }, scene);
       banaan.material = kleurMat('banaanMat', '#ffd600', { ruw: 0.5 });
-      nieuweVorm('banaan', samenvoegen('banaan', [banaan]), { kantel: 0.60, grip: 0.5 });
+      nieuweVorm('banaan', samenvoegen('banaan', [banaan]), { grip: 0.5 });
     }
 
     // Badeendje: dik lijf, kopje, oranje snavel en zwarte oogjes
@@ -364,7 +364,7 @@
         onderdeel(MB.CreateSphere('oog2', { diameter: 0.06 }, scene), zwart, V3(0.3, 0.35, -0.11)),
         onderdeel(MB.CreateCylinder('staart', { height: 0.14, diameterTop: 0, diameterBottom: 0.16, tessellation: 12 }, scene), geel, V3(-0.38, 0.1, 0), V3(0, 0, 1.0)),
       ]);
-      nieuweVorm('eendje', eend, { kantel: 0.65, grip: 0.6 });
+      nieuweVorm('eendje', eend, { grip: 0.6 });
     }
 
     // Ster: rolt als een wiel als hij rechtop staat, glijdt als hij plat ligt
@@ -379,14 +379,14 @@
       const goud = kleurMat('sterGoud', '#ffc400', { metaal: 1, ruw: 0.2 });
       goud.emissiveColor = new BABYLON.Color3(0.3, 0.2, 0);
       ster.material = goud;
-      nieuweVorm('ster', samenvoegen('ster', [ster]), { kantel: 0.60, grip: 0.5 });
+      nieuweVorm('ster', samenvoegen('ster', [ster]), { grip: 0.5 });
     }
 
     // Stuk kaas: een punt uit een rond kaasje
     {
       const kaas = MB.CreateCylinder('kaas', { height: 0.32, diameter: 1.2, arc: 0.17, enclose: true, tessellation: 48 }, scene);
       kaas.material = kleurMat('kaasMat', '#ffca28', { ruw: 0.6 });
-      nieuweVorm('kaas', samenvoegen('kaas', [kaas]), { kantel: 0.70, grip: 0.4 });
+      nieuweVorm('kaas', samenvoegen('kaas', [kaas]), { grip: 0.4 });
     }
 
     // Hamburger: broodje, burger, kaas, sla en een bolle bovenkant
@@ -402,7 +402,7 @@
         onderdeel(MB.CreateCylinder('sla', { height: 0.03, diameter: 0.68, tessellation: 12 }, scene), sla, V3(0, 0.07, 0)),
         onderdeel(MB.CreateSphere('boven', { diameter: 0.62, slice: 0.5, segments: 24 }, scene), brood, V3(0, 0.07, 0)),
       ]);
-      nieuweVorm('hamburger', burger, { kantel: 0.70, grip: 0.5 });
+      nieuweVorm('hamburger', burger, { grip: 0.5 });
     }
 
     // Mooie nabewerking: gloed, zachte randen, kleurcorrectie
@@ -595,8 +595,6 @@
       }
 
       const b = thema.bal;
-      // een gekke vorm heeft vaak een schuinere tafel nodig om om te rollen
-      maxKantel = b.vorm ? VORMEN[b.vorm].kantel : MAX_KANTEL;
       bal.isVisible = !b.vorm;          // bij een gekke vorm is de bal zelf onzichtbaar
       for (const naam in VORMEN) VORMEN[naam].mesh.setEnabled(naam === b.vorm);
       if (b.ontwerp) tekenBalPatroon(b.ontwerp);
@@ -610,7 +608,6 @@
     let speler = bal;             // wat er nu rolt: de bal of een gekke vorm
     let spelerFysica = null;      // de natuurkunde van de speler
     let tafelFysica, grondFysica;
-    let maxKantel = MAX_KANTEL;
     let wachttijd = 0;
     let level = 1, score = 0, levens = 3;
     let hiScore = 0;
@@ -900,8 +897,8 @@
       else kantelX *= Math.pow(0.1, dt);
       if (vinger) {
         // naar rechts slepen = bal naar rechts, omhoog slepen = bal naar achteren
-        const doelZ = -BABYLON.Scalar.Clamp((vinger.x - vinger.startX) / SLEEP_AFSTAND, -1, 1) * maxKantel;
-        const doelX = -BABYLON.Scalar.Clamp((vinger.y - vinger.startY) / SLEEP_AFSTAND, -1, 1) * maxKantel;
+        const doelZ = -BABYLON.Scalar.Clamp((vinger.x - vinger.startX) / SLEEP_AFSTAND, -1, 1) * MAX_KANTEL;
+        const doelX = -BABYLON.Scalar.Clamp((vinger.y - vinger.startY) / SLEEP_AFSTAND, -1, 1) * MAX_KANTEL;
         const f = Math.min(1, 12 * dt);
         kantelZ += (doelZ - kantelZ) * f;
         kantelX += (doelX - kantelX) * f;
@@ -912,8 +909,8 @@
         kantelX = Math.sin(t * 0.9) * 0.12;
         kantelZ = Math.cos(t * 0.7) * 0.12;
       }
-      kantelX = BABYLON.Scalar.Clamp(kantelX, -maxKantel, maxKantel);
-      kantelZ = BABYLON.Scalar.Clamp(kantelZ, -maxKantel, maxKantel);
+      kantelX = BABYLON.Scalar.Clamp(kantelX, -MAX_KANTEL, MAX_KANTEL);
+      kantelZ = BABYLON.Scalar.Clamp(kantelZ, -MAX_KANTEL, MAX_KANTEL);
       // de natuurkunde draait de tafel mee, zodat hij echt tegen de bal duwt
       // tijdens het feest wordt de tafel vlak en draait hij een rondje
       let draai = 0;
