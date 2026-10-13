@@ -814,7 +814,7 @@
       const blok = (b, h, d) => new BABYLON.PhysicsShapeBox(BABYLON.Vector3.Zero(), BABYLON.Quaternion.Identity(), new BABYLON.Vector3(b, h, d), scene);
       vorm.addChild(blok(tafelHalf * 2, TAFEL_DIKTE, tafelHalf * 2), new BABYLON.Vector3(0, -TAFEL_DIKTE / 2, 0));
       for (const b of blokken) vorm.addChild(blok(b.halfB * 2, 0.5, b.halfD * 2), new BABYLON.Vector3(b.x, 0.25, b.z));
-      vorm.material = { friction: 0.8, restitution: 0.3 };
+      vorm.material = { friction: 0.8, restitution: 0 };   // de tafel veert niet
       const oud = tafelFysica.shape;
       tafelFysica.shape = vorm;
       if (oud) oud.dispose();
@@ -848,7 +848,7 @@
         : BABYLON.Quaternion.Identity();
       spelerFysica = new BABYLON.PhysicsAggregate(speler,
         vorm ? BABYLON.PhysicsShapeType.CONVEX_HULL : BABYLON.PhysicsShapeType.SPHERE,
-        { mass: 1, friction: vorm ? vorm.grip : 0.8, restitution: vorm ? 0.2 : 0.3 }, scene);
+        { mass: 1, friction: vorm ? vorm.grip : 0.8, restitution: 0.05 }, scene);
       // gladder per level: minder afremmen
       const rem = -Math.log(1 - wrijving);
       spelerFysica.body.setLinearDamping(rem * 0.3);
@@ -1143,7 +1143,13 @@
 
       if (toestand === 'rollen') {
         // waar ligt de bal, bekeken vanaf de tafel?
-        const terug = tafel.computeWorldMatrix(true).clone().invert();
+        // zwaar maken: als de tafel snel beweegt mag de bal er niet hoog vanaf springen
+        const tafelMatrix = tafel.computeWorldMatrix(true);
+        const omhoog = BABYLON.Vector3.TransformNormal(BABYLON.Vector3.Up(), tafelMatrix).normalize();
+        const snelheid = spelerFysica.body.getLinearVelocity();
+        const wegVanTafel = BABYLON.Vector3.Dot(snelheid, omhoog);
+        if (wegVanTafel > 1) spelerFysica.body.setLinearVelocity(snelheid.subtract(omhoog.scale(wegVanTafel - 1)));
+        const terug = tafelMatrix.clone().invert();
         const plek = BABYLON.Vector3.TransformCoordinates(speler.getAbsolutePosition(), terug);
         const opTafel = plek.y < 1;
         const raakt = (x, z, straal) => opTafel && Math.hypot(plek.x - x, plek.z - z) < straal - 0.15;
