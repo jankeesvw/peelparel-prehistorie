@@ -98,11 +98,25 @@
     ringMat.metallic = 1; ringMat.roughness = 0.2;
     ring.material = ringMat;
 
-    // De bal: glimmend chroom dat de lucht weerspiegelt
-    const bal = BABYLON.MeshBuilder.CreateSphere('bal', { diameter: BAL_STRAAL * 2, segments: 32 }, scene);
+    // De bal: een glanzende biljartbal met een streep en een 9, zodat je ziet dat hij rolt
+    const bal = BABYLON.MeshBuilder.CreateSphere('bal', { diameter: BAL_STRAAL * 2, segments: 48 }, scene);
+    bal.rotationQuaternion = BABYLON.Quaternion.Identity();
+    const balPlaatje = new BABYLON.DynamicTexture('balPlaatje', { width: 1024, height: 512 }, scene);
+    const bctx = balPlaatje.getContext();
+    bctx.fillStyle = '#f4f1e8'; bctx.fillRect(0, 0, 1024, 512);
+    bctx.fillStyle = '#f2a900'; bctx.fillRect(0, 150, 1024, 212);   // gele streep rondom
+    for (const x of [256, 768]) {                                     // twee witte rondjes met een 9
+      bctx.fillStyle = '#f4f1e8';
+      bctx.beginPath(); bctx.ellipse(x, 256, 80, 90, 0, 0, Math.PI * 2); bctx.fill();
+      bctx.fillStyle = '#111'; bctx.font = 'bold 120px sans-serif';
+      bctx.textAlign = 'center'; bctx.textBaseline = 'middle';
+      bctx.fillText('9', x, 262);
+    }
+    balPlaatje.update();
     const balMat = new BABYLON.PBRMaterial('balMat', scene);
-    balMat.albedoColor = new BABYLON.Color3(0.95, 0.95, 0.97);
-    balMat.metallic = 1; balMat.roughness = 0.08;
+    balMat.albedoTexture = balPlaatje;
+    balMat.metallic = 0; balMat.roughness = 0.15;
+    balMat.clearCoat.isEnabled = true;   // laagje lak dat de lucht weerspiegelt
     bal.material = balMat;
     schaduw.addShadowCaster(bal);
 
@@ -245,6 +259,13 @@
         bal.position.x += balSnelheid.x * dt;
         bal.position.z += balSnelheid.z * dt;
         botsMetBlokken();
+
+        // Laten rollen: draaien om de as dwars op de beweging
+        const afstand = Math.hypot(balSnelheid.x, balSnelheid.z) * dt;
+        if (afstand > 0) {
+          const as = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(balSnelheid.z, 0, -balSnelheid.x).normalize(), tafelMatrix);
+          bal.rotate(as, afstand / BAL_STRAAL, BABYLON.Space.WORLD);
+        }
 
         // In het gat?
         if (Math.hypot(bal.position.x - gat.position.x, bal.position.z - gat.position.z) < gatStraal - 0.15) {
