@@ -12,6 +12,7 @@
     #uitleg { pointer-events: none; position: fixed; bottom: 16px; width: 100%; text-align: center; font-size: 18px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.6); }
   </style>
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -19,7 +20,8 @@
   <div id="melding"></div>
   <div id="uitleg">Kantel de tafel met de pijltjes, W A S D of sleep met je vinger</div>
   <script>
-    // Babylon.js: echte 3D met glimmende materialen, zachte schaduwen en gloed
+    // Babylon.js: echte 3D met glimmende materialen, zachte schaduwen en gloed.
+    // Havok doet de natuurkunde: de bal en de dobbelsteen rollen, botsen en vallen echt.
     const canvas = document.getElementById('game');
     const infoTekst = document.getElementById('info');
     const meldingTekst = document.getElementById('melding');
@@ -70,6 +72,7 @@
 
     // De tafel: alles wat eraan vastzit kantelt mee
     const tafel = new BABYLON.TransformNode('tafel', scene);
+    tafel.rotationQuaternion = BABYLON.Quaternion.Identity();
     const blad = BABYLON.MeshBuilder.CreateBox('blad', { width: TAFEL_HALF * 2, depth: TAFEL_HALF * 2, height: TAFEL_DIKTE }, scene);
     blad.parent = tafel;
     blad.position.y = -TAFEL_DIKTE / 2;
@@ -121,7 +124,7 @@
     schaduw.addShadowCaster(bal);
 
     // De D20: een dobbelsteen met twintig kanten, met de getallen 1 tot en met 20.
-    // Hij zit vast aan de (onzichtbare) bal, dus hij rolt mee.
+    // Hij heeft zijn eigen natuurkunde, dus hij kantelt echt van vlak naar vlak.
     const d20Plaatje = new BABYLON.DynamicTexture('d20Plaatje', { width: 1280, height: 1024 }, scene);
     const dctx = d20Plaatje.getContext();
     dctx.fillStyle = '#5b2a86'; dctx.fillRect(0, 0, 1280, 1024);
@@ -137,7 +140,6 @@
     }
     d20Plaatje.update();
     const d20 = BABYLON.MeshBuilder.CreatePolyhedron('d20', { type: 3, size: BAL_STRAAL * 1.15, faceUV: d20Vlakken }, scene);
-    d20.parent = bal;
     const d20Mat = new BABYLON.PBRMaterial('d20Mat', scene);
     d20Mat.albedoTexture = d20Plaatje;
     d20Mat.metallic = 0; d20Mat.roughness = 0.2;
@@ -262,6 +264,7 @@
       const t = thema.tafel;
       stelIn(houtMat, { ...t, plaatje: t.hout ? textuur(t.hout, t.herhaal) : null });
       const b = thema.bal;
+      maxKantel = b.d20 ? 0.45 : MAX_KANTEL;   // een D20 heeft een schuinere tafel nodig om om te rollen
       bal.isVisible = !b.d20;           // bij de D20 is de bal zelf onzichtbaar
       d20.setEnabled(!!b.d20);
       if (b.ontwerp) tekenBalPatroon(b.ontwerp);
@@ -272,7 +275,10 @@
 
     // Spelstatus
     let toestand = 'rollen';   // 'rollen', 'inGat', 'inValgat' of 'vallen'
-    const balSnelheid = new BABYLON.Vector3();
+    let speler = bal;             // wat er nu rolt: de bal of de D20
+    let spelerFysica = null;      // de natuurkunde van de speler
+    let tafelFysica, grondFysica;
+    let maxKantel = MAX_KANTEL;
     let wachttijd = 0;
     let level = 1, gevallen = 0;
     let kantelX = 0, kantelZ = 0;
@@ -365,33 +371,53 @@
           break;
         }
       }
+      maakTafelVorm();
       toonInfo();
     }
 
-    // Bal tegen een blok: terugduwen en laten stuiteren
-    function botsMetBlokken() {
-      for (const b of blokken) {
-        const dichtstX = BABYLON.Scalar.Clamp(bal.position.x, b.x - b.halfB, b.x + b.halfB);
-        const dichtstZ = BABYLON.Scalar.Clamp(bal.position.z, b.z - b.halfD, b.z + b.halfD);
-        const dx = bal.position.x - dichtstX, dz = bal.position.z - dichtstZ;
-        const afstand = Math.hypot(dx, dz);
-        if (afstand < BAL_STRAAL && afstand > 0) {
-          const nx = dx / afstand, nz = dz / afstand;
-          bal.position.x = dichtstX + nx * BAL_STRAAL;
-          bal.position.z = dichtstZ + nz * BAL_STRAAL;
-          const tegen = balSnelheid.x * nx + balSnelheid.z * nz;
-          if (tegen < 0) {
-            balSnelheid.x -= 1.6 * tegen * nx;
-            balSnelheid.z -= 1.6 * tegen * nz;
-          }
-        }
-      }
+    // De vorm van de tafel voor de natuurkunde: het blad plus alle blokken
+    function maakTafelVorm() {
+      const vorm = new BABYLON.PhysicsShapeContainer(scene);
+      const blok = (b, h, d) => new BABYLON.PhysicsShapeBox(BABYLON.Vector3.Zero(), BABYLON.Quaternion.Identity(), new BABYLON.Vector3(b, h, d), scene);
+      vorm.addChild(blok(tafelHalf * 2, TAFEL_DIKTE, tafelHalf * 2), new BABYLON.Vector3(0, -TAFEL_DIKTE / 2, 0));
+      for (const b of blokken) vorm.addChild(blok(b.halfB * 2, 0.5, b.halfD * 2), new BABYLON.Vector3(b.x, 0.25, b.z));
+      vorm.material = { friction: 0.8, restitution: 0.3 };
+      const oud = tafelFysica.shape;
+      tafelFysica.shape = vorm;
+      if (oud) oud.dispose();
     }
 
+    // Vaste dingen in de natuurkunde: de grond en de kantelende tafel
+    function maakNatuurkunde() {
+      grondFysica = new BABYLON.PhysicsBody(grond, BABYLON.PhysicsMotionType.STATIC, false, scene);
+      grondFysica.shape = new BABYLON.PhysicsShapeBox(new BABYLON.Vector3(0, -0.5, 0), BABYLON.Quaternion.Identity(), new BABYLON.Vector3(300, 1, 300), scene);
+      grondFysica.shape.material = { friction: 0.8, restitution: 0.4 };
+      // de tafel bewegen wij zelf, de natuurkunde duwt alleen tegen de bal
+      tafelFysica = new BABYLON.PhysicsBody(tafel, BABYLON.PhysicsMotionType.ANIMATED, false, scene);
+    }
+
+    function stopSpelerFysica() {
+      if (spelerFysica) { spelerFysica.dispose(); spelerFysica = null; }
+    }
+
+    // Nieuwe bal (of D20) valt vanaf net boven het midden op de tafel
     function nieuweBal() {
-      bal.parent = tafel;
-      bal.position.set(0, BAL_STRAAL, 0);
-      balSnelheid.set(0, 0, 0);
+      stopSpelerFysica();
+      const isD20 = !!thema.bal.d20;
+      speler = isD20 ? d20 : bal;
+      speler.setParent(null);
+      speler.position.set(0, 1.2, 0);
+      speler.rotationQuaternion = isD20
+        ? BABYLON.Quaternion.FromEulerAngles(Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3)
+        : BABYLON.Quaternion.Identity();
+      spelerFysica = new BABYLON.PhysicsAggregate(speler,
+        isD20 ? BABYLON.PhysicsShapeType.CONVEX_HULL : BABYLON.PhysicsShapeType.SPHERE,
+        { mass: 1, friction: isD20 ? 1 : 0.8, restitution: isD20 ? 0.2 : 0.3 }, scene);
+      // gladder per level: minder afremmen
+      const rem = -Math.log(1 - wrijving);
+      spelerFysica.body.setLinearDamping(rem * 0.3);
+      spelerFysica.body.setAngularDamping(rem);
+      if (BABYLON.PhysicsActivationControl) spelerFysica.body.setActivationControl(BABYLON.PhysicsActivationControl.ALWAYS_ACTIVE);
       toestand = 'rollen';
       meldingTekst.textContent = '';
     }
@@ -425,94 +451,79 @@
       else kantelX *= Math.pow(0.1, dt);
       if (vinger) {
         // naar rechts slepen = bal naar rechts, omhoog slepen = bal naar achteren
-        const doelZ = -BABYLON.Scalar.Clamp((vinger.x - vinger.startX) / SLEEP_AFSTAND, -1, 1) * MAX_KANTEL;
-        const doelX = -BABYLON.Scalar.Clamp((vinger.y - vinger.startY) / SLEEP_AFSTAND, -1, 1) * MAX_KANTEL;
+        const doelZ = -BABYLON.Scalar.Clamp((vinger.x - vinger.startX) / SLEEP_AFSTAND, -1, 1) * maxKantel;
+        const doelX = -BABYLON.Scalar.Clamp((vinger.y - vinger.startY) / SLEEP_AFSTAND, -1, 1) * maxKantel;
         const f = Math.min(1, 12 * dt);
         kantelZ += (doelZ - kantelZ) * f;
         kantelX += (doelX - kantelX) * f;
       }
-      kantelX = BABYLON.Scalar.Clamp(kantelX, -MAX_KANTEL, MAX_KANTEL);
-      kantelZ = BABYLON.Scalar.Clamp(kantelZ, -MAX_KANTEL, MAX_KANTEL);
-      tafel.rotation.set(kantelX, 0, kantelZ);
-      const tafelMatrix = tafel.computeWorldMatrix(true);
+      kantelX = BABYLON.Scalar.Clamp(kantelX, -maxKantel, maxKantel);
+      kantelZ = BABYLON.Scalar.Clamp(kantelZ, -maxKantel, maxKantel);
+      // de natuurkunde draait de tafel mee, zodat hij echt tegen de bal duwt
+      const tafelStand = BABYLON.Quaternion.FromEulerAngles(kantelX, 0, kantelZ);
+      tafelFysica.setTargetTransform(BABYLON.Vector3.Zero(), tafelStand);
+      tafel.rotationQuaternion.copyFrom(tafelStand);
 
       if (toestand === 'rollen') {
-        // Zwaartekracht bekeken vanuit de schuine tafel: dat deel trekt de bal opzij
-        const zwaarte = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, -ZWAARTEKRACHT, 0), tafelMatrix.clone().invert());
-        balSnelheid.x += zwaarte.x * (5 / 7) * dt;
-        balSnelheid.z += zwaarte.z * (5 / 7) * dt;
-        balSnelheid.scaleInPlace(Math.pow(1 - wrijving, dt));
-        bal.position.x += balSnelheid.x * dt;
-        bal.position.z += balSnelheid.z * dt;
-        botsMetBlokken();
+        // waar ligt de bal, bekeken vanaf de tafel?
+        const terug = tafel.computeWorldMatrix(true).clone().invert();
+        const plek = BABYLON.Vector3.TransformCoordinates(speler.getAbsolutePosition(), terug);
+        const opTafel = plek.y < 1;
+        const raakt = (x, z, straal) => opTafel && Math.hypot(plek.x - x, plek.z - z) < straal - 0.15;
+        const valgat = valgaten.find(v => raakt(v.x, v.z, VALGAT_STRAAL));
 
-        // Laten rollen: draaien om de as dwars op de beweging
-        const afstand = Math.hypot(balSnelheid.x, balSnelheid.z) * dt;
-        if (afstand > 0) {
-          const as = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(balSnelheid.z, 0, -balSnelheid.x).normalize(), tafelMatrix);
-          bal.rotate(as, afstand / BAL_STRAAL, BABYLON.Space.WORLD);
-        }
-
-        // In het gat?
-        if (Math.hypot(bal.position.x - gat.position.x, bal.position.z - gat.position.z) < gatStraal - 0.15) {
+        if (raakt(gat.position.x, gat.position.z, gatStraal)) {
           toestand = 'inGat';
           doelGat = gat.position;
           wachttijd = 1.5;
           meldingTekst.textContent = 'Raak! Op naar level ' + (level + 1);
-        }
-        // In een valgat? Dan dit level opnieuw
-        else if (valgaten.some(v => Math.hypot(bal.position.x - v.x, bal.position.z - v.z) < VALGAT_STRAAL - 0.15)) {
+        } else if (valgat) {
+          // in een valgat: dit level opnieuw
           toestand = 'inValgat';
-          doelGat = valgaten.find(v => Math.hypot(bal.position.x - v.x, bal.position.z - v.z) < VALGAT_STRAAL - 0.15);
+          doelGat = valgat;
           wachttijd = 1.5;
           gevallen++;
           toonInfo();
           meldingTekst.textContent = 'Fout gat!';
-        }
-        // Van de tafel af?
-        else if (Math.abs(bal.position.x) > tafelHalf || Math.abs(bal.position.z) > tafelHalf) {
+        } else if (speler.getAbsolutePosition().y < -2) {
+          // van de tafel af: de natuurkunde laat hem verder vallen en stuiteren
           toestand = 'vallen';
           wachttijd = 2;
-          // bal loskoppelen van de tafel en met dezelfde vaart laten vallen
-          bal.computeWorldMatrix(true);
-          const wereldPos = bal.getAbsolutePosition().clone();
-          const v = BABYLON.Vector3.TransformNormal(balSnelheid, tafelMatrix);
-          bal.parent = null;
-          bal.position.copyFrom(wereldPos);
-          balSnelheid.copyFrom(v);
           gevallen++;
           toonInfo();
           meldingTekst.textContent = 'Eraf gevallen!';
         }
+        if (toestand === 'inGat' || toestand === 'inValgat') {
+          // natuurkunde uit, vastmaken aan de tafel en zelf in het gat laten zakken
+          stopSpelerFysica();
+          speler.setParent(tafel);
+        }
       } else if (toestand === 'inGat' || toestand === 'inValgat') {
         // bal glijdt naar het midden van het gat en zakt naar beneden
         const f = Math.min(1, 10 * dt);
-        bal.position.x += (doelGat.x - bal.position.x) * f;
-        bal.position.z += (doelGat.z - bal.position.z) * f;
-        bal.position.y -= 3 * dt;
+        speler.position.x += (doelGat.x - speler.position.x) * f;
+        speler.position.z += (doelGat.z - speler.position.z) * f;
+        speler.position.y -= 3 * dt;
         wachttijd -= dt;
         if (wachttijd <= 0) {
-          if (toestand === 'inGat') { level++; nieuweBal(); bouwLevel(); }
-          else nieuweBal();
+          if (toestand === 'inGat') { level++; bouwLevel(); }
+          nieuweBal();
         }
       } else if (toestand === 'vallen') {
-        balSnelheid.y -= ZWAARTEKRACHT * dt;
-        bal.position.addInPlace(balSnelheid.scale(dt));
-        if (bal.position.y < GROND_Y + BAL_STRAAL) {
-          bal.position.y = GROND_Y + BAL_STRAAL;
-          balSnelheid.y *= -0.4;
-          balSnelheid.x *= 0.8; balSnelheid.z *= 0.8;
-        }
         wachttijd -= dt;
         if (wachttijd <= 0) nieuweBal();
       }
     }
 
-    nieuweBal();
-    bouwLevel();
-
-    scene.onBeforeRenderObservable.add(() => update(Math.min(engine.getDeltaTime() / 1000, 0.05)));
-    engine.runRenderLoop(() => scene.render());
+    // Eerst de natuurkunde laden, dan pas beginnen
+    HavokPhysics().then(havok => {
+      scene.enablePhysics(new BABYLON.Vector3(0, -ZWAARTEKRACHT, 0), new BABYLON.HavokPlugin(true, havok));
+      maakNatuurkunde();
+      bouwLevel();
+      nieuweBal();
+      scene.onBeforeRenderObservable.add(() => update(Math.min(engine.getDeltaTime() / 1000, 0.05)));
+      engine.runRenderLoop(() => scene.render());
+    });
   </script>
   <script src="../livereload.js"></script>
 </body>
