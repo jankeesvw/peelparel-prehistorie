@@ -5,23 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>3d-test</title>
   <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #87ceeb; color: #111; font-family: sans-serif; }
-    canvas { display: block; }
-    #info { position: fixed; top: 16px; left: 16px; font-size: 22px; font-weight: bold; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.5); }
-    #melding { position: fixed; top: 40%; width: 100%; text-align: center; font-size: 56px; font-weight: bold; color: #fff; text-shadow: 0 3px 8px rgba(0,0,0,.6); pointer-events: none; }
-    #uitleg { position: fixed; bottom: 16px; width: 100%; text-align: center; font-size: 18px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.5); }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #111; font-family: sans-serif; }
+    canvas { display: block; width: 100%; height: 100%; outline: none; }
+    #info { position: fixed; top: 16px; left: 16px; font-size: 22px; font-weight: bold; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.6); }
+    #melding { position: fixed; top: 40%; width: 100%; text-align: center; font-size: 56px; font-weight: bold; color: #fff; text-shadow: 0 3px 8px rgba(0,0,0,.7); pointer-events: none; }
+    #uitleg { position: fixed; bottom: 16px; width: 100%; text-align: center; font-size: 18px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.6); }
   </style>
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
 </head>
 <body>
   <canvas id="game"></canvas>
   <div id="info">Gaten: 0 &nbsp; Gevallen: 0</div>
   <div id="melding"></div>
   <div id="uitleg">Kantel de tafel met de pijltjes of W A S D</div>
-  <script type="module">
-    // PixiJS tekent alleen in 2D. De 3D rekenen we zelf uit: elk punt in de
-    // wereld wordt omgerekend naar een plek op het scherm (perspectief).
-    import { Application, Graphics } from 'https://cdn.jsdelivr.net/npm/pixi.js@8.6.6/dist/pixi.min.mjs';
-
+  <script>
+    // Babylon.js: echte 3D met glimmende materialen, zachte schaduwen en gloed
     const canvas = document.getElementById('game');
     const infoTekst = document.getElementById('info');
     const meldingTekst = document.getElementById('melding');
@@ -37,74 +35,94 @@
     const WRIJVING = 0.6;
     const GROND_Y = -12;
 
-    const app = new Application();
-    await app.init({ canvas, resizeTo: window, background: 0x87ceeb, antialias: true });
-    app.stage.sortableChildren = true;
+    const engine = new BABYLON.Engine(canvas, true);
+    const scene = new BABYLON.Scene(engine);
+    window.addEventListener('resize', () => engine.resize());
 
-    // Tekenlagen
-    const achtergrond = new Graphics(); achtergrond.zIndex = 0;
-    const tafelTekening = new Graphics(); tafelTekening.zIndex = 2;
-    const gatMasker = new Graphics(); gatMasker.zIndex = 3;
-    const balTekening = new Graphics(); balTekening.zIndex = 4;
-    app.stage.addChild(achtergrond, tafelTekening, gatMasker, balTekening);
+    // Camera kijkt schuin van voren op de tafel (niet zelf te draaien)
+    const camera = new BABYLON.ArcRotateCamera('camera', -Math.PI / 2, 0.8, 19, new BABYLON.Vector3(0, -0.5, 0), scene);
+    camera.fov = 0.8;
 
-    // ---------- 3D rekenwerk ----------
+    // Omgeving: lucht en weerspiegelingen
+    const omgeving = BABYLON.CubeTexture.CreateFromPrefilteredData('https://assets.babylonjs.com/environments/environmentSpecular.env', scene);
+    scene.environmentTexture = omgeving;
+    scene.environmentIntensity = 0.9;
+    scene.createDefaultSkybox(omgeving, true, 600, 0.25);
 
-    // Camera staat schuin boven de tafel en kijkt onder 45 graden naar beneden
-    const CAMERA = { x: 0, y: 13, z: 13 };
-    const CAMERA_HOEK = Math.PI / 4;
-    const BEELDHOEK = 50 * Math.PI / 180;
+    // Zon met zachte schaduwen
+    const zon = new BABYLON.DirectionalLight('zon', new BABYLON.Vector3(-0.4, -1, 0.35), scene);
+    zon.position = new BABYLON.Vector3(8, 25, -8);
+    zon.intensity = 2.5;
+    const schaduw = new BABYLON.ShadowGenerator(2048, zon);
+    schaduw.usePercentageCloserFiltering = true;
+    schaduw.filteringQuality = BABYLON.ShadowGenerator.QUALITY_HIGH;
+    schaduw.bias = 0.0005;
 
-    // Punt in de wereld -> punt op het scherm (met diepte, voor de grootte)
-    function projecteer(p) {
-      const dx = p.x - CAMERA.x, dy = p.y - CAMERA.y, dz = p.z - CAMERA.z;
-      const c = Math.cos(CAMERA_HOEK), s = Math.sin(CAMERA_HOEK);
-      const y = dy * c - dz * s;
-      const diepte = -(dy * s + dz * c);
-      const f = app.screen.height / 2 / Math.tan(BEELDHOEK / 2);
-      return {
-        x: app.screen.width / 2 + f * dx / diepte,
-        y: app.screen.height / 2 - f * y / diepte,
-        diepte,
-        schaal: f / diepte,
-      };
-    }
+    // Gras ver onder de tafel
+    const grond = BABYLON.MeshBuilder.CreateGround('grond', { width: 300, height: 300 }, scene);
+    grond.position.y = GROND_Y;
+    const grasMat = new BABYLON.PBRMaterial('gras', scene);
+    grasMat.albedoTexture = new BABYLON.Texture('https://assets.babylonjs.com/textures/grass.png', scene);
+    grasMat.albedoTexture.uScale = grasMat.albedoTexture.vScale = 40;
+    grasMat.metallic = 0; grasMat.roughness = 1;
+    grond.material = grasMat;
+    grond.receiveShadows = true;
 
-    // Draaien om de x-as en om de z-as
-    function draaiX(p, h) {
-      const c = Math.cos(h), s = Math.sin(h);
-      return { x: p.x, y: p.y * c - p.z * s, z: p.y * s + p.z * c };
-    }
-    function draaiZ(p, h) {
-      const c = Math.cos(h), s = Math.sin(h);
-      return { x: p.x * c - p.y * s, y: p.x * s + p.y * c, z: p.z };
-    }
-    // Punt op de tafel -> punt in de wereld (de tafel is gekanteld)
-    function tafelNaarWereld(p) { return draaiX(draaiZ(p, kantelZ), kantelX); }
-    // Andersom: wereld -> tafel
-    function wereldNaarTafel(p) { return draaiZ(draaiX(p, -kantelX), -kantelZ); }
+    // De tafel: alles wat eraan vastzit kantelt mee
+    const tafel = new BABYLON.TransformNode('tafel', scene);
+    const blad = BABYLON.MeshBuilder.CreateBox('blad', { width: TAFEL_HALF * 2, depth: TAFEL_HALF * 2, height: TAFEL_DIKTE }, scene);
+    blad.parent = tafel;
+    blad.position.y = -TAFEL_DIKTE / 2;
+    const houtMat = new BABYLON.PBRMaterial('hout', scene);
+    houtMat.albedoTexture = new BABYLON.Texture('https://assets.babylonjs.com/textures/wood.jpg', scene);
+    houtMat.metallic = 0; houtMat.roughness = 0.35;
+    houtMat.clearCoat.isEnabled = true;     // gelakt hout dat een beetje glanst
+    houtMat.clearCoat.intensity = 0.6;
+    blad.material = houtMat;
+    blad.receiveShadows = true;
+    schaduw.addShadowCaster(blad);
 
-    // Helper: een rij 3D-punten als vlak tekenen
-    function vlak(g, punten3d, kleur, alpha = 1) {
-      const punten = punten3d.map(projecteer).flatMap(p => [p.x, p.y]);
-      g.poly(punten).fill({ color: kleur, alpha });
-    }
-    // Een cirkel die plat op de tafel ligt
-    function tafelCirkel(cx, cz, r, hoogte) {
-      const punten = [];
-      for (let i = 0; i < 32; i++) {
-        const h = i / 32 * Math.PI * 2;
-        punten.push(tafelNaarWereld({ x: cx + Math.cos(h) * r, y: hoogte, z: cz + Math.sin(h) * r }));
-      }
-      return punten;
-    }
+    // Het gat: zwarte schijf met een gloeiende gouden ring eromheen
+    const gat = BABYLON.MeshBuilder.CreateDisc('gat', { radius: GAT_STRAAL, tessellation: 48 }, scene);
+    gat.parent = tafel;
+    gat.rotation.x = Math.PI / 2;
+    gat.position.y = 0.005;
+    const zwart = new BABYLON.StandardMaterial('zwart', scene);
+    zwart.diffuseColor = BABYLON.Color3.Black(); zwart.specularColor = BABYLON.Color3.Black(); zwart.disableLighting = true;
+    gat.material = zwart;
+    const ring = BABYLON.MeshBuilder.CreateTorus('ring', { diameter: GAT_STRAAL * 2 + 0.08, thickness: 0.08, tessellation: 48 }, scene);
+    ring.parent = tafel;
+    const ringMat = new BABYLON.PBRMaterial('ringMat', scene);
+    ringMat.albedoColor = new BABYLON.Color3(1, 0.75, 0.2);
+    ringMat.emissiveColor = new BABYLON.Color3(1, 0.6, 0.1);
+    ringMat.metallic = 1; ringMat.roughness = 0.2;
+    ring.material = ringMat;
 
-    // ---------- Spelstatus ----------
+    // De bal: glimmend chroom dat de lucht weerspiegelt
+    const bal = BABYLON.MeshBuilder.CreateSphere('bal', { diameter: BAL_STRAAL * 2, segments: 32 }, scene);
+    const balMat = new BABYLON.PBRMaterial('balMat', scene);
+    balMat.albedoColor = new BABYLON.Color3(0.95, 0.95, 0.97);
+    balMat.metallic = 1; balMat.roughness = 0.08;
+    bal.material = balMat;
+    schaduw.addShadowCaster(bal);
 
+    // Mooie nabewerking: gloed, zachte randen, kleurcorrectie
+    const gloed = new BABYLON.GlowLayer('gloed', scene);
+    gloed.intensity = 0.8;
+    const beeld = new BABYLON.DefaultRenderingPipeline('beeld', true, scene, [camera]);
+    beeld.samples = 4;
+    beeld.fxaaEnabled = true;
+    beeld.bloomEnabled = true;
+    beeld.bloomThreshold = 0.8;
+    beeld.bloomWeight = 0.3;
+    beeld.imageProcessing.toneMappingEnabled = true;
+    beeld.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
+    beeld.imageProcessing.vignetteEnabled = true;
+    beeld.imageProcessing.vignetteWeight = 1.5;
+
+    // Spelstatus
     let toestand = 'rollen';   // 'rollen', 'inGat' of 'vallen'
-    const bal = { x: 0, y: BAL_STRAAL, z: 0, vx: 0, vz: 0 };   // op de tafel
-    const valBal = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 };  // in de wereld, tijdens het vallen
-    const gat = { x: 0, z: 0 };
+    const balSnelheid = new BABYLON.Vector3();
     let wachttijd = 0;
     let gaten = 0, gevallen = 0;
     let kantelX = 0, kantelZ = 0;
@@ -116,13 +134,16 @@
     function zetGatNeer() {
       // gat ergens op de tafel, niet te dicht bij de bal
       do {
-        gat.x = (Math.random() * 2 - 1) * (TAFEL_HALF - 1.2);
-        gat.z = (Math.random() * 2 - 1) * (TAFEL_HALF - 1.2);
-      } while (Math.hypot(gat.x - bal.x, gat.z - bal.z) < 4);
+        gat.position.x = (Math.random() * 2 - 1) * (TAFEL_HALF - 1.2);
+        gat.position.z = (Math.random() * 2 - 1) * (TAFEL_HALF - 1.2);
+      } while (Math.hypot(gat.position.x - bal.position.x, gat.position.z - bal.position.z) < 4);
+      ring.position.set(gat.position.x, 0, gat.position.z);
     }
 
     function nieuweBal() {
-      Object.assign(bal, { x: 0, y: BAL_STRAAL, z: 0, vx: 0, vz: 0 });
+      bal.parent = tafel;
+      bal.position.set(0, BAL_STRAAL, 0);
+      balSnelheid.set(0, 0, 0);
       toestand = 'rollen';
       meldingTekst.textContent = '';
     }
@@ -141,24 +162,25 @@
       if (links) kantelZ += KANTEL_SNELHEID * dt;
       else if (rechts) kantelZ -= KANTEL_SNELHEID * dt;
       else kantelZ *= Math.pow(0.1, dt);
-      if (op) kantelX -= KANTEL_SNELHEID * dt;
-      else if (neer) kantelX += KANTEL_SNELHEID * dt;
+      if (op) kantelX += KANTEL_SNELHEID * dt;
+      else if (neer) kantelX -= KANTEL_SNELHEID * dt;
       else kantelX *= Math.pow(0.1, dt);
-      kantelX = Math.max(-MAX_KANTEL, Math.min(MAX_KANTEL, kantelX));
-      kantelZ = Math.max(-MAX_KANTEL, Math.min(MAX_KANTEL, kantelZ));
+      kantelX = BABYLON.Scalar.Clamp(kantelX, -MAX_KANTEL, MAX_KANTEL);
+      kantelZ = BABYLON.Scalar.Clamp(kantelZ, -MAX_KANTEL, MAX_KANTEL);
+      tafel.rotation.set(kantelX, 0, kantelZ);
+      const tafelMatrix = tafel.computeWorldMatrix(true);
 
       if (toestand === 'rollen') {
         // Zwaartekracht bekeken vanuit de schuine tafel: dat deel trekt de bal opzij
-        const zwaarte = wereldNaarTafel({ x: 0, y: -ZWAARTEKRACHT, z: 0 });
-        bal.vx += zwaarte.x * (5 / 7) * dt;
-        bal.vz += zwaarte.z * (5 / 7) * dt;
-        const rem = Math.pow(1 - WRIJVING, dt);
-        bal.vx *= rem; bal.vz *= rem;
-        bal.x += bal.vx * dt;
-        bal.z += bal.vz * dt;
+        const zwaarte = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, -ZWAARTEKRACHT, 0), tafelMatrix.clone().invert());
+        balSnelheid.x += zwaarte.x * (5 / 7) * dt;
+        balSnelheid.z += zwaarte.z * (5 / 7) * dt;
+        balSnelheid.scaleInPlace(Math.pow(1 - WRIJVING, dt));
+        bal.position.x += balSnelheid.x * dt;
+        bal.position.z += balSnelheid.z * dt;
 
         // In het gat?
-        if (Math.hypot(bal.x - gat.x, bal.z - gat.z) < GAT_STRAAL - 0.15) {
+        if (Math.hypot(bal.position.x - gat.position.x, bal.position.z - gat.position.z) < GAT_STRAAL - 0.15) {
           toestand = 'inGat';
           wachttijd = 1.5;
           gaten++;
@@ -166,115 +188,46 @@
           meldingTekst.textContent = 'Raak!';
         }
         // Van de tafel af?
-        else if (Math.abs(bal.x) > TAFEL_HALF || Math.abs(bal.z) > TAFEL_HALF) {
+        else if (Math.abs(bal.position.x) > TAFEL_HALF || Math.abs(bal.position.z) > TAFEL_HALF) {
           toestand = 'vallen';
           wachttijd = 2;
-          // vanaf nu valt de bal los van de tafel, met dezelfde vaart
-          const pos = tafelNaarWereld(bal);
-          const v = tafelNaarWereld({ x: bal.vx, y: 0, z: bal.vz });
-          Object.assign(valBal, { x: pos.x, y: pos.y, z: pos.z, vx: v.x, vy: v.y, vz: v.z });
+          // bal loskoppelen van de tafel en met dezelfde vaart laten vallen
+          bal.computeWorldMatrix(true);
+          const wereldPos = bal.getAbsolutePosition().clone();
+          const v = BABYLON.Vector3.TransformNormal(balSnelheid, tafelMatrix);
+          bal.parent = null;
+          bal.position.copyFrom(wereldPos);
+          balSnelheid.copyFrom(v);
           gevallen++;
           toonInfo();
           meldingTekst.textContent = 'Eraf gevallen!';
         }
       } else if (toestand === 'inGat') {
         // bal glijdt naar het midden van het gat en zakt naar beneden
-        bal.x += (gat.x - bal.x) * Math.min(1, 10 * dt);
-        bal.z += (gat.z - bal.z) * Math.min(1, 10 * dt);
-        bal.y -= 3 * dt;
+        const f = Math.min(1, 10 * dt);
+        bal.position.x += (gat.position.x - bal.position.x) * f;
+        bal.position.z += (gat.position.z - bal.position.z) * f;
+        bal.position.y -= 3 * dt;
         wachttijd -= dt;
         if (wachttijd <= 0) { nieuweBal(); zetGatNeer(); }
       } else if (toestand === 'vallen') {
-        valBal.vy -= ZWAARTEKRACHT * dt;
-        valBal.x += valBal.vx * dt;
-        valBal.y += valBal.vy * dt;
-        valBal.z += valBal.vz * dt;
-        if (valBal.y < GROND_Y + BAL_STRAAL) {
-          valBal.y = GROND_Y + BAL_STRAAL;
-          valBal.vy *= -0.4;
-          valBal.vx *= 0.8; valBal.vz *= 0.8;
+        balSnelheid.y -= ZWAARTEKRACHT * dt;
+        bal.position.addInPlace(balSnelheid.scale(dt));
+        if (bal.position.y < GROND_Y + BAL_STRAAL) {
+          bal.position.y = GROND_Y + BAL_STRAAL;
+          balSnelheid.y *= -0.4;
+          balSnelheid.x *= 0.8; balSnelheid.z *= 0.8;
         }
         wachttijd -= dt;
         if (wachttijd <= 0) nieuweBal();
       }
     }
 
-    // ---------- Tekenen ----------
-
-    function tekenAchtergrond() {
-      achtergrond.clear();
-      // gras vanaf de horizon naar beneden
-      const horizon = projecteer({ x: 0, y: GROND_Y, z: -2000 }).y;
-      achtergrond.rect(0, horizon, app.screen.width, app.screen.height - horizon).fill({ color: 0x4f9a3a });
-    }
-
-    function tekenTafel() {
-      const g = tafelTekening;
-      g.clear();
-      const H = TAFEL_HALF, D = TAFEL_DIKTE;
-      const hoek = (x, y, z) => tafelNaarWereld({ x, y, z });
-
-      // De vier zijkanten, de verste eerst zodat de dichtste eroverheen komt
-      const zijkanten = [
-        { punten: [hoek(-H, 0, H), hoek(H, 0, H), hoek(H, -D, H), hoek(-H, -D, H)], kleur: 0x8a5a2b },
-        { punten: [hoek(H, 0, -H), hoek(-H, 0, -H), hoek(-H, -D, -H), hoek(H, -D, -H)], kleur: 0x8a5a2b },
-        { punten: [hoek(-H, 0, -H), hoek(-H, 0, H), hoek(-H, -D, H), hoek(-H, -D, -H)], kleur: 0x7a4e24 },
-        { punten: [hoek(H, 0, H), hoek(H, 0, -H), hoek(H, -D, -H), hoek(H, -D, H)], kleur: 0x7a4e24 },
-      ];
-      zijkanten.forEach(z => z.diepte = z.punten.reduce((s, p) => s + projecteer(p).diepte, 0));
-      zijkanten.sort((a, b) => b.diepte - a.diepte);
-      zijkanten.forEach(z => vlak(g, z.punten, z.kleur));
-
-      // Bovenblad, iets lichter als hij naar de zon toe kantelt
-      const licht = 0.9 + kantelZ * 0.4 - kantelX * 0.4;
-      const r = Math.min(255, Math.round(0xb5 * licht)), gr = Math.min(255, Math.round(0x79 * licht)), b = Math.min(255, Math.round(0x3f * licht));
-      vlak(g, [hoek(-H, 0, -H), hoek(H, 0, -H), hoek(H, 0, H), hoek(-H, 0, H)], (r << 16) | (gr << 8) | b);
-
-      // Houtnerf: een paar lijnen over het blad
-      for (let i = -4; i <= 4; i += 2) {
-        const a = projecteer(hoek(-H, 0.001, i)), e = projecteer(hoek(H, 0.001, i));
-        g.moveTo(a.x, a.y).lineTo(e.x, e.y).stroke({ width: 1, color: 0x000000, alpha: 0.08 });
-      }
-
-      // Het gat
-      vlak(g, tafelCirkel(gat.x, gat.z, GAT_STRAAL, 0.01), 0x111111);
-
-      // Schaduw van de bal op het blad
-      if (toestand === 'rollen') {
-        vlak(g, tafelCirkel(bal.x + 0.15, bal.z + 0.1, BAL_STRAAL * 0.9, 0.02), 0x000000, 0.3);
-      }
-
-      // Masker in de vorm van het gat: daarin verdwijnt de bal
-      gatMasker.clear();
-      vlak(gatMasker, tafelCirkel(gat.x, gat.z, GAT_STRAAL, 0.01), 0x111111);
-    }
-
-    function tekenBal() {
-      const g = balTekening;
-      g.clear();
-      const pos = toestand === 'vallen' ? valBal : tafelNaarWereld(bal);
-      const p = projecteer(pos);
-      const r = BAL_STRAAL * p.schaal;
-      g.circle(p.x, p.y, r).fill({ color: 0xc62828 });
-      g.circle(p.x - r * 0.1, p.y - r * 0.1, r * 0.85).fill({ color: 0xe53935 });
-      g.circle(p.x - r * 0.35, p.y - r * 0.35, r * 0.25).fill({ color: 0xffffff, alpha: 0.7 });
-
-      // In het gat: alleen het stuk binnen het gat is zichtbaar
-      g.mask = toestand === 'inGat' ? gatMasker : null;
-      // Valt hij aan de achterkant naar beneden, dan achter de tafel tekenen
-      const midden = projecteer({ x: 0, y: 0, z: 0 });
-      g.zIndex = (toestand === 'vallen' && pos.y < -TAFEL_DIKTE && p.diepte > midden.diepte) ? 1 : 4;
-    }
-
     nieuweBal();
     zetGatNeer();
 
-    app.ticker.add(ticker => {
-      update(Math.min(ticker.deltaMS / 1000, 0.05));
-      tekenAchtergrond();
-      tekenTafel();
-      tekenBal();
-    });
+    scene.onBeforeRenderObservable.add(() => update(Math.min(engine.getDeltaTime() / 1000, 0.05)));
+    engine.runRenderLoop(() => scene.render());
   </script>
   <script src="../livereload.js"></script>
 </body>
