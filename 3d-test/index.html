@@ -53,7 +53,7 @@
   </div>
   <div id="titel">TABLE<br>TILTER</div>
   <div id="melding"></div>
-  <div id="uitleg">ARROWS / WASD / DRAG WITH YOUR FINGER</div>
+  <div id="uitleg"></div>
   <div id="crt"></div>
   <a id="xlink" href="https://x.com/jankeesvw" target="_blank" rel="noopener">@jankeesvw</a>
   <script>
@@ -1040,7 +1040,7 @@
     function startSpel() {
       level = 1; score = 0; levens = 3;
       titel.style.display = 'none';
-      uitleg.textContent = 'ARROWS / WASD / DRAG WITH YOUR FINGER';
+      uitleg.textContent = '';
       meldingTekst.classList.remove('knipper');
       bouwLevel();
       nieuweBal();
