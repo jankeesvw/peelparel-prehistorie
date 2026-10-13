@@ -49,7 +49,29 @@
     const omgeving = BABYLON.CubeTexture.CreateFromPrefilteredData('https://assets.babylonjs.com/environments/environmentSpecular.env', scene);
     scene.environmentTexture = omgeving;
     scene.environmentIntensity = 0.9;
-    scene.createDefaultSkybox(omgeving, true, 600, 0.25);
+    const standaardLucht = scene.createDefaultSkybox(omgeving, true, 600, 0.25);
+
+    // Tweede lucht waarvan we het plaatje per thema wisselen
+    const LUCHTEN = 'https://playground.babylonjs.com/textures/';
+    const luchtCache = {};
+    function luchtPlaatje(naam) {
+      if (!luchtCache[naam]) {
+        luchtCache[naam] = naam === 'Space/space'
+          ? new BABYLON.CubeTexture(LUCHTEN + naam, scene, ['_right.jpg', '_up.jpg', '_front.jpg', '_left.jpg', '_down.jpg', '_back.jpg'])
+          : new BABYLON.CubeTexture(LUCHTEN + naam, scene);
+        luchtCache[naam].coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+      }
+      return luchtCache[naam];
+    }
+    const themaLucht = BABYLON.MeshBuilder.CreateBox('themaLucht', { size: 600 }, scene);
+    themaLucht.infiniteDistance = true;
+    const themaLuchtMat = new BABYLON.StandardMaterial('themaLuchtMat', scene);
+    themaLuchtMat.backFaceCulling = false;
+    themaLuchtMat.disableLighting = true;
+    themaLuchtMat.diffuseColor = BABYLON.Color3.Black();
+    themaLuchtMat.specularColor = BABYLON.Color3.Black();
+    themaLucht.material = themaLuchtMat;
+    themaLucht.setEnabled(false);
 
     // Zon met zachte schaduwen
     const zon = new BABYLON.DirectionalLight('zon', new BABYLON.Vector3(-0.4, -1, 0.35), scene);
@@ -234,27 +256,35 @@
     const THEMAS = [
       { naam: 'Biljart',   tafel: { hout: 'wood.jpg', ruw: 0.35, lak: true },
         bal: { ontwerp: { soort: 'biljart', basis: '#f4f1e8', kleur: '#f2a900', nummer: '9' }, ruw: 0.15, lak: true },
+        achtergrond: { grond: { hout: 'grass.png', ruw: 1 } },
         blok: { kleur: '#8c1f19', ruw: 0.3, lak: true } },
       { naam: 'Dobbelsteen', tafel: { kleur: '#1b5e20', ruw: 1 },
         bal: { d20: true },
+        achtergrond: { lucht: 'skybox2', grond: { kleur: '#1a1a22', ruw: 0.4, lak: true } },
         blok: { kleur: '#ffffff', ruw: 0.2, lak: true } },
       { naam: 'Woestijn',  tafel: { hout: 'sand.jpg', herhaal: 2, ruw: 1 },
         bal: { ontwerp: { soort: 'stippen', basis: '#c62828', kleur: '#ffffff' }, ruw: 0.9 },
+        achtergrond: { grond: { hout: 'sand.jpg', herhaal: 30, ruw: 1 } },
         blok: { hout: 'rock.png', ruw: 0.9 } },
       { naam: 'Ruimteschip', tafel: { hout: 'floor.png', herhaal: 2, metaal: 0.9, ruw: 0.25 },
         bal: { ontwerp: { soort: 'lijnen', basis: '#d8dce0', kleur: '#30343a' }, metaal: 1, ruw: 0.05 },
+        achtergrond: { lucht: 'Space/space', grond: 'geen' },
         blok: { kleur: '#ffc83d', metaal: 1, ruw: 0.15 } },
       { naam: 'Vulkaan',   tafel: { hout: 'lava/lavatile.jpg', herhaal: 2, ruw: 0.6, gloei: true },
         bal: { ontwerp: { soort: 'stippen', basis: '#151515', kleur: '#ff7a00' }, ruw: 0.1, lak: true },
+        achtergrond: { lucht: 'skybox3', grond: { hout: 'lava/lavatile.jpg', herhaal: 30, ruw: 0.7, gloei: true } },
         blok: { hout: 'rock.png', kleur: '#555555', ruw: 0.8 } },
       { naam: 'Voetbal',   tafel: { hout: 'grass.jpg', herhaal: 2, ruw: 1 },
         bal: { ontwerp: { soort: 'voetbal', basis: '#ffffff' }, ruw: 0.5 },
+        achtergrond: { lucht: 'skybox', grond: { hout: 'grass.jpg', herhaal: 40, ruw: 1 } },
         blok: { hout: 'crate.png', ruw: 0.8 } },
       { naam: 'Strand',    tafel: { hout: 'bricktile.jpg', herhaal: 2, ruw: 0.7 },
         bal: { ontwerp: { soort: 'strandbal', basis: '#ffffff', kleuren: ['#e53935', '#ffffff', '#1e88e5', '#ffffff', '#fdd835', '#ffffff'] }, ruw: 0.2, lak: true },
+        achtergrond: { lucht: 'TropicalSunnyDay', grond: { hout: 'sand.jpg', herhaal: 30, ruw: 1 } },
         blok: { kleur: '#ff8a65', ruw: 0.6 } },
       { naam: 'Retro',     tafel: { hout: 'ground.jpg', herhaal: 2, ruw: 0.9 },
         bal: { plaatje: 'amiga.jpg', ruw: 0.3, lak: true },
+        achtergrond: { lucht: 'skybox4', grond: { kleur: '#e8eef4', ruw: 0.8 } },
         blok: { kleur: '#3949ab', ruw: 0.2, metaal: 0.5 } },
     ];
 
@@ -263,6 +293,16 @@
       thema = THEMAS[(level - 1) % THEMAS.length];
       const t = thema.tafel;
       stelIn(houtMat, { ...t, plaatje: t.hout ? textuur(t.hout, t.herhaal) : null });
+      // Achtergrond: lucht en grond
+      const a = thema.achtergrond;
+      standaardLucht.setEnabled(!a.lucht);
+      themaLucht.setEnabled(!!a.lucht);
+      if (a.lucht) themaLuchtMat.reflectionTexture = luchtPlaatje(a.lucht);
+      grond.isVisible = a.grond !== 'geen';   // onzichtbaar, maar de bal stuitert er nog wel op
+      if (a.grond && a.grond !== 'geen') {
+        stelIn(grasMat, { ...a.grond, plaatje: a.grond.hout ? textuur(a.grond.hout, a.grond.herhaal || 40) : null });
+      }
+
       const b = thema.bal;
       maxKantel = b.d20 ? 0.45 : MAX_KANTEL;   // een D20 heeft een schuinere tafel nodig om om te rollen
       bal.isVisible = !b.d20;           // bij de D20 is de bal zelf onzichtbaar
