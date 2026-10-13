@@ -753,6 +753,7 @@
       speler.setEnabled(true);
       speler.setParent(null);
       levelStart = performance.now();
+      pijlTijd = PIJL_DUUR;
       speler.position.set(0, 1.2, 0);
       speler.rotationQuaternion = vorm
         ? BABYLON.Quaternion.FromEulerAngles(Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3)
@@ -889,6 +890,33 @@
       meldingTekst.classList.add(willekeurig(TEKST_ANIMATIES));
     }
 
+    // ---------- Pijl die aan het begin van een level 2 seconden naar het goede gat wijst ----------
+    const PIJL_DUUR = 2;
+    const pijlMat = new BABYLON.StandardMaterial('pijlMat', scene);
+    pijlMat.diffuseColor = new BABYLON.Color3(0.2, 1, 0.3);
+    pijlMat.emissiveColor = new BABYLON.Color3(0.1, 0.8, 0.2);   // gloeit een beetje
+    const pijlPunt = BABYLON.MeshBuilder.CreateCylinder('pijlPunt', { height: 0.6, diameterTop: 0.7, diameterBottom: 0, tessellation: 24 }, scene);
+    pijlPunt.position.y = 0.3;   // de punt zit precies op 0
+    const pijlSteel = BABYLON.MeshBuilder.CreateCylinder('pijlSteel', { height: 0.9, diameter: 0.25, tessellation: 16 }, scene);
+    pijlSteel.position.y = 1.05;
+    const pijl = BABYLON.Mesh.MergeMeshes([pijlPunt, pijlSteel], true);
+    pijl.material = pijlMat;
+    pijl.setEnabled(false);
+    schaduw.addShadowCaster(pijl);
+    let pijlTijd = 0;
+
+    function updatePijl(dt) {
+      pijlTijd -= dt;
+      pijl.setEnabled(pijlTijd > 0 && toestand === 'rollen');
+      if (pijlTijd <= 0) return;
+      const boven = gat.getAbsolutePosition();
+      const stuiter = Math.abs(Math.sin(performance.now() / 1000 * 6)) * 0.5;
+      pijl.position.set(boven.x, boven.y + 0.4 + stuiter, boven.z);
+      pijl.rotation.y += dt * 3;
+      // even opploppen aan het begin en wegkrimpen aan het einde
+      pijl.scaling.setAll(Math.min(1, (PIJL_DUUR - pijlTijd) * 5, pijlTijd * 3));
+    }
+
     // ---------- Arcadegeluidjes, gemaakt met piepjes ----------
     let geluid = null;
     function piep(tonen, duur = 0.08, soort = 'square', glijNaar = null) {
@@ -1023,6 +1051,8 @@
       tafel.position.y = hoogte;
       tafel.scaling.setAll(schaal);
 
+      updatePijl(dt);
+
       if (toestand === 'rollen') {
         // waar ligt de bal, bekeken vanaf de tafel?
         const terug = tafel.computeWorldMatrix(true).clone().invert();
@@ -1068,6 +1098,8 @@
         speler.position.x += (doelGat.x - speler.position.x) * f;
         speler.position.z += (doelGat.z - speler.position.z) * f;
         speler.position.y -= 3 * dt;
+        // zodra hij in het gat verdwenen is, niet meer laten zien onder de tafel
+        if (speler.position.y < -0.3) speler.setEnabled(false);
         wachttijd -= dt;
         if (wachttijd <= 0) {
           if (toestand === 'inGat') { level++; bouwLevel(); nieuweBal(); }
