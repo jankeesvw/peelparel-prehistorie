@@ -15,7 +15,7 @@
 </head>
 <body>
   <canvas id="game"></canvas>
-  <div id="info">Gaten: 0 &nbsp; Gevallen: 0</div>
+  <div id="info">Level 1 &nbsp; Gevallen: 0</div>
   <div id="melding"></div>
   <div id="uitleg">Kantel de tafel met de pijltjes of W A S D</div>
   <script>
@@ -120,24 +120,90 @@
     beeld.imageProcessing.vignetteEnabled = true;
     beeld.imageProcessing.vignetteWeight = 1.5;
 
+    // Materiaal voor de blokken die in de weg liggen
+    const blokMat = new BABYLON.PBRMaterial('blokMat', scene);
+    blokMat.albedoColor = new BABYLON.Color3(0.55, 0.12, 0.1);
+    blokMat.metallic = 0.2; blokMat.roughness = 0.3;
+    blokMat.clearCoat.isEnabled = true;
+
     // Spelstatus
     let toestand = 'rollen';   // 'rollen', 'inGat' of 'vallen'
     const balSnelheid = new BABYLON.Vector3();
     let wachttijd = 0;
-    let gaten = 0, gevallen = 0;
+    let level = 1, gevallen = 0;
     let kantelX = 0, kantelZ = 0;
+    let tafelHalf = TAFEL_HALF;   // wordt kleiner per level
+    let gatStraal = GAT_STRAAL;   // wordt kleiner per level
+    let blokken = [];             // { mesh, x, z, halfB, halfD } op de tafel
 
     function toonInfo() {
-      infoTekst.innerHTML = `Gaten: ${gaten} &nbsp; Gevallen: ${gevallen}`;
+      infoTekst.innerHTML = `Level ${level} &nbsp; Gevallen: ${gevallen}`;
     }
 
     function zetGatNeer() {
-      // gat ergens op de tafel, niet te dicht bij de bal
+      // gat ergens op de tafel, niet te dicht bij het begin van de bal
+      const marge = tafelHalf - 0.9;
       do {
-        gat.position.x = (Math.random() * 2 - 1) * (TAFEL_HALF - 1.2);
-        gat.position.z = (Math.random() * 2 - 1) * (TAFEL_HALF - 1.2);
-      } while (Math.hypot(gat.position.x - bal.position.x, gat.position.z - bal.position.z) < 4);
+        gat.position.x = (Math.random() * 2 - 1) * marge;
+        gat.position.z = (Math.random() * 2 - 1) * marge;
+      } while (Math.hypot(gat.position.x, gat.position.z) < tafelHalf * 0.7);
       ring.position.set(gat.position.x, 0, gat.position.z);
+    }
+
+    // Elk level iets moeilijker: kleinere tafel, kleiner gat en meer blokken in de weg
+    function bouwLevel() {
+      tafelHalf = Math.max(3, TAFEL_HALF - (level - 1) * 0.2);
+      gatStraal = Math.max(0.5, GAT_STRAAL + 0.1 - (level - 1) * 0.03);
+      blad.scaling.x = blad.scaling.z = tafelHalf / TAFEL_HALF;
+      gat.scaling.x = gat.scaling.y = gatStraal / GAT_STRAAL;
+      ring.scaling.x = ring.scaling.z = gatStraal / GAT_STRAAL;
+      zetGatNeer();
+
+      // oude blokken weg, nieuwe neerzetten (vanaf level 2)
+      for (const b of blokken) { schaduw.removeShadowCaster(b.mesh); b.mesh.dispose(); }
+      blokken = [];
+      const aantal = Math.min(10, level - 1);
+      for (let i = 0; i < aantal; i++) {
+        const liggend = Math.random() < 0.5;
+        const halfB = liggend ? 0.9 : 0.25, halfD = liggend ? 0.25 : 0.9;
+        for (let poging = 0; poging < 100; poging++) {
+          const x = (Math.random() * 2 - 1) * (tafelHalf - halfB);
+          const z = (Math.random() * 2 - 1) * (tafelHalf - halfD);
+          const vrij = (px, pz, afstand) => Math.abs(x - px) > halfB + afstand || Math.abs(z - pz) > halfD + afstand;
+          if (!vrij(0, 0, 1.2)) continue;                                        // niet op de startplek
+          if (!vrij(gat.position.x, gat.position.z, gatStraal + 1)) continue;     // gat bereikbaar houden
+          if (!blokken.every(b => Math.abs(x - b.x) > halfB + b.halfB + 0.9 || Math.abs(z - b.z) > halfD + b.halfD + 0.9)) continue;
+          const mesh = BABYLON.MeshBuilder.CreateBox('blok', { width: halfB * 2, depth: halfD * 2, height: 0.5 }, scene);
+          mesh.parent = tafel;
+          mesh.position.set(x, 0.25, z);
+          mesh.material = blokMat;
+          mesh.receiveShadows = true;
+          schaduw.addShadowCaster(mesh);
+          blokken.push({ mesh, x, z, halfB, halfD });
+          break;
+        }
+      }
+      toonInfo();
+    }
+
+    // Bal tegen een blok: terugduwen en laten stuiteren
+    function botsMetBlokken() {
+      for (const b of blokken) {
+        const dichtstX = BABYLON.Scalar.Clamp(bal.position.x, b.x - b.halfB, b.x + b.halfB);
+        const dichtstZ = BABYLON.Scalar.Clamp(bal.position.z, b.z - b.halfD, b.z + b.halfD);
+        const dx = bal.position.x - dichtstX, dz = bal.position.z - dichtstZ;
+        const afstand = Math.hypot(dx, dz);
+        if (afstand < BAL_STRAAL && afstand > 0) {
+          const nx = dx / afstand, nz = dz / afstand;
+          bal.position.x = dichtstX + nx * BAL_STRAAL;
+          bal.position.z = dichtstZ + nz * BAL_STRAAL;
+          const tegen = balSnelheid.x * nx + balSnelheid.z * nz;
+          if (tegen < 0) {
+            balSnelheid.x -= 1.6 * tegen * nx;
+            balSnelheid.z -= 1.6 * tegen * nz;
+          }
+        }
+      }
     }
 
     function nieuweBal() {
@@ -178,17 +244,16 @@
         balSnelheid.scaleInPlace(Math.pow(1 - WRIJVING, dt));
         bal.position.x += balSnelheid.x * dt;
         bal.position.z += balSnelheid.z * dt;
+        botsMetBlokken();
 
         // In het gat?
-        if (Math.hypot(bal.position.x - gat.position.x, bal.position.z - gat.position.z) < GAT_STRAAL - 0.15) {
+        if (Math.hypot(bal.position.x - gat.position.x, bal.position.z - gat.position.z) < gatStraal - 0.15) {
           toestand = 'inGat';
           wachttijd = 1.5;
-          gaten++;
-          toonInfo();
-          meldingTekst.textContent = 'Raak!';
+          meldingTekst.textContent = 'Raak! Op naar level ' + (level + 1);
         }
         // Van de tafel af?
-        else if (Math.abs(bal.position.x) > TAFEL_HALF || Math.abs(bal.position.z) > TAFEL_HALF) {
+        else if (Math.abs(bal.position.x) > tafelHalf || Math.abs(bal.position.z) > tafelHalf) {
           toestand = 'vallen';
           wachttijd = 2;
           // bal loskoppelen van de tafel en met dezelfde vaart laten vallen
@@ -209,7 +274,7 @@
         bal.position.z += (gat.position.z - bal.position.z) * f;
         bal.position.y -= 3 * dt;
         wachttijd -= dt;
-        if (wachttijd <= 0) { nieuweBal(); zetGatNeer(); }
+        if (wachttijd <= 0) { level++; nieuweBal(); bouwLevel(); }
       } else if (toestand === 'vallen') {
         balSnelheid.y -= ZWAARTEKRACHT * dt;
         bal.position.addInPlace(balSnelheid.scale(dt));
@@ -224,7 +289,7 @@
     }
 
     nieuweBal();
-    zetGatNeer();
+    bouwLevel();
 
     scene.onBeforeRenderObservable.add(() => update(Math.min(engine.getDeltaTime() / 1000, 0.05)));
     engine.runRenderLoop(() => scene.render());
