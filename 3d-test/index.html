@@ -417,7 +417,7 @@
       const rem = -Math.log(1 - wrijving);
       spelerFysica.body.setLinearDamping(rem * 0.3);
       spelerFysica.body.setAngularDamping(rem);
-      if (BABYLON.PhysicsActivationControl) spelerFysica.body.setActivationControl(BABYLON.PhysicsActivationControl.ALWAYS_ACTIVE);
+      spelerFysica.body.setSleepMode?.(false);   // nooit in slaap vallen, ook niet als hij stil ligt
       toestand = 'rollen';
       meldingTekst.textContent = '';
     }
