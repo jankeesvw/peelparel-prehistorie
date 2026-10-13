@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="nl">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -48,9 +48,9 @@
     <div id="hi">HI-SCORE<br><span class="waarde" id="hiTekst">000000</span></div>
     <div id="lvl"><span id="lvlTekst">LEVEL 01</span><br><span class="waarde" id="themaTekst"></span></div>
   </div>
-  <div id="titel">TAFEL<br>TOLLER</div>
+  <div id="titel">TABLE<br>TILTER</div>
   <div id="melding"></div>
-  <div id="uitleg">PIJLTJES / WASD / SLEEP MET JE VINGER</div>
+  <div id="uitleg">ARROWS / WASD / DRAG WITH YOUR FINGER</div>
   <div id="crt"></div>
   <script>
     // Babylon.js: echte 3D met glimmende materialen, zachte schaduwen en gloed.
@@ -280,7 +280,7 @@
         for (let x = 0; x <= 896; x += 16) c.lineTo(x, 300 + Math.sin(x / 70) * 40);
         c.lineTo(896, 340); c.lineTo(0, 340); c.fill();
         c.font = 'bold 140px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.fillText('SAP', 224, 180); c.fillText('SAP', 672, 180);
+        c.fillText('SODA', 224, 180); c.fillText('SODA', 672, 180);
         c.fillStyle = '#c0c4c8'; c.fillRect(896, 0, 128, h);            // zilveren boven- en onderkant
       });
       const blik = BABYLON.MeshBuilder.CreateCylinder('blikje', {
@@ -500,31 +500,31 @@
     }
 
     const THEMAS = [
-      { naam: 'Biljart',   tafel: { hout: 'wood.jpg', ruw: 0.35, lak: true },
+      { naam: 'Billiards',   tafel: { hout: 'wood.jpg', ruw: 0.35, lak: true },
         bal: { ontwerp: { soort: 'biljart', basis: '#f4f1e8', kleur: '#f2a900', nummer: '9' }, ruw: 0.15, lak: true },
         achtergrond: { grond: { hout: 'grass.png', ruw: 1 } },
         blok: { kleur: '#8c1f19', ruw: 0.3, lak: true } },
-      { naam: 'Dobbelsteen', tafel: { kleur: '#1b5e20', ruw: 1 },
+      { naam: 'Dice', tafel: { kleur: '#1b5e20', ruw: 1 },
         bal: { vorm: 'd20' },
         achtergrond: { lucht: 'skybox2', grond: { kleur: '#1a1a22', ruw: 0.4, lak: true } },
         blok: { kleur: '#ffffff', ruw: 0.2, lak: true } },
-      { naam: 'Snoepwinkel', tafel: { kleur: '#f8bbd0', ruw: 0.3, lak: true },
+      { naam: 'Candy Shop', tafel: { kleur: '#f8bbd0', ruw: 0.3, lak: true },
         bal: { vorm: 'donut' },
         achtergrond: { lucht: 'skybox', grond: { kleur: '#fff3e0', ruw: 0.8 } },
         blok: { kleur: '#7e57c2', ruw: 0.2, lak: true } },
-      { naam: 'Woestijn',  tafel: { hout: 'sand.jpg', herhaal: 2, ruw: 1 },
+      { naam: 'Desert',  tafel: { hout: 'sand.jpg', herhaal: 2, ruw: 1 },
         bal: { ontwerp: { soort: 'stippen', basis: '#c62828', kleur: '#ffffff' }, ruw: 0.9 },
         achtergrond: { grond: { hout: 'sand.jpg', herhaal: 30, ruw: 1 } },
         blok: { hout: 'rock.png', ruw: 0.9 } },
-      { naam: 'Theekransje', tafel: { hout: 'wood.jpg', ruw: 0.4, lak: true },
+      { naam: 'Tea Party', tafel: { hout: 'wood.jpg', ruw: 0.4, lak: true },
         bal: { vorm: 'theepot' },
         achtergrond: { lucht: 'skybox', grond: { hout: 'grass.png', ruw: 1 } },
         blok: { kleur: '#f8bbd0', ruw: 0.2, lak: true } },
-      { naam: 'Bordspel', tafel: { kleur: '#0d47a1', ruw: 1 },
+      { naam: 'Board Game', tafel: { kleur: '#0d47a1', ruw: 1 },
         bal: { vorm: 'd6' },
         achtergrond: { grond: { hout: 'floor.png', ruw: 0.6 } },
         blok: { kleur: '#ffeb3b', ruw: 0.3, lak: true } },
-      { naam: 'Ruimteschip', tafel: { hout: 'floor.png', herhaal: 2, metaal: 0.9, ruw: 0.25 },
+      { naam: 'Spaceship', tafel: { hout: 'floor.png', herhaal: 2, metaal: 0.9, ruw: 0.25 },
         bal: { ontwerp: { soort: 'lijnen', basis: '#d8dce0', kleur: '#30343a' }, metaal: 1, ruw: 0.05 },
         achtergrond: { lucht: 'Space/space', grond: 'geen' },
         blok: { kleur: '#ffc83d', metaal: 1, ruw: 0.15 } },
@@ -532,43 +532,43 @@
         bal: { vorm: 'banaan' },
         achtergrond: { lucht: 'TropicalSunnyDay', grond: { hout: 'grass.jpg', herhaal: 40, ruw: 1 } },
         blok: { hout: 'wood.jpg', ruw: 0.8 } },
-      { naam: 'Frisdrank', tafel: { kleur: '#cfd8dc', metaal: 0.8, ruw: 0.2 },
+      { naam: 'Soda', tafel: { kleur: '#cfd8dc', metaal: 0.8, ruw: 0.2 },
         bal: { vorm: 'blikje' },
         achtergrond: { lucht: 'TropicalSunnyDay', grond: { hout: 'sand.jpg', herhaal: 30, ruw: 1 } },
         blok: { kleur: '#43a047', ruw: 0.2, lak: true } },
-      { naam: 'Vulkaan',   tafel: { hout: 'lava/lavatile.jpg', herhaal: 2, ruw: 0.6, gloei: true },
+      { naam: 'Volcano',   tafel: { hout: 'lava/lavatile.jpg', herhaal: 2, ruw: 0.6, gloei: true },
         bal: { ontwerp: { soort: 'stippen', basis: '#151515', kleur: '#ff7a00' }, ruw: 0.1, lak: true },
         achtergrond: { lucht: 'skybox3', grond: { hout: 'lava/lavatile.jpg', herhaal: 30, ruw: 0.7, gloei: true } },
         blok: { hout: 'rock.png', kleur: '#555555', ruw: 0.8 } },
-      { naam: 'Badkamer', tafel: { hout: 'bricktile.jpg', herhaal: 3, kleur: '#b3e5fc', ruw: 0.1, lak: true },
+      { naam: 'Bathroom', tafel: { hout: 'bricktile.jpg', herhaal: 3, kleur: '#b3e5fc', ruw: 0.1, lak: true },
         bal: { vorm: 'eendje' },
         achtergrond: { grond: { kleur: '#29b6f6', metaal: 0.3, ruw: 0.05, lak: true } },
         blok: { kleur: '#ffffff', ruw: 0.1, lak: true } },
-      { naam: 'Apotheek', tafel: { kleur: '#fafafa', ruw: 0.1, lak: true },
+      { naam: 'Pharmacy', tafel: { kleur: '#fafafa', ruw: 0.1, lak: true },
         bal: { vorm: 'pil' },
         achtergrond: { grond: { kleur: '#b2dfdb', ruw: 0.8 } },
         blok: { kleur: '#26a69a', ruw: 0.2, lak: true } },
-      { naam: 'Voetbal',   tafel: { hout: 'grass.jpg', herhaal: 2, ruw: 1 },
+      { naam: 'Soccer',   tafel: { hout: 'grass.jpg', herhaal: 2, ruw: 1 },
         bal: { ontwerp: { soort: 'voetbal', basis: '#ffffff' }, ruw: 0.5 },
         achtergrond: { lucht: 'skybox', grond: { hout: 'grass.jpg', herhaal: 40, ruw: 1 } },
         blok: { hout: 'crate.png', ruw: 0.8 } },
-      { naam: 'Sterrenhemel', tafel: { hout: 'floor.png', herhaal: 2, kleur: '#3949ab', metaal: 0.8, ruw: 0.3 },
+      { naam: 'Starry Sky', tafel: { hout: 'floor.png', herhaal: 2, kleur: '#3949ab', metaal: 0.8, ruw: 0.3 },
         bal: { vorm: 'ster' },
         achtergrond: { lucht: 'Space/space', grond: 'geen' },
         blok: { kleur: '#e1bee7', metaal: 1, ruw: 0.1 } },
-      { naam: 'Kristalgrot', tafel: { hout: 'rock.png', herhaal: 2, ruw: 0.8 },
+      { naam: 'Crystal Cave', tafel: { hout: 'rock.png', herhaal: 2, ruw: 0.8 },
         bal: { vorm: 'd12' },
         achtergrond: { lucht: 'skybox3', grond: { hout: 'rock.png', herhaal: 30, ruw: 1 } },
         blok: { kleur: '#80deea', metaal: 0.3, ruw: 0.05, lak: true } },
-      { naam: 'Strand',    tafel: { hout: 'bricktile.jpg', herhaal: 2, ruw: 0.7 },
+      { naam: 'Beach',    tafel: { hout: 'bricktile.jpg', herhaal: 2, ruw: 0.7 },
         bal: { ontwerp: { soort: 'strandbal', basis: '#ffffff', kleuren: ['#e53935', '#ffffff', '#1e88e5', '#ffffff', '#fdd835', '#ffffff'] }, ruw: 0.2, lak: true },
         achtergrond: { lucht: 'TropicalSunnyDay', grond: { hout: 'sand.jpg', herhaal: 30, ruw: 1 } },
         blok: { kleur: '#ff8a65', ruw: 0.6 } },
-      { naam: 'Muizenhol', tafel: { hout: 'wood.jpg', ruw: 0.8 },
+      { naam: 'Mouse Hole', tafel: { hout: 'wood.jpg', ruw: 0.8 },
         bal: { vorm: 'kaas' },
         achtergrond: { lucht: 'skybox2', grond: { hout: 'floor.png', ruw: 0.6 } },
         blok: { kleur: '#8d6e63', ruw: 0.9 } },
-      { naam: 'Piramide', tafel: { hout: 'sand.jpg', herhaal: 2, ruw: 1 },
+      { naam: 'Pyramid', tafel: { hout: 'sand.jpg', herhaal: 2, ruw: 1 },
         bal: { vorm: 'd4' },
         achtergrond: { grond: { hout: 'sand.jpg', herhaal: 30, ruw: 1 } },
         blok: { hout: 'rock.png', kleur: '#d7b98e', ruw: 0.9 } },
@@ -580,7 +580,7 @@
         bal: { vorm: 'hamburger' },
         achtergrond: { lucht: 'skybox2', grond: { kleur: '#1a1a22', ruw: 0.4, lak: true } },
         blok: { kleur: '#ffeb3b', ruw: 0.3, lak: true } },
-      { naam: 'Kasteel', tafel: { hout: 'bricktile.jpg', herhaal: 2, ruw: 0.8 },
+      { naam: 'Castle', tafel: { hout: 'bricktile.jpg', herhaal: 2, ruw: 0.8 },
         bal: { vorm: 'd8' },
         achtergrond: { lucht: 'skybox4', grond: { kleur: '#e8eef4', ruw: 0.8 } },
         blok: { hout: 'rock.png', ruw: 0.9 } },
@@ -857,7 +857,7 @@
       [kleur4(1, 0.4, 1), kleur4(1, 1, 1)], [kleur4(0.2, 1, 1), kleur4(0.6, 0.3, 1)],
     ];
     const TEKST_ANIMATIES = ['feest', 'feest-draai', 'feest-golf', 'feest-groot'];
-    const FEESTTEKSTEN = ['LEVEL CLEAR!', 'SUPER!', 'GEWELDIG!', 'PERFECT!', 'WAANZINNIG!', 'TOPPIE!', 'YES!!', 'KAMPIOEN!'];
+    const FEESTTEKSTEN = ['LEVEL CLEAR!', 'SUPER!', 'AWESOME!', 'PERFECT!', 'INCREDIBLE!', 'RADICAL!', 'YES!!', 'CHAMPION!'];
     const BEWEGINGEN = ['draai', 'salto', 'stuiter', 'krimp', 'camera', 'disco'];
     const DEELTJES = {
       confetti: plek => FEESTKLEUREN.slice(0, 3).forEach(([a, b], i) => setTimeout(() => confettiKnal(plek, a, b), i * 350)),
@@ -952,7 +952,7 @@
     function startSpel() {
       level = 1; score = 0; levens = 3;
       titel.style.display = 'none';
-      uitleg.textContent = 'PIJLTJES / WASD / SLEEP MET JE VINGER';
+      uitleg.textContent = 'ARROWS / WASD / DRAG WITH YOUR FINGER';
       meldingTekst.classList.remove('knipper');
       bouwLevel();
       nieuweBal();
@@ -1079,13 +1079,13 @@
           doelGat = valgat;
           wachttijd = 1.5;
           levenKwijt();
-          meldingTekst.textContent = 'FOUT GAT!';
+          meldingTekst.textContent = 'WRONG HOLE!';
         } else if (speler.getAbsolutePosition().y < -2) {
           // van de tafel af: de natuurkunde laat hem verder vallen en stuiteren
           toestand = 'vallen';
           wachttijd = 2;
           levenKwijt();
-          meldingTekst.textContent = 'OEPS!';
+          meldingTekst.textContent = 'OOPS!';
         }
         if (toestand === 'inGat' || toestand === 'inValgat') {
           // natuurkunde uit, vastmaken aan de tafel en zelf in het gat laten zakken
@@ -1118,7 +1118,7 @@
       stopSpelerFysica();
       speler.setEnabled(false);
       toonStartScherm('GAME OVER');
-      uitleg.textContent = 'DRUK OP EEN TOETS OF TIK OM OPNIEUW TE BEGINNEN';
+      uitleg.textContent = 'PRESS ANY KEY OR TAP TO PLAY AGAIN';
       GELUID.gameOver();
     }
 
@@ -1131,7 +1131,7 @@
       toestand = 'start';
       bal.isVisible = false;
       toonStartScherm('PRESS START');
-      uitleg.textContent = 'DRUK OP EEN TOETS OF TIK OM TE BEGINNEN';
+      uitleg.textContent = 'PRESS ANY KEY OR TAP TO START';
       scene.onBeforeRenderObservable.add(() => update(Math.min(engine.getDeltaTime() / 1000, 0.05)));
       engine.runRenderLoop(() => scene.render());
     });
