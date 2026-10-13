@@ -120,6 +120,33 @@
     bal.material = balMat;
     schaduw.addShadowCaster(bal);
 
+    // De D20: een dobbelsteen met twintig kanten, met de getallen 1 tot en met 20.
+    // Hij zit vast aan de (onzichtbare) bal, dus hij rolt mee.
+    const d20Plaatje = new BABYLON.DynamicTexture('d20Plaatje', { width: 1280, height: 1024 }, scene);
+    const dctx = d20Plaatje.getContext();
+    dctx.fillStyle = '#5b2a86'; dctx.fillRect(0, 0, 1280, 1024);
+    dctx.fillStyle = '#ffd54f'; dctx.font = 'bold 70px sans-serif';
+    dctx.textAlign = 'center'; dctx.textBaseline = 'middle';
+    const d20Vlakken = [];
+    for (let i = 0; i < 20; i++) {
+      const kolom = i % 5, rij = Math.floor(i / 5);
+      d20Vlakken.push(new BABYLON.Vector4(kolom / 5, rij / 4, (kolom + 1) / 5, (rij + 1) / 4));
+      const x = kolom * 256 + 128, y = (3 - rij) * 256 + 128;
+      dctx.fillText(String(i + 1), x, y + 6);
+      if (i + 1 === 6 || i + 1 === 9) dctx.fillRect(x - 18, y + 42, 36, 6);   // streepje onder 6 en 9
+    }
+    d20Plaatje.update();
+    const d20 = BABYLON.MeshBuilder.CreatePolyhedron('d20', { type: 3, size: BAL_STRAAL * 1.15, faceUV: d20Vlakken }, scene);
+    d20.parent = bal;
+    const d20Mat = new BABYLON.PBRMaterial('d20Mat', scene);
+    d20Mat.albedoTexture = d20Plaatje;
+    d20Mat.metallic = 0; d20Mat.roughness = 0.2;
+    d20Mat.clearCoat.isEnabled = true;
+    d20.material = d20Mat;
+    d20.receiveShadows = true;
+    schaduw.addShadowCaster(d20);
+    d20.setEnabled(false);
+
     // Mooie nabewerking: gloed, zachte randen, kleurcorrectie
     const gloed = new BABYLON.GlowLayer('gloed', scene);
     gloed.intensity = 0.8;
@@ -206,6 +233,9 @@
       { naam: 'Biljart',   tafel: { hout: 'wood.jpg', ruw: 0.35, lak: true },
         bal: { ontwerp: { soort: 'biljart', basis: '#f4f1e8', kleur: '#f2a900', nummer: '9' }, ruw: 0.15, lak: true },
         blok: { kleur: '#8c1f19', ruw: 0.3, lak: true } },
+      { naam: 'Dobbelsteen', tafel: { kleur: '#1b5e20', ruw: 1 },
+        bal: { d20: true },
+        blok: { kleur: '#ffffff', ruw: 0.2, lak: true } },
       { naam: 'Woestijn',  tafel: { hout: 'sand.jpg', herhaal: 2, ruw: 1 },
         bal: { ontwerp: { soort: 'stippen', basis: '#c62828', kleur: '#ffffff' }, ruw: 0.9 },
         blok: { hout: 'rock.png', ruw: 0.9 } },
@@ -230,8 +260,10 @@
     function zetThema() {
       thema = THEMAS[(level - 1) % THEMAS.length];
       const t = thema.tafel;
-      stelIn(houtMat, { ...t, plaatje: textuur(t.hout, t.herhaal) });
+      stelIn(houtMat, { ...t, plaatje: t.hout ? textuur(t.hout, t.herhaal) : null });
       const b = thema.bal;
+      bal.isVisible = !b.d20;           // bij de D20 is de bal zelf onzichtbaar
+      d20.setEnabled(!!b.d20);
       if (b.ontwerp) tekenBalPatroon(b.ontwerp);
       stelIn(balMat, { ...b, plaatje: b.plaatje ? textuur(b.plaatje) : balPlaatje });
       const k = thema.blok;
