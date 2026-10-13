@@ -59,7 +59,7 @@
     const BAL_STRAAL = 0.4;
     const GAT_STRAAL = 0.65;
     const MAX_KANTEL = Math.PI / 2;   // de tafel mag helemaal rechtop (90 graden)
-    const KANTEL_SNELHEID = 1.6;
+    const KANTEL_SNELHEID = 0.6;
     const ZWAARTEKRACHT = 20;
     const WRIJVING = 0.6;
     const GROND_Y = -12;
@@ -874,7 +874,7 @@
     window.addEventListener('keyup', e => { toetsen[e.key.toLowerCase()] = false; });
 
     // Touchscreen (of muis): sleep vanaf waar je drukt, de tafel kantelt die kant op
-    const SLEEP_AFSTAND = 110;   // zo ver slepen is helemaal schuin
+    const SLEEP_AFSTAND = 260;   // zo ver slepen is helemaal schuin
     let vinger = null;           // { startX, startY, x, y } zolang je drukt
     canvas.addEventListener('pointerdown', e => {
       vinger = { startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY };
@@ -897,8 +897,10 @@
       else kantelX *= Math.pow(0.1, dt);
       if (vinger) {
         // naar rechts slepen = bal naar rechts, omhoog slepen = bal naar achteren
-        const doelZ = -BABYLON.Scalar.Clamp((vinger.x - vinger.startX) / SLEEP_AFSTAND, -1, 1) * MAX_KANTEL;
-        const doelX = -BABYLON.Scalar.Clamp((vinger.y - vinger.startY) / SLEEP_AFSTAND, -1, 1) * MAX_KANTEL;
+        // een klein stukje slepen = een beetje schuin, ver slepen = steeds sneller schuiner
+        const zacht = d => { const v = BABYLON.Scalar.Clamp(d / SLEEP_AFSTAND, -1, 1); return v * Math.abs(v); };
+        const doelZ = -zacht(vinger.x - vinger.startX) * MAX_KANTEL;
+        const doelX = -zacht(vinger.y - vinger.startY) * MAX_KANTEL;
         const f = Math.min(1, 12 * dt);
         kantelZ += (doelZ - kantelZ) * f;
         kantelX += (doelX - kantelX) * f;
