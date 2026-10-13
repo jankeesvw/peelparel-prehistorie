@@ -140,6 +140,104 @@
     blokMat.metallic = 0.2; blokMat.roughness = 0.3;
     blokMat.clearCoat.isEnabled = true;
 
+    // ---------- Thema's: elk level een andere tafel, bal en blokken ----------
+
+    const TEXTUREN = 'https://assets.babylonjs.com/textures/';
+    const textuurCache = {};
+    function textuur(naam, herhaal = 1) {
+      const sleutel = naam + herhaal;
+      if (!textuurCache[sleutel]) {
+        const t = new BABYLON.Texture(TEXTUREN + naam, scene);
+        t.uScale = t.vScale = herhaal;
+        textuurCache[sleutel] = t;
+      }
+      return textuurCache[sleutel];
+    }
+
+    // Een materiaal opnieuw instellen: plaatje of kleur, glimmend of mat
+    function stelIn(mat, o) {
+      mat.albedoTexture = o.plaatje || null;
+      mat.albedoColor = o.kleur ? BABYLON.Color3.FromHexString(o.kleur) : BABYLON.Color3.White();
+      mat.metallic = o.metaal ?? 0;
+      mat.roughness = o.ruw ?? 0.5;
+      mat.clearCoat.isEnabled = !!o.lak;
+      mat.emissiveTexture = o.gloei ? o.plaatje : null;
+      mat.emissiveColor = o.gloei ? new BABYLON.Color3(0.7, 0.35, 0.1) : BABYLON.Color3.Black();
+    }
+
+    // Het patroon op de bal tekenen (plaatje rond de bal gewikkeld)
+    function tekenBalPatroon(ontwerp) {
+      const c = bctx, B = 1024, H = 512;
+      c.fillStyle = ontwerp.basis; c.fillRect(0, 0, B, H);
+      if (ontwerp.soort === 'biljart') {
+        c.fillStyle = ontwerp.kleur; c.fillRect(0, 150, B, 212);
+        for (const x of [256, 768]) {
+          c.fillStyle = ontwerp.basis;
+          c.beginPath(); c.ellipse(x, 256, 80, 90, 0, 0, Math.PI * 2); c.fill();
+          c.fillStyle = '#111'; c.font = 'bold 120px sans-serif';
+          c.textAlign = 'center'; c.textBaseline = 'middle';
+          c.fillText(ontwerp.nummer, x, 262);
+        }
+      } else if (ontwerp.soort === 'stippen') {
+        c.fillStyle = ontwerp.kleur;
+        for (let rij = 0; rij < 5; rij++) for (let k = 0; k < 8; k++) {
+          c.beginPath(); c.arc(k * 128 + (rij % 2) * 64 + 32, rij * 110 + 40, 30, 0, Math.PI * 2); c.fill();
+        }
+      } else if (ontwerp.soort === 'strandbal') {
+        ontwerp.kleuren.forEach((k, i) => { c.fillStyle = k; c.fillRect(i * B / ontwerp.kleuren.length, 0, B / ontwerp.kleuren.length + 1, H); });
+        c.fillStyle = '#fff'; c.fillRect(0, 0, B, 50); c.fillRect(0, H - 50, B, 50);
+      } else if (ontwerp.soort === 'voetbal') {
+        c.fillStyle = '#111';
+        for (let rij = 0; rij < 4; rij++) for (let k = 0; k < 6; k++) {
+          const x = k * 171 + (rij % 2) * 85 + 40, y = rij * 140 + 50;
+          c.beginPath();
+          for (let h = 0; h < 5; h++) c.lineTo(x + Math.cos(h * 1.2566 - 1.57) * 45, y + Math.sin(h * 1.2566 - 1.57) * 45);
+          c.fill();
+        }
+      } else if (ontwerp.soort === 'lijnen') {
+        c.strokeStyle = ontwerp.kleur; c.lineWidth = 18;
+        for (let x = 0; x < B; x += 128) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, H); c.stroke(); }
+        c.beginPath(); c.moveTo(0, H / 2); c.lineTo(B, H / 2); c.stroke();
+      }
+      balPlaatje.update();
+    }
+
+    const THEMAS = [
+      { naam: 'Biljart',   tafel: { hout: 'wood.jpg', ruw: 0.35, lak: true },
+        bal: { ontwerp: { soort: 'biljart', basis: '#f4f1e8', kleur: '#f2a900', nummer: '9' }, ruw: 0.15, lak: true },
+        blok: { kleur: '#8c1f19', ruw: 0.3, lak: true } },
+      { naam: 'Woestijn',  tafel: { hout: 'sand.jpg', herhaal: 2, ruw: 1 },
+        bal: { ontwerp: { soort: 'stippen', basis: '#c62828', kleur: '#ffffff' }, ruw: 0.9 },
+        blok: { hout: 'rock.png', ruw: 0.9 } },
+      { naam: 'Ruimteschip', tafel: { hout: 'floor.png', herhaal: 2, metaal: 0.9, ruw: 0.25 },
+        bal: { ontwerp: { soort: 'lijnen', basis: '#d8dce0', kleur: '#30343a' }, metaal: 1, ruw: 0.05 },
+        blok: { kleur: '#ffc83d', metaal: 1, ruw: 0.15 } },
+      { naam: 'Vulkaan',   tafel: { hout: 'lava/lavatile.jpg', herhaal: 2, ruw: 0.6, gloei: true },
+        bal: { ontwerp: { soort: 'stippen', basis: '#151515', kleur: '#ff7a00' }, ruw: 0.1, lak: true },
+        blok: { hout: 'rock.png', kleur: '#555555', ruw: 0.8 } },
+      { naam: 'Voetbal',   tafel: { hout: 'grass.jpg', herhaal: 2, ruw: 1 },
+        bal: { ontwerp: { soort: 'voetbal', basis: '#ffffff' }, ruw: 0.5 },
+        blok: { hout: 'crate.png', ruw: 0.8 } },
+      { naam: 'Strand',    tafel: { hout: 'bricktile.jpg', herhaal: 2, ruw: 0.7 },
+        bal: { ontwerp: { soort: 'strandbal', basis: '#ffffff', kleuren: ['#e53935', '#ffffff', '#1e88e5', '#ffffff', '#fdd835', '#ffffff'] }, ruw: 0.2, lak: true },
+        blok: { kleur: '#ff8a65', ruw: 0.6 } },
+      { naam: 'Retro',     tafel: { hout: 'ground.jpg', herhaal: 2, ruw: 0.9 },
+        bal: { plaatje: 'amiga.jpg', ruw: 0.3, lak: true },
+        blok: { kleur: '#3949ab', ruw: 0.2, metaal: 0.5 } },
+    ];
+
+    let thema = THEMAS[0];
+    function zetThema() {
+      thema = THEMAS[(level - 1) % THEMAS.length];
+      const t = thema.tafel;
+      stelIn(houtMat, { ...t, plaatje: textuur(t.hout, t.herhaal) });
+      const b = thema.bal;
+      if (b.ontwerp) tekenBalPatroon(b.ontwerp);
+      stelIn(balMat, { ...b, plaatje: b.plaatje ? textuur(b.plaatje) : balPlaatje });
+      const k = thema.blok;
+      stelIn(blokMat, { ...k, plaatje: k.hout ? textuur(k.hout) : null });
+    }
+
     // Spelstatus
     let toestand = 'rollen';   // 'rollen', 'inGat', 'inValgat' of 'vallen'
     const balSnelheid = new BABYLON.Vector3();
@@ -161,7 +259,7 @@
     valRandMat.metallic = 1; valRandMat.roughness = 0.2;
 
     function toonInfo() {
-      infoTekst.innerHTML = `Level ${level} &nbsp; Gevallen: ${gevallen}`;
+      infoTekst.innerHTML = `Level ${level}: ${thema.naam} &nbsp; Gevallen: ${gevallen}`;
     }
 
     function zetGatNeer() {
@@ -179,6 +277,7 @@
       tafelHalf = Math.max(2.8, TAFEL_HALF - (level - 1) * 0.3);
       gatStraal = Math.max(0.48, GAT_STRAAL + 0.1 - (level - 1) * 0.05);
       wrijving = Math.max(0.12, WRIJVING - (level - 1) * 0.06);
+      zetThema();
       blad.scaling.x = blad.scaling.z = tafelHalf / TAFEL_HALF;
       gat.scaling.x = gat.scaling.y = gatStraal / GAT_STRAAL;
       ring.scaling.x = ring.scaling.z = gatStraal / GAT_STRAAL;
