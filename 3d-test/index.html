@@ -206,12 +206,6 @@
       // gras vanaf de horizon naar beneden
       const horizon = projecteer({ x: 0, y: GROND_Y, z: -2000 }).y;
       achtergrond.rect(0, horizon, app.screen.width, app.screen.height - horizon).fill({ color: 0x4f9a3a });
-      // paal onder de tafel
-      const boven = projecteer({ x: 0, y: -TAFEL_DIKTE, z: 0 });
-      const onder = projecteer({ x: 0, y: GROND_Y, z: 0 });
-      const bb = 0.5 * boven.schaal, ob = 0.8 * onder.schaal;
-      achtergrond.poly([boven.x - bb, boven.y, boven.x + bb, boven.y, onder.x + ob, onder.y, onder.x - ob, onder.y]).fill({ color: 0x555555 });
-      achtergrond.ellipse(onder.x, onder.y, ob * 2, ob * 0.6).fill({ color: 0x000000, alpha: 0.2 });
     }
 
     function tekenTafel() {
