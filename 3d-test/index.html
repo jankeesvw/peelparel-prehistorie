@@ -6,10 +6,10 @@
   <title>3d-test</title>
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #111; font-family: sans-serif; }
-    canvas { display: block; width: 100%; height: 100%; outline: none; }
+    canvas { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
     #info { position: fixed; top: 16px; left: 16px; font-size: 22px; font-weight: bold; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.6); }
     #melding { position: fixed; top: 40%; width: 100%; text-align: center; font-size: 56px; font-weight: bold; color: #fff; text-shadow: 0 3px 8px rgba(0,0,0,.7); pointer-events: none; }
-    #uitleg { position: fixed; bottom: 16px; width: 100%; text-align: center; font-size: 18px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.6); }
+    #uitleg { pointer-events: none; position: fixed; bottom: 16px; width: 100%; text-align: center; font-size: 18px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.6); }
   </style>
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
 </head>
@@ -17,7 +17,7 @@
   <canvas id="game"></canvas>
   <div id="info">Level 1 &nbsp; Gevallen: 0</div>
   <div id="melding"></div>
-  <div id="uitleg">Kantel de tafel met de pijltjes of W A S D</div>
+  <div id="uitleg">Kantel de tafel met de pijltjes, W A S D of sleep met je vinger</div>
   <script>
     // Babylon.js: echte 3D met glimmende materialen, zachte schaduwen en gloed
     const canvas = document.getElementById('game');
@@ -401,6 +401,16 @@
     window.addEventListener('keydown', e => { toetsen[e.key.toLowerCase()] = true; if (e.key.startsWith('Arrow')) e.preventDefault(); });
     window.addEventListener('keyup', e => { toetsen[e.key.toLowerCase()] = false; });
 
+    // Touchscreen (of muis): sleep vanaf waar je drukt, de tafel kantelt die kant op
+    const SLEEP_AFSTAND = 110;   // zo ver slepen is helemaal schuin
+    let vinger = null;           // { startX, startY, x, y } zolang je drukt
+    canvas.addEventListener('pointerdown', e => {
+      vinger = { startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY };
+      canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener('pointermove', e => { if (vinger) { vinger.x = e.clientX; vinger.y = e.clientY; } });
+    for (const naam of ['pointerup', 'pointercancel']) canvas.addEventListener(naam, () => { vinger = null; });
+
     function update(dt) {
       // Tafel kantelen; los je de toets, dan gaat hij langzaam terug naar plat
       const links = toetsen['arrowleft'] || toetsen['a'];
@@ -413,6 +423,14 @@
       if (op) kantelX += KANTEL_SNELHEID * dt;
       else if (neer) kantelX -= KANTEL_SNELHEID * dt;
       else kantelX *= Math.pow(0.1, dt);
+      if (vinger) {
+        // naar rechts slepen = bal naar rechts, omhoog slepen = bal naar achteren
+        const doelZ = -BABYLON.Scalar.Clamp((vinger.x - vinger.startX) / SLEEP_AFSTAND, -1, 1) * MAX_KANTEL;
+        const doelX = -BABYLON.Scalar.Clamp((vinger.y - vinger.startY) / SLEEP_AFSTAND, -1, 1) * MAX_KANTEL;
+        const f = Math.min(1, 12 * dt);
+        kantelZ += (doelZ - kantelZ) * f;
+        kantelX += (doelX - kantelX) * f;
+      }
       kantelX = BABYLON.Scalar.Clamp(kantelX, -MAX_KANTEL, MAX_KANTEL);
       kantelZ = BABYLON.Scalar.Clamp(kantelZ, -MAX_KANTEL, MAX_KANTEL);
       tafel.rotation.set(kantelX, 0, kantelZ);
