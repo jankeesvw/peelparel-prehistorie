@@ -5,28 +5,52 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>3d-test</title>
   <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #111; font-family: sans-serif; }
-    canvas { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
-    #info { position: fixed; top: 16px; left: 16px; font-size: 22px; font-weight: bold; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.6); }
-    #melding { position: fixed; top: 40%; width: 100%; text-align: center; font-size: 56px; font-weight: bold; color: #fff; text-shadow: 0 3px 8px rgba(0,0,0,.7); pointer-events: none; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #fff; font-family: 'Press Start 2P', monospace; }
+    canvas { display: block; width: 100%; height: 100%; outline: none; touch-action: none; image-rendering: pixelated; }
+    /* Arcade-scorebord bovenin */
+    #hud { position: fixed; top: 14px; left: 16px; right: 16px; display: flex; justify-content: space-between; font-size: 14px; line-height: 1.8; pointer-events: none; text-shadow: 3px 3px 0 #000; }
+    #hud .waarde { font-size: 20px; }
+    #score { color: #ffeb3b; }
+    #hi { color: #ff4081; text-align: center; }
+    #lvl { color: #18ffff; text-align: right; }
+    #levens { color: #ff1744; font-size: 18px; }
+    #melding { position: fixed; top: 38%; left: 16px; right: 16px; text-align: center; font-size: 34px; line-height: 1.5; color: #fff; text-shadow: 4px 4px 0 #000, 0 0 18px #ff00ff; pointer-events: none; }
+    #melding.knipper { animation: knipper 1s steps(2) infinite; }
+    @keyframes knipper { 50% { opacity: 0; } }
+    #titel { position: fixed; top: 20%; width: 100%; text-align: center; font-size: 46px; line-height: 1.3; pointer-events: none;
+             color: #ffeb3b; text-shadow: 4px 4px 0 #ff1744, 8px 8px 0 #2979ff, 0 0 30px #ff00ff; }
+    /* Oud tv-scherm: lijntjes en donkere hoeken */
+    #crt { position: fixed; inset: 0; pointer-events: none; z-index: 10;
+           background: repeating-linear-gradient(rgba(0,0,0,.28) 0 1px, transparent 1px 3px),
+                       radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.65) 100%);
+           animation: flikker 0.12s infinite; }
+    @keyframes flikker { 50% { opacity: 0.93; } }
     #melding.feest { animation: feestTekst 0.7s ease-out, regenboog 0.8s linear infinite; }
     @keyframes feestTekst { 0% { transform: scale(0.2) rotate(-12deg); opacity: 0; } 60% { transform: scale(1.3) rotate(4deg); opacity: 1; } 100% { transform: scale(1) rotate(0); } }
     @keyframes regenboog { 0% { color: #ff5252; } 25% { color: #ffd740; } 50% { color: #69f0ae; } 75% { color: #40c4ff; } 100% { color: #ff5252; } }
-    #uitleg { pointer-events: none; position: fixed; bottom: 16px; width: 100%; text-align: center; font-size: 18px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.6); }
+    #uitleg { pointer-events: none; position: fixed; bottom: 18px; left: 16px; right: 16px; text-align: center; font-size: 11px; line-height: 1.6; color: #b2ff59; text-shadow: 2px 2px 0 #000; }
   </style>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
   <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
 </head>
 <body>
   <canvas id="game"></canvas>
-  <div id="info">Level 1 &nbsp; Gevallen: 0</div>
+  <div id="hud">
+    <div id="score">SCORE<br><span class="waarde" id="scoreTekst">000000</span><br><span id="levens"></span></div>
+    <div id="hi">HI-SCORE<br><span class="waarde" id="hiTekst">000000</span></div>
+    <div id="lvl"><span id="lvlTekst">LEVEL 01</span><br><span class="waarde" id="themaTekst"></span></div>
+  </div>
+  <div id="titel">TAFEL<br>TOLLER</div>
   <div id="melding"></div>
-  <div id="uitleg">Kantel de tafel met de pijltjes, W A S D of sleep met je vinger</div>
+  <div id="uitleg">PIJLTJES / WASD / SLEEP MET JE VINGER</div>
+  <div id="crt"></div>
   <script>
     // Babylon.js: echte 3D met glimmende materialen, zachte schaduwen en gloed.
     // Havok doet de natuurkunde: de bal en de dobbelsteen rollen, botsen en vallen echt.
     const canvas = document.getElementById('game');
-    const infoTekst = document.getElementById('info');
+    const titel = document.getElementById('titel');
+    const uitleg = document.getElementById('uitleg');
     const meldingTekst = document.getElementById('melding');
 
     // Instellingen
@@ -40,7 +64,8 @@
     const WRIJVING = 0.6;
     const GROND_Y = -12;
 
-    const engine = new BABYLON.Engine(canvas, true);
+    const engine = new BABYLON.Engine(canvas, false);
+    engine.setHardwareScalingLevel(2.5);   // grove pixels, net als een oude arcadekast
     const scene = new BABYLON.Scene(engine);
     window.addEventListener('resize', () => engine.resize());
 
@@ -274,8 +299,13 @@
     const gloed = new BABYLON.GlowLayer('gloed', scene);
     gloed.intensity = 0.8;
     const beeld = new BABYLON.DefaultRenderingPipeline('beeld', true, scene, [camera]);
-    beeld.samples = 4;
-    beeld.fxaaEnabled = true;
+    beeld.samples = 1;
+    beeld.fxaaEnabled = false;
+    beeld.chromaticAberrationEnabled = true;   // rood/blauwe randjes zoals op een oude tv
+    beeld.chromaticAberration.aberrationAmount = 40;
+    beeld.grainEnabled = true;
+    beeld.grain.intensity = 12;
+    beeld.grain.animated = true;
     beeld.bloomEnabled = true;
     beeld.bloomThreshold = 0.8;
     beeld.bloomWeight = 0.3;
@@ -448,7 +478,11 @@
     let tafelFysica, grondFysica;
     let maxKantel = MAX_KANTEL;
     let wachttijd = 0;
-    let level = 1, gevallen = 0;
+    let level = 1, score = 0, levens = 3;
+    let hiScore = 0;
+    try { hiScore = Number(localStorage.getItem('tafeltoller-hi')) || 0; } catch (e) {}
+    let levelStart = 0;      // wanneer dit level begon, voor de tijdbonus
+    let wachtOpStart = 0;    // even wachten na game over voordat je opnieuw kunt
     let kantelX = 0, kantelZ = 0;
     let tafelHalf = TAFEL_HALF;   // wordt kleiner per level
     let gatStraal = GAT_STRAAL;   // wordt kleiner per level
@@ -464,8 +498,13 @@
     valRandMat.emissiveColor = new BABYLON.Color3(1, 0.05, 0.02);
     valRandMat.metallic = 1; valRandMat.roughness = 0.2;
 
+    const zesCijfers = n => String(n).padStart(6, '0');
     function toonInfo() {
-      infoTekst.innerHTML = `Level ${level}: ${thema.naam} &nbsp; Gevallen: ${gevallen}`;
+      document.getElementById('scoreTekst').textContent = zesCijfers(score);
+      document.getElementById('hiTekst').textContent = zesCijfers(hiScore);
+      document.getElementById('lvlTekst').textContent = 'LEVEL ' + String(level).padStart(2, '0');
+      document.getElementById('themaTekst').textContent = thema.naam.toUpperCase();
+      document.getElementById('levens').textContent = '♥'.repeat(Math.max(0, levens));
     }
 
     function zetGatNeer() {
@@ -573,7 +612,9 @@
       stopSpelerFysica();
       const vorm = VORMEN[thema.bal.vorm];
       speler = vorm ? vorm.mesh : bal;
+      speler.setEnabled(true);
       speler.setParent(null);
+      levelStart = performance.now();
       speler.position.set(0, 1.2, 0);
       speler.rotationQuaternion = vorm
         ? BABYLON.Quaternion.FromEulerAngles(Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3)
@@ -640,6 +681,62 @@
       meldingTekst.classList.add('feest');
     }
 
+    // ---------- Arcadegeluidjes, gemaakt met piepjes ----------
+    let geluid = null;
+    function piep(tonen, duur = 0.08, soort = 'square', glijNaar = null) {
+      try {
+        geluid = geluid || new AudioContext();
+        let t = geluid.currentTime;
+        for (const toon of tonen) {
+          const osc = geluid.createOscillator(), vol = geluid.createGain();
+          osc.type = soort;
+          osc.frequency.setValueAtTime(toon, t);
+          if (glijNaar) osc.frequency.exponentialRampToValueAtTime(glijNaar, t + duur);
+          vol.gain.setValueAtTime(0.12, t);
+          vol.gain.exponentialRampToValueAtTime(0.001, t + duur);
+          osc.connect(vol).connect(geluid.destination);
+          osc.start(t); osc.stop(t + duur);
+          t += duur;
+        }
+      } catch (e) {}
+    }
+    const GELUID = {
+      start: () => piep([523, 659, 784, 1047], 0.09),
+      raak: () => piep([523, 659, 784, 1047, 784, 1047, 1319], 0.07),
+      fout: () => piep([700], 0.6, 'sawtooth', 80),
+      gameOver: () => piep([392, 330, 262, 196], 0.3, 'triangle'),
+    };
+
+    // ---------- Start, levens en game over ----------
+    function startSpel() {
+      level = 1; score = 0; levens = 3;
+      titel.style.display = 'none';
+      uitleg.textContent = 'PIJLTJES / WASD / SLEEP MET JE VINGER';
+      meldingTekst.classList.remove('knipper');
+      bouwLevel();
+      nieuweBal();
+      GELUID.start();
+    }
+
+    function toonStartScherm(tekst) {
+      meldingTekst.textContent = tekst;
+      meldingTekst.classList.remove('feest');
+      meldingTekst.classList.add('knipper');
+    }
+
+    // Leven kwijt; zijn ze op, dan game over
+    function levenKwijt() {
+      levens--;
+      toonInfo();
+      GELUID.fout();
+    }
+
+    function probeerStart() {
+      if ((toestand === 'start' || toestand === 'gameover') && performance.now() > wachtOpStart) startSpel();
+    }
+    window.addEventListener('keydown', probeerStart);
+    canvas.addEventListener('pointerdown', probeerStart);
+
     // Toetsen
     const toetsen = {};
     window.addEventListener('keydown', e => { toetsen[e.key.toLowerCase()] = true; if (e.key.startsWith('Arrow')) e.preventDefault(); });
@@ -675,6 +772,12 @@
         kantelZ += (doelZ - kantelZ) * f;
         kantelX += (doelX - kantelX) * f;
       }
+      if (toestand === 'start' || toestand === 'gameover') {
+        // in het startscherm wiebelt de tafel zachtjes
+        const t = performance.now() / 1000;
+        kantelX = Math.sin(t * 0.9) * 0.12;
+        kantelZ = Math.cos(t * 0.7) * 0.12;
+      }
       kantelX = BABYLON.Scalar.Clamp(kantelX, -maxKantel, maxKantel);
       kantelZ = BABYLON.Scalar.Clamp(kantelZ, -maxKantel, maxKantel);
       // de natuurkunde draait de tafel mee, zodat hij echt tegen de bal duwt
@@ -703,23 +806,28 @@
           toestand = 'inGat';
           doelGat = gat.position;
           wachttijd = FEEST_DUUR;
-          meldingTekst.textContent = 'Raak! Op naar level ' + (level + 1);
+          // punten: meer voor hogere levels, en een bonus als je snel was
+          const seconden = (performance.now() - levelStart) / 1000;
+          const punten = 500 * level + Math.max(0, Math.round(30 - seconden)) * 50;
+          score += punten;
+          if (score > hiScore) { hiScore = score; try { localStorage.setItem('tafeltoller-hi', hiScore); } catch (e) {} }
+          toonInfo();
+          meldingTekst.innerHTML = 'LEVEL CLEAR!<br>+' + punten;
           startFeest();
+          GELUID.raak();
         } else if (valgat) {
           // in een valgat: dit level opnieuw
           toestand = 'inValgat';
           doelGat = valgat;
           wachttijd = 1.5;
-          gevallen++;
-          toonInfo();
-          meldingTekst.textContent = 'Fout gat!';
+          levenKwijt();
+          meldingTekst.textContent = 'FOUT GAT!';
         } else if (speler.getAbsolutePosition().y < -2) {
           // van de tafel af: de natuurkunde laat hem verder vallen en stuiteren
           toestand = 'vallen';
           wachttijd = 2;
-          gevallen++;
-          toonInfo();
-          meldingTekst.textContent = 'Eraf gevallen!';
+          levenKwijt();
+          meldingTekst.textContent = 'OEPS!';
         }
         if (toestand === 'inGat' || toestand === 'inValgat') {
           // natuurkunde uit, vastmaken aan de tafel en zelf in het gat laten zakken
@@ -734,13 +842,24 @@
         speler.position.y -= 3 * dt;
         wachttijd -= dt;
         if (wachttijd <= 0) {
-          if (toestand === 'inGat') { level++; bouwLevel(); }
-          nieuweBal();
+          if (toestand === 'inGat') { level++; bouwLevel(); nieuweBal(); }
+          else volgendeBalOfGameOver();
         }
       } else if (toestand === 'vallen') {
         wachttijd -= dt;
-        if (wachttijd <= 0) nieuweBal();
+        if (wachttijd <= 0) volgendeBalOfGameOver();
       }
+    }
+
+    function volgendeBalOfGameOver() {
+      if (levens > 0) { nieuweBal(); return; }
+      toestand = 'gameover';
+      wachtOpStart = performance.now() + 1200;
+      stopSpelerFysica();
+      speler.setEnabled(false);
+      toonStartScherm('GAME OVER');
+      uitleg.textContent = 'DRUK OP EEN TOETS OF TIK OM OPNIEUW TE BEGINNEN';
+      GELUID.gameOver();
     }
 
     // Eerst de natuurkunde laden, dan pas beginnen
@@ -748,7 +867,11 @@
       scene.enablePhysics(new BABYLON.Vector3(0, -ZWAARTEKRACHT, 0), new BABYLON.HavokPlugin(true, havok));
       maakNatuurkunde();
       bouwLevel();
-      nieuweBal();
+      // startscherm: nog geen bal, de tafel wiebelt zachtjes
+      toestand = 'start';
+      bal.isVisible = false;
+      toonStartScherm('PRESS START');
+      uitleg.textContent = 'DRUK OP EEN TOETS OF TIK OM TE BEGINNEN';
       scene.onBeforeRenderObservable.add(() => update(Math.min(engine.getDeltaTime() / 1000, 0.05)));
       engine.runRenderLoop(() => scene.render());
     });
