@@ -145,31 +145,127 @@
     bal.material = balMat;
     schaduw.addShadowCaster(bal);
 
-    // De D20: een dobbelsteen met twintig kanten, met de getallen 1 tot en met 20.
-    // Hij heeft zijn eigen natuurkunde, dus hij kantelt echt van vlak naar vlak.
-    const d20Plaatje = new BABYLON.DynamicTexture('d20Plaatje', { width: 1280, height: 1024 }, scene);
-    const dctx = d20Plaatje.getContext();
-    dctx.fillStyle = '#5b2a86'; dctx.fillRect(0, 0, 1280, 1024);
-    dctx.fillStyle = '#ffd54f'; dctx.font = 'bold 70px sans-serif';
-    dctx.textAlign = 'center'; dctx.textBaseline = 'middle';
-    const d20Vlakken = [];
-    for (let i = 0; i < 20; i++) {
-      const kolom = i % 5, rij = Math.floor(i / 5);
-      d20Vlakken.push(new BABYLON.Vector4(kolom / 5, rij / 4, (kolom + 1) / 5, (rij + 1) / 4));
-      const x = kolom * 256 + 128, y = (3 - rij) * 256 + 128;
-      dctx.fillText(String(i + 1), x, y + 6);
-      if (i + 1 === 6 || i + 1 === 9) dctx.fillRect(x - 18, y + 42, 36, 6);   // streepje onder 6 en 9
+    // ---------- Gekke vormen die je in plaats van de bal over de tafel laat rollen ----------
+    // Elke vorm heeft zijn eigen natuurkunde, dus een dobbelsteen kiepert echt van vlak naar vlak,
+    // een blikje rolt maar één kant op en een kubus glijdt eerder dan dat hij rolt.
+
+    // Plaatje met de getallen 1 tot en met 'aantal', één vakje per vlak van de dobbelsteen
+    function dobbelPlaatje(naam, aantal, achter, cijfer, letterGrootte = 70) {
+      const plaatje = new BABYLON.DynamicTexture(naam, { width: 1280, height: 1024 }, scene);
+      const c = plaatje.getContext();
+      c.fillStyle = achter; c.fillRect(0, 0, 1280, 1024);
+      c.fillStyle = cijfer; c.font = `bold ${letterGrootte}px sans-serif`;
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      const vlakken = [];
+      for (let i = 0; i < aantal; i++) {
+        const kolom = i % 5, rij = Math.floor(i / 5);
+        vlakken.push(new BABYLON.Vector4(kolom / 5, rij / 4, (kolom + 1) / 5, (rij + 1) / 4));
+        const x = kolom * 256 + 128, y = (3 - rij) * 256 + 128;
+        c.fillText(String(i + 1), x, y + 6);
+        if (aantal > 8 && (i + 1 === 6 || i + 1 === 9)) c.fillRect(x - 18, y + letterGrootte * 0.6, 36, 6);   // streepje onder 6 en 9
+      }
+      plaatje.update();
+      return { plaatje, vlakken };
     }
-    d20Plaatje.update();
-    const d20 = BABYLON.MeshBuilder.CreatePolyhedron('d20', { type: 3, size: BAL_STRAAL * 1.15, faceUV: d20Vlakken }, scene);
-    const d20Mat = new BABYLON.PBRMaterial('d20Mat', scene);
-    d20Mat.albedoTexture = d20Plaatje;
-    d20Mat.metallic = 0; d20Mat.roughness = 0.2;
-    d20Mat.clearCoat.isEnabled = true;
-    d20.material = d20Mat;
-    d20.receiveShadows = true;
-    schaduw.addShadowCaster(d20);
-    d20.setEnabled(false);
+
+    // Glanzend materiaal met een plaatje erop
+    function vormMateriaal(naam, plaatje, o = {}) {
+      const mat = new BABYLON.PBRMaterial(naam, scene);
+      mat.albedoTexture = plaatje;
+      mat.metallic = o.metaal ?? 0; mat.roughness = o.ruw ?? 0.2;
+      mat.clearCoat.isEnabled = o.lak ?? true;
+      return mat;
+    }
+
+    // Dobbelsteen met veel vlakken (4, 8, 12 of 20), zo groot dat hij net in het gat past
+    function maakVeelvlak(naam, type, aantal, straal, achter, cijfer, letterGrootte) {
+      const { plaatje, vlakken } = dobbelPlaatje(naam + 'Plaatje', aantal, achter, cijfer, letterGrootte);
+      // eerst meten hoe groot hij standaard is, dan op de goede maat maken
+      const proef = BABYLON.MeshBuilder.CreatePolyhedron('proef', { type, size: 1 }, scene);
+      const punten = proef.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+      let grootste = 0;
+      for (let i = 0; i < punten.length; i += 3) grootste = Math.max(grootste, Math.hypot(punten[i], punten[i + 1], punten[i + 2]));
+      proef.dispose();
+      const mesh = BABYLON.MeshBuilder.CreatePolyhedron(naam, { type, size: straal / grootste, faceUV: vlakken }, scene);
+      mesh.material = vormMateriaal(naam + 'Mat', plaatje);
+      return mesh;
+    }
+
+    // Plaatje tekenen met een gewoon 2D-canvas
+    function tekenPlaatje(naam, breed, hoog, teken) {
+      const plaatje = new BABYLON.DynamicTexture(naam, { width: breed, height: hoog }, scene);
+      teken(plaatje.getContext(), breed, hoog);
+      plaatje.update();
+      return plaatje;
+    }
+
+    const VORMEN = {};
+    function nieuweVorm(naam, mesh, instellingen) {
+      mesh.receiveShadows = true;
+      schaduw.addShadowCaster(mesh);
+      mesh.setEnabled(false);
+      VORMEN[naam] = { mesh, ...instellingen };
+    }
+
+    // D20, D12, D8 en D4
+    nieuweVorm('d20', maakVeelvlak('d20', 3, 20, 0.54, '#5b2a86', '#ffd54f'), { kantel: 0.45, grip: 1 });
+    nieuweVorm('d12', maakVeelvlak('d12', 2, 12, 0.5, '#26c6da', '#0b2e33', 90), { kantel: 0.5, grip: 0.9 });
+    nieuweVorm('d8', maakVeelvlak('d8', 1, 8, 0.52, '#c62828', '#ffffff', 80), { kantel: 0.55, grip: 0.8 });
+    nieuweVorm('d4', maakVeelvlak('d4', 0, 4, 0.6, '#d4a017', '#3e2723', 90), { kantel: 0.55, grip: 0.3 });
+
+    // D6: een gewone kubus, die glijdt eerder dan dat hij rolt
+    {
+      const { plaatje, vlakken } = dobbelPlaatje('d6Plaatje', 6, '#fafafa', '#c62828', 150);
+      const kubus = BABYLON.MeshBuilder.CreateBox('d6', { size: 0.7, faceUV: vlakken }, scene);
+      kubus.material = vormMateriaal('d6Mat', plaatje);
+      nieuweVorm('d6', kubus, { kantel: 0.55, grip: 0.35 });
+    }
+
+    // Donut met roze glazuur en spikkels
+    {
+      const plaatje = tekenPlaatje('donutPlaatje', 512, 256, (c, b, h) => {
+        c.fillStyle = '#d9a066'; c.fillRect(0, 0, b, h);                // deeg
+        c.fillStyle = '#f48fb1'; c.fillRect(0, 0, b, h / 2);            // glazuur
+        const kleuren = ['#fff', '#ffeb3b', '#4fc3f7', '#81c784', '#ba68c8'];
+        for (let i = 0; i < 160; i++) {
+          c.fillStyle = kleuren[i % kleuren.length];
+          c.fillRect(Math.random() * b, Math.random() * (h / 2 - 8), 10, 4);
+        }
+      });
+      const donut = BABYLON.MeshBuilder.CreateTorus('donut', { diameter: 0.7, thickness: 0.32, tessellation: 40 }, scene);
+      donut.material = vormMateriaal('donutMat', plaatje, { ruw: 0.4 });
+      nieuweVorm('donut', donut, { kantel: 0.4, grip: 0.8 });
+    }
+
+    // Blikje frisdrank: rolt alleen dwars, en staat hij rechtop dan glijdt hij
+    {
+      const plaatje = tekenPlaatje('blikPlaatje', 1024, 512, (c, b, h) => {
+        c.fillStyle = '#d32f2f'; c.fillRect(0, 0, 896, h);
+        c.fillStyle = '#fff'; c.beginPath(); c.moveTo(0, 300);
+        for (let x = 0; x <= 896; x += 16) c.lineTo(x, 300 + Math.sin(x / 70) * 40);
+        c.lineTo(896, 340); c.lineTo(0, 340); c.fill();
+        c.font = 'bold 140px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText('SAP', 224, 180); c.fillText('SAP', 672, 180);
+        c.fillStyle = '#c0c4c8'; c.fillRect(896, 0, 128, h);            // zilveren boven- en onderkant
+      });
+      const blik = BABYLON.MeshBuilder.CreateCylinder('blikje', {
+        height: 0.8, diameter: 0.55, tessellation: 32,
+        faceUV: [new BABYLON.Vector4(0.9, 0.1, 0.98, 0.9), new BABYLON.Vector4(0, 0, 0.875, 1), new BABYLON.Vector4(0.9, 0.1, 0.98, 0.9)],
+      }, scene);
+      blik.material = vormMateriaal('blikMat', plaatje, { metaal: 0.8, ruw: 0.25, lak: false });
+      nieuweVorm('blikje', blik, { kantel: 0.35, grip: 0.6 });
+    }
+
+    // Pil: half rood, half wit
+    {
+      const plaatje = tekenPlaatje('pilPlaatje', 256, 256, (c, b, h) => {
+        c.fillStyle = '#e53935'; c.fillRect(0, 0, b, h / 2);
+        c.fillStyle = '#fafafa'; c.fillRect(0, h / 2, b, h / 2);
+      });
+      const pil = BABYLON.MeshBuilder.CreateCapsule('pil', { height: 0.95, radius: 0.22, tessellation: 24, capSubdivisions: 8 }, scene);
+      pil.material = vormMateriaal('pilMat', plaatje, { ruw: 0.15 });
+      nieuweVorm('pil', pil, { kantel: 0.35, grip: 0.7 });
+    }
 
     // Mooie nabewerking: gloed, zachte randen, kleurcorrectie
     const gloed = new BABYLON.GlowLayer('gloed', scene);
@@ -259,33 +355,61 @@
         achtergrond: { grond: { hout: 'grass.png', ruw: 1 } },
         blok: { kleur: '#8c1f19', ruw: 0.3, lak: true } },
       { naam: 'Dobbelsteen', tafel: { kleur: '#1b5e20', ruw: 1 },
-        bal: { d20: true },
+        bal: { vorm: 'd20' },
         achtergrond: { lucht: 'skybox2', grond: { kleur: '#1a1a22', ruw: 0.4, lak: true } },
         blok: { kleur: '#ffffff', ruw: 0.2, lak: true } },
+      { naam: 'Snoepwinkel', tafel: { kleur: '#f8bbd0', ruw: 0.3, lak: true },
+        bal: { vorm: 'donut' },
+        achtergrond: { lucht: 'skybox', grond: { kleur: '#fff3e0', ruw: 0.8 } },
+        blok: { kleur: '#7e57c2', ruw: 0.2, lak: true } },
       { naam: 'Woestijn',  tafel: { hout: 'sand.jpg', herhaal: 2, ruw: 1 },
         bal: { ontwerp: { soort: 'stippen', basis: '#c62828', kleur: '#ffffff' }, ruw: 0.9 },
         achtergrond: { grond: { hout: 'sand.jpg', herhaal: 30, ruw: 1 } },
         blok: { hout: 'rock.png', ruw: 0.9 } },
+      { naam: 'Bordspel', tafel: { kleur: '#0d47a1', ruw: 1 },
+        bal: { vorm: 'd6' },
+        achtergrond: { grond: { hout: 'floor.png', ruw: 0.6 } },
+        blok: { kleur: '#ffeb3b', ruw: 0.3, lak: true } },
       { naam: 'Ruimteschip', tafel: { hout: 'floor.png', herhaal: 2, metaal: 0.9, ruw: 0.25 },
         bal: { ontwerp: { soort: 'lijnen', basis: '#d8dce0', kleur: '#30343a' }, metaal: 1, ruw: 0.05 },
         achtergrond: { lucht: 'Space/space', grond: 'geen' },
         blok: { kleur: '#ffc83d', metaal: 1, ruw: 0.15 } },
+      { naam: 'Frisdrank', tafel: { kleur: '#cfd8dc', metaal: 0.8, ruw: 0.2 },
+        bal: { vorm: 'blikje' },
+        achtergrond: { lucht: 'TropicalSunnyDay', grond: { hout: 'sand.jpg', herhaal: 30, ruw: 1 } },
+        blok: { kleur: '#43a047', ruw: 0.2, lak: true } },
       { naam: 'Vulkaan',   tafel: { hout: 'lava/lavatile.jpg', herhaal: 2, ruw: 0.6, gloei: true },
         bal: { ontwerp: { soort: 'stippen', basis: '#151515', kleur: '#ff7a00' }, ruw: 0.1, lak: true },
         achtergrond: { lucht: 'skybox3', grond: { hout: 'lava/lavatile.jpg', herhaal: 30, ruw: 0.7, gloei: true } },
         blok: { hout: 'rock.png', kleur: '#555555', ruw: 0.8 } },
+      { naam: 'Apotheek', tafel: { kleur: '#fafafa', ruw: 0.1, lak: true },
+        bal: { vorm: 'pil' },
+        achtergrond: { grond: { kleur: '#b2dfdb', ruw: 0.8 } },
+        blok: { kleur: '#26a69a', ruw: 0.2, lak: true } },
       { naam: 'Voetbal',   tafel: { hout: 'grass.jpg', herhaal: 2, ruw: 1 },
         bal: { ontwerp: { soort: 'voetbal', basis: '#ffffff' }, ruw: 0.5 },
         achtergrond: { lucht: 'skybox', grond: { hout: 'grass.jpg', herhaal: 40, ruw: 1 } },
         blok: { hout: 'crate.png', ruw: 0.8 } },
+      { naam: 'Kristalgrot', tafel: { hout: 'rock.png', herhaal: 2, ruw: 0.8 },
+        bal: { vorm: 'd12' },
+        achtergrond: { lucht: 'skybox3', grond: { hout: 'rock.png', herhaal: 30, ruw: 1 } },
+        blok: { kleur: '#80deea', metaal: 0.3, ruw: 0.05, lak: true } },
       { naam: 'Strand',    tafel: { hout: 'bricktile.jpg', herhaal: 2, ruw: 0.7 },
         bal: { ontwerp: { soort: 'strandbal', basis: '#ffffff', kleuren: ['#e53935', '#ffffff', '#1e88e5', '#ffffff', '#fdd835', '#ffffff'] }, ruw: 0.2, lak: true },
         achtergrond: { lucht: 'TropicalSunnyDay', grond: { hout: 'sand.jpg', herhaal: 30, ruw: 1 } },
         blok: { kleur: '#ff8a65', ruw: 0.6 } },
+      { naam: 'Piramide', tafel: { hout: 'sand.jpg', herhaal: 2, ruw: 1 },
+        bal: { vorm: 'd4' },
+        achtergrond: { grond: { hout: 'sand.jpg', herhaal: 30, ruw: 1 } },
+        blok: { hout: 'rock.png', kleur: '#d7b98e', ruw: 0.9 } },
       { naam: 'Retro',     tafel: { hout: 'ground.jpg', herhaal: 2, ruw: 0.9 },
         bal: { plaatje: 'amiga.jpg', ruw: 0.3, lak: true },
         achtergrond: { lucht: 'skybox4', grond: { kleur: '#e8eef4', ruw: 0.8 } },
         blok: { kleur: '#3949ab', ruw: 0.2, metaal: 0.5 } },
+      { naam: 'Kasteel', tafel: { hout: 'bricktile.jpg', herhaal: 2, ruw: 0.8 },
+        bal: { vorm: 'd8' },
+        achtergrond: { lucht: 'skybox4', grond: { kleur: '#e8eef4', ruw: 0.8 } },
+        blok: { hout: 'rock.png', ruw: 0.9 } },
     ];
 
     let thema = THEMAS[0];
@@ -304,9 +428,10 @@
       }
 
       const b = thema.bal;
-      maxKantel = b.d20 ? 0.45 : MAX_KANTEL;   // een D20 heeft een schuinere tafel nodig om om te rollen
-      bal.isVisible = !b.d20;           // bij de D20 is de bal zelf onzichtbaar
-      d20.setEnabled(!!b.d20);
+      // een gekke vorm heeft vaak een schuinere tafel nodig om om te rollen
+      maxKantel = b.vorm ? VORMEN[b.vorm].kantel : MAX_KANTEL;
+      bal.isVisible = !b.vorm;          // bij een gekke vorm is de bal zelf onzichtbaar
+      for (const naam in VORMEN) VORMEN[naam].mesh.setEnabled(naam === b.vorm);
       if (b.ontwerp) tekenBalPatroon(b.ontwerp);
       stelIn(balMat, { ...b, plaatje: b.plaatje ? textuur(b.plaatje) : balPlaatje });
       const k = thema.blok;
@@ -315,7 +440,7 @@
 
     // Spelstatus
     let toestand = 'rollen';   // 'rollen', 'inGat', 'inValgat' of 'vallen'
-    let speler = bal;             // wat er nu rolt: de bal of de D20
+    let speler = bal;             // wat er nu rolt: de bal of een gekke vorm
     let spelerFysica = null;      // de natuurkunde van de speler
     let tafelFysica, grondFysica;
     let maxKantel = MAX_KANTEL;
@@ -440,19 +565,19 @@
       if (spelerFysica) { spelerFysica.dispose(); spelerFysica = null; }
     }
 
-    // Nieuwe bal (of D20) valt vanaf net boven het midden op de tafel
+    // Nieuwe bal (of gekke vorm) valt vanaf net boven het midden op de tafel
     function nieuweBal() {
       stopSpelerFysica();
-      const isD20 = !!thema.bal.d20;
-      speler = isD20 ? d20 : bal;
+      const vorm = VORMEN[thema.bal.vorm];
+      speler = vorm ? vorm.mesh : bal;
       speler.setParent(null);
       speler.position.set(0, 1.2, 0);
-      speler.rotationQuaternion = isD20
+      speler.rotationQuaternion = vorm
         ? BABYLON.Quaternion.FromEulerAngles(Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3)
         : BABYLON.Quaternion.Identity();
       spelerFysica = new BABYLON.PhysicsAggregate(speler,
-        isD20 ? BABYLON.PhysicsShapeType.CONVEX_HULL : BABYLON.PhysicsShapeType.SPHERE,
-        { mass: 1, friction: isD20 ? 1 : 0.8, restitution: isD20 ? 0.2 : 0.3 }, scene);
+        vorm ? BABYLON.PhysicsShapeType.CONVEX_HULL : BABYLON.PhysicsShapeType.SPHERE,
+        { mass: 1, friction: vorm ? vorm.grip : 0.8, restitution: vorm ? 0.2 : 0.3 }, scene);
       // gladder per level: minder afremmen
       const rem = -Math.log(1 - wrijving);
       spelerFysica.body.setLinearDamping(rem * 0.3);
