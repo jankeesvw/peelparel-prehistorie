@@ -5,38 +5,236 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>3d-test</title>
   <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; color: #111; font-family: sans-serif; }
-    canvas { display: block; background: #fff; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #87ceeb; color: #111; font-family: sans-serif; }
+    canvas { display: block; }
+    #info { position: fixed; top: 16px; left: 16px; font-size: 22px; font-weight: bold; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.5); }
+    #melding { position: fixed; top: 40%; width: 100%; text-align: center; font-size: 56px; font-weight: bold; color: #fff; text-shadow: 0 3px 8px rgba(0,0,0,.6); pointer-events: none; }
+    #uitleg { position: fixed; bottom: 16px; width: 100%; text-align: center; font-size: 18px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.5); }
   </style>
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+  </script>
 </head>
 <body>
   <canvas id="game"></canvas>
-  <script>
-    const canvas = document.getElementById('game');
-    const ctx = canvas.getContext('2d');
+  <div id="info">Gaten: 0 &nbsp; Gevallen: 0</div>
+  <div id="melding"></div>
+  <div id="uitleg">Kantel de tafel met de pijltjes of W A S D</div>
+  <script type="module">
+    import * as THREE from 'three';
 
-    // Het canvas vult de hele pagina, ook als het venster van grootte verandert.
+    const canvas = document.getElementById('game');
+    const infoTekst = document.getElementById('info');
+    const meldingTekst = document.getElementById('melding');
+
+    // Instellingen
+    const TAFEL_HALF = 5;        // tafel is 10 bij 10
+    const BAL_STRAAL = 0.4;
+    const GAT_STRAAL = 0.65;
+    const MAX_KANTEL = 0.3;      // hoe schuin de tafel maximaal mag (radialen)
+    const KANTEL_SNELHEID = 1.2;
+    const ZWAARTEKRACHT = 20;
+    const WRIJVING = 0.6;
+
+    // Renderer, scène en camera
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.shadowMap.enabled = true;
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb);
+    scene.fog = new THREE.Fog(0x87ceeb, 30, 80);
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+    camera.position.set(0, 13, 13);
+    camera.lookAt(0, 0, 0);
+
     function pasGrootteAan() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
     }
     pasGrootteAan();
     window.addEventListener('resize', pasGrootteAan);
 
-    function update(dt) {
-      // spel-logica
+    // Licht
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x446633, 0.8));
+    const zon = new THREE.DirectionalLight(0xffffff, 1.6);
+    zon.position.set(6, 15, 8);
+    zon.castShadow = true;
+    zon.shadow.mapSize.set(2048, 2048);
+    Object.assign(zon.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10 });
+    scene.add(zon);
+
+    // Gras ver onder de tafel
+    const grond = new THREE.Mesh(
+      new THREE.PlaneGeometry(200, 200),
+      new THREE.MeshStandardMaterial({ color: 0x4f9a3a })
+    );
+    grond.rotation.x = -Math.PI / 2;
+    grond.position.y = -12;
+    grond.receiveShadow = true;
+    scene.add(grond);
+
+    // Paal waar de tafel op staat
+    const paal = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.5, 0.8, 11.5, 16),
+      new THREE.MeshStandardMaterial({ color: 0x555555 })
+    );
+    paal.position.y = -6.3;
+    paal.castShadow = true;
+    scene.add(paal);
+
+    // De tafel: een groep die kantelt, alles op de tafel beweegt mee
+    const tafel = new THREE.Group();
+    scene.add(tafel);
+    const blad = new THREE.Mesh(
+      new THREE.BoxGeometry(TAFEL_HALF * 2, 0.5, TAFEL_HALF * 2),
+      new THREE.MeshStandardMaterial({ color: 0xb5793f })
+    );
+    blad.position.y = -0.25;
+    blad.receiveShadow = true;
+    blad.castShadow = true;
+    tafel.add(blad);
+
+    // Het gat (zwarte schijf op het blad)
+    const gat = new THREE.Mesh(
+      new THREE.CircleGeometry(GAT_STRAAL, 32),
+      new THREE.MeshBasicMaterial({ color: 0x000000 })
+    );
+    gat.rotation.x = -Math.PI / 2;
+    gat.position.y = 0.01;
+    tafel.add(gat);
+
+    // De bal, met strepen zodat je ziet dat hij rolt
+    const balPlaatje = document.createElement('canvas');
+    balPlaatje.width = 128; balPlaatje.height = 64;
+    const bctx = balPlaatje.getContext('2d');
+    bctx.fillStyle = '#e53935'; bctx.fillRect(0, 0, 128, 64);
+    bctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 4; i++) bctx.fillRect(i * 32, 0, 12, 64);
+    const bal = new THREE.Mesh(
+      new THREE.SphereGeometry(BAL_STRAAL, 32, 16),
+      new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(balPlaatje) })
+    );
+    bal.castShadow = true;
+
+    // Spelstatus
+    let toestand = 'rollen';   // 'rollen', 'inGat' of 'vallen'
+    let balPos = new THREE.Vector2();   // plek op de tafel (x, z)
+    let balSnelheid = new THREE.Vector2();
+    let valSnelheid = new THREE.Vector3();
+    let wachttijd = 0;
+    let gaten = 0, gevallen = 0;
+    let kantelX = 0, kantelZ = 0;
+
+    function toonInfo() {
+      infoTekst.innerHTML = `Gaten: ${gaten} &nbsp; Gevallen: ${gevallen}`;
     }
 
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // hier komt het tekenen
+    function zetGatNeer() {
+      // gat ergens op de tafel, niet te dicht bij de bal
+      do {
+        gat.position.x = (Math.random() * 2 - 1) * (TAFEL_HALF - 1.2);
+        gat.position.z = (Math.random() * 2 - 1) * (TAFEL_HALF - 1.2);
+      } while (Math.hypot(gat.position.x - balPos.x, gat.position.z - balPos.y) < 4);
     }
+
+    function nieuweBal() {
+      tafel.add(bal);
+      balPos.set(0, 0);
+      balSnelheid.set(0, 0);
+      bal.position.set(0, BAL_STRAAL, 0);
+      toestand = 'rollen';
+      meldingTekst.textContent = '';
+    }
+
+    // Toetsen
+    const toetsen = {};
+    window.addEventListener('keydown', e => { toetsen[e.key.toLowerCase()] = true; if (e.key.startsWith('Arrow')) e.preventDefault(); });
+    window.addEventListener('keyup', e => { toetsen[e.key.toLowerCase()] = false; });
+
+    function update(dt) {
+      // Tafel kantelen; los je de toets, dan gaat hij langzaam terug naar plat
+      const links = toetsen['arrowleft'] || toetsen['a'];
+      const rechts = toetsen['arrowright'] || toetsen['d'];
+      const op = toetsen['arrowup'] || toetsen['w'];
+      const neer = toetsen['arrowdown'] || toetsen['s'];
+      if (links) kantelZ += KANTEL_SNELHEID * dt;
+      else if (rechts) kantelZ -= KANTEL_SNELHEID * dt;
+      else kantelZ *= Math.pow(0.1, dt);
+      if (op) kantelX -= KANTEL_SNELHEID * dt;
+      else if (neer) kantelX += KANTEL_SNELHEID * dt;
+      else kantelX *= Math.pow(0.1, dt);
+      kantelX = THREE.MathUtils.clamp(kantelX, -MAX_KANTEL, MAX_KANTEL);
+      kantelZ = THREE.MathUtils.clamp(kantelZ, -MAX_KANTEL, MAX_KANTEL);
+      tafel.rotation.set(kantelX, 0, kantelZ);
+      tafel.updateMatrixWorld();
+
+      if (toestand === 'rollen') {
+        // Zwaartekracht bekeken vanuit de schuine tafel: dat deel trekt de bal opzij
+        const zwaarte = new THREE.Vector3(0, -ZWAARTEKRACHT, 0)
+          .applyQuaternion(tafel.quaternion.clone().invert());
+        balSnelheid.x += zwaarte.x * (5 / 7) * dt;
+        balSnelheid.y += zwaarte.z * (5 / 7) * dt;
+        balSnelheid.multiplyScalar(Math.pow(1 - WRIJVING, dt));
+        const oud = balPos.clone();
+        balPos.addScaledVector(balSnelheid, dt);
+        bal.position.set(balPos.x, BAL_STRAAL, balPos.y);
+
+        // Laten rollen: draaien om de as dwars op de beweging
+        const stap = balPos.clone().sub(oud);
+        if (stap.length() > 0) {
+          const as = new THREE.Vector3(stap.y, 0, -stap.x).normalize();
+          bal.rotateOnWorldAxis(as, stap.length() / BAL_STRAAL);
+        }
+
+        // In het gat?
+        if (Math.hypot(balPos.x - gat.position.x, balPos.y - gat.position.z) < GAT_STRAAL - 0.15) {
+          toestand = 'inGat';
+          wachttijd = 1.5;
+          gaten++;
+          toonInfo();
+          meldingTekst.textContent = 'Raak!';
+        }
+        // Van de tafel af?
+        else if (Math.abs(balPos.x) > TAFEL_HALF || Math.abs(balPos.y) > TAFEL_HALF) {
+          toestand = 'vallen';
+          wachttijd = 2;
+          // bal loskoppelen van de tafel en met dezelfde vaart laten vallen
+          const wereldPos = bal.getWorldPosition(new THREE.Vector3());
+          valSnelheid.set(balSnelheid.x, 0, balSnelheid.y).applyQuaternion(tafel.quaternion);
+          scene.attach(bal);
+          bal.position.copy(wereldPos);
+          gevallen++;
+          toonInfo();
+          meldingTekst.textContent = 'Eraf gevallen!';
+        }
+      } else if (toestand === 'inGat') {
+        // bal zakt naar het midden van het gat en verdwijnt naar beneden
+        bal.position.x += (gat.position.x - bal.position.x) * Math.min(1, 10 * dt);
+        bal.position.z += (gat.position.z - bal.position.z) * Math.min(1, 10 * dt);
+        bal.position.y -= 3 * dt;
+        wachttijd -= dt;
+        if (wachttijd <= 0) { nieuweBal(); zetGatNeer(); }
+      } else if (toestand === 'vallen') {
+        valSnelheid.y -= ZWAARTEKRACHT * dt;
+        bal.position.addScaledVector(valSnelheid, dt);
+        if (bal.position.y < grond.position.y + BAL_STRAAL) {
+          bal.position.y = grond.position.y + BAL_STRAAL;
+          valSnelheid.y *= -0.4;
+          valSnelheid.x *= 0.8; valSnelheid.z *= 0.8;
+        }
+        wachttijd -= dt;
+        if (wachttijd <= 0) nieuweBal();
+      }
+    }
+
+    nieuweBal();
+    zetGatNeer();
 
     let vorige = performance.now();
     function loop(nu) {
-      update((nu - vorige) / 1000);
+      update(Math.min((nu - vorige) / 1000, 0.05));
       vorige = nu;
-      draw();
+      renderer.render(scene, camera);
       requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);
