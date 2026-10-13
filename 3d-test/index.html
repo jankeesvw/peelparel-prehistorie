@@ -295,6 +295,116 @@
       nieuweVorm('pil', pil, { kantel: 0.35, grip: 0.7 });
     }
 
+    // ---------- Nog rarere vormen, in elkaar gezet uit losse onderdelen ----------
+    const V3 = (x, y, z) => new BABYLON.Vector3(x, y, z);
+    function kleurMat(naam, kleur, o = {}) {
+      const mat = new BABYLON.PBRMaterial(naam, scene);
+      mat.albedoColor = BABYLON.Color3.FromHexString(kleur);
+      mat.metallic = o.metaal ?? 0; mat.roughness = o.ruw ?? 0.3;
+      mat.clearCoat.isEnabled = o.lak ?? false;
+      return mat;
+    }
+    // Onderdelen samenvoegen tot één ding, met het midden precies in het midden
+    function samenvoegen(naam, onderdelen) {
+      const mesh = BABYLON.Mesh.MergeMeshes(onderdelen, true, true, undefined, false, true);
+      mesh.name = naam;
+      const midden = mesh.getBoundingInfo().boundingBox.center.clone();
+      mesh.position = midden.scale(-1);
+      mesh.bakeCurrentTransformIntoVertices();
+      mesh.position.set(0, 0, 0);
+      mesh.refreshBoundingInfo();
+      return mesh;
+    }
+    function onderdeel(mesh, mat, plek, draai) {
+      mesh.material = mat;
+      if (plek) mesh.position = plek;
+      if (draai) mesh.rotation = draai;
+      return mesh;
+    }
+    const MB = BABYLON.MeshBuilder;
+
+    // Theepot: bolle buik, tuit, oor en een knopje op het deksel
+    {
+      const porselein = kleurMat('porselein', '#f5f5f5', { ruw: 0.15, lak: true });
+      const blauw = kleurMat('theepotBlauw', '#1e63c6', { ruw: 0.15, lak: true });
+      const profiel = [V3(0, -0.22, 0), V3(0.2, -0.22, 0), V3(0.3, -0.12, 0), V3(0.33, 0, 0), V3(0.29, 0.12, 0), V3(0.18, 0.2, 0), V3(0.06, 0.23, 0), V3(0, 0.23, 0)];
+      const pot = samenvoegen('theepot', [
+        onderdeel(MB.CreateLathe('buik', { shape: profiel, tessellation: 32 }, scene), porselein),
+        onderdeel(MB.CreateTube('tuit', { path: [V3(0.25, -0.06, 0), V3(0.4, 0.04, 0), V3(0.5, 0.18, 0)], radiusFunction: (i) => 0.07 - i * 0.015, cap: BABYLON.Mesh.CAP_ALL, tessellation: 16 }, scene), blauw),
+        onderdeel(MB.CreateTorus('oor', { diameter: 0.28, thickness: 0.05, tessellation: 24 }, scene), blauw, V3(-0.32, 0.02, 0), V3(Math.PI / 2, 0, 0)),
+        onderdeel(MB.CreateSphere('knop', { diameter: 0.1 }, scene), blauw, V3(0, 0.26, 0)),
+      ]);
+      nieuweVorm('theepot', pot, { kantel: 0.45, grip: 0.6 });
+    }
+
+    // Banaan: een kromme, dikke buis met dunne puntjes
+    {
+      const pad = [];
+      for (let i = 0; i <= 20; i++) {
+        const h = -1 + i / 10;   // van -1 tot 1
+        pad.push(V3(Math.sin(h * 0.9) * 0.55, (1 - Math.cos(h * 0.9)) * 0.55, 0));
+      }
+      const banaan = MB.CreateTube('banaan', { path: pad, radiusFunction: (i) => 0.025 + 0.11 * Math.sin(Math.PI * i / 20), cap: BABYLON.Mesh.CAP_ALL, tessellation: 7 }, scene);
+      banaan.material = kleurMat('banaanMat', '#ffd600', { ruw: 0.5 });
+      nieuweVorm('banaan', samenvoegen('banaan', [banaan]), { kantel: 0.4, grip: 0.5 });
+    }
+
+    // Badeendje: dik lijf, kopje, oranje snavel en zwarte oogjes
+    {
+      const geel = kleurMat('eendGeel', '#ffeb3b', { ruw: 0.2, lak: true });
+      const oranje = kleurMat('eendOranje', '#ff9800', { ruw: 0.3, lak: true });
+      const zwart = kleurMat('eendZwart', '#111111', { ruw: 0.1 });
+      const lijf = MB.CreateSphere('lijf', { diameter: 0.55 }, scene);
+      lijf.scaling = V3(1.3, 0.85, 1);
+      const eend = samenvoegen('eendje', [
+        onderdeel(lijf, geel),
+        onderdeel(MB.CreateSphere('kop', { diameter: 0.34 }, scene), geel, V3(0.2, 0.28, 0)),
+        onderdeel(MB.CreateCylinder('snavel', { height: 0.16, diameterTop: 0, diameterBottom: 0.14, tessellation: 12 }, scene), oranje, V3(0.42, 0.25, 0), V3(0, 0, -Math.PI / 2)),
+        onderdeel(MB.CreateSphere('oog1', { diameter: 0.06 }, scene), zwart, V3(0.3, 0.35, 0.11)),
+        onderdeel(MB.CreateSphere('oog2', { diameter: 0.06 }, scene), zwart, V3(0.3, 0.35, -0.11)),
+        onderdeel(MB.CreateCylinder('staart', { height: 0.14, diameterTop: 0, diameterBottom: 0.16, tessellation: 12 }, scene), geel, V3(-0.38, 0.1, 0), V3(0, 0, 1.0)),
+      ]);
+      nieuweVorm('eendje', eend, { kantel: 0.45, grip: 0.6 });
+    }
+
+    // Ster: rolt als een wiel als hij rechtop staat, glijdt als hij plat ligt
+    {
+      const punten = [];
+      for (let i = 0; i < 10; i++) {
+        const h = i / 10 * Math.PI * 2 + Math.PI / 2, r = i % 2 ? 0.22 : 0.52;
+        punten.push(V3(Math.cos(h) * r, Math.sin(h) * r, 0));
+      }
+      punten.push(punten[0].clone());
+      const ster = MB.ExtrudeShape('ster', { shape: punten, path: [V3(0, 0, -0.12), V3(0, 0, 0.12)], cap: BABYLON.Mesh.CAP_ALL }, scene);
+      const goud = kleurMat('sterGoud', '#ffc400', { metaal: 1, ruw: 0.2 });
+      goud.emissiveColor = new BABYLON.Color3(0.3, 0.2, 0);
+      ster.material = goud;
+      nieuweVorm('ster', samenvoegen('ster', [ster]), { kantel: 0.4, grip: 0.5 });
+    }
+
+    // Stuk kaas: een punt uit een rond kaasje
+    {
+      const kaas = MB.CreateCylinder('kaas', { height: 0.32, diameter: 1.2, arc: 0.17, enclose: true, tessellation: 48 }, scene);
+      kaas.material = kleurMat('kaasMat', '#ffca28', { ruw: 0.6 });
+      nieuweVorm('kaas', samenvoegen('kaas', [kaas]), { kantel: 0.5, grip: 0.4 });
+    }
+
+    // Hamburger: broodje, burger, kaas, sla en een bolle bovenkant
+    {
+      const brood = kleurMat('brood', '#d9822b', { ruw: 0.5, lak: true });
+      const vlees = kleurMat('vlees', '#4e2a14', { ruw: 0.8 });
+      const plak = kleurMat('plakKaas', '#ffc107', { ruw: 0.4 });
+      const sla = kleurMat('sla', '#66bb6a', { ruw: 0.6 });
+      const burger = samenvoegen('hamburger', [
+        onderdeel(MB.CreateCylinder('onder', { height: 0.12, diameter: 0.6, tessellation: 32 }, scene), brood, V3(0, -0.14, 0)),
+        onderdeel(MB.CreateCylinder('vlees', { height: 0.11, diameter: 0.64, tessellation: 32 }, scene), vlees, V3(0, -0.025, 0)),
+        onderdeel(MB.CreateBox('plak', { width: 0.58, height: 0.03, depth: 0.58 }, scene), plak, V3(0, 0.04, 0), V3(0, Math.PI / 4, 0)),
+        onderdeel(MB.CreateCylinder('sla', { height: 0.03, diameter: 0.68, tessellation: 12 }, scene), sla, V3(0, 0.07, 0)),
+        onderdeel(MB.CreateSphere('boven', { diameter: 0.62, slice: 0.5, segments: 24 }, scene), brood, V3(0, 0.07, 0)),
+      ]);
+      nieuweVorm('hamburger', burger, { kantel: 0.5, grip: 0.5 });
+    }
+
     // Mooie nabewerking: gloed, zachte randen, kleurcorrectie
     const gloed = new BABYLON.GlowLayer('gloed', scene);
     gloed.intensity = 0.8;
@@ -399,6 +509,10 @@
         bal: { ontwerp: { soort: 'stippen', basis: '#c62828', kleur: '#ffffff' }, ruw: 0.9 },
         achtergrond: { grond: { hout: 'sand.jpg', herhaal: 30, ruw: 1 } },
         blok: { hout: 'rock.png', ruw: 0.9 } },
+      { naam: 'Theekransje', tafel: { hout: 'wood.jpg', ruw: 0.4, lak: true },
+        bal: { vorm: 'theepot' },
+        achtergrond: { lucht: 'skybox', grond: { hout: 'grass.png', ruw: 1 } },
+        blok: { kleur: '#f8bbd0', ruw: 0.2, lak: true } },
       { naam: 'Bordspel', tafel: { kleur: '#0d47a1', ruw: 1 },
         bal: { vorm: 'd6' },
         achtergrond: { grond: { hout: 'floor.png', ruw: 0.6 } },
@@ -407,6 +521,10 @@
         bal: { ontwerp: { soort: 'lijnen', basis: '#d8dce0', kleur: '#30343a' }, metaal: 1, ruw: 0.05 },
         achtergrond: { lucht: 'Space/space', grond: 'geen' },
         blok: { kleur: '#ffc83d', metaal: 1, ruw: 0.15 } },
+      { naam: 'Jungle', tafel: { hout: 'grass.jpg', herhaal: 2, ruw: 1 },
+        bal: { vorm: 'banaan' },
+        achtergrond: { lucht: 'TropicalSunnyDay', grond: { hout: 'grass.jpg', herhaal: 40, ruw: 1 } },
+        blok: { hout: 'wood.jpg', ruw: 0.8 } },
       { naam: 'Frisdrank', tafel: { kleur: '#cfd8dc', metaal: 0.8, ruw: 0.2 },
         bal: { vorm: 'blikje' },
         achtergrond: { lucht: 'TropicalSunnyDay', grond: { hout: 'sand.jpg', herhaal: 30, ruw: 1 } },
@@ -415,6 +533,10 @@
         bal: { ontwerp: { soort: 'stippen', basis: '#151515', kleur: '#ff7a00' }, ruw: 0.1, lak: true },
         achtergrond: { lucht: 'skybox3', grond: { hout: 'lava/lavatile.jpg', herhaal: 30, ruw: 0.7, gloei: true } },
         blok: { hout: 'rock.png', kleur: '#555555', ruw: 0.8 } },
+      { naam: 'Badkamer', tafel: { hout: 'bricktile.jpg', herhaal: 3, kleur: '#b3e5fc', ruw: 0.1, lak: true },
+        bal: { vorm: 'eendje' },
+        achtergrond: { grond: { kleur: '#29b6f6', metaal: 0.3, ruw: 0.05, lak: true } },
+        blok: { kleur: '#ffffff', ruw: 0.1, lak: true } },
       { naam: 'Apotheek', tafel: { kleur: '#fafafa', ruw: 0.1, lak: true },
         bal: { vorm: 'pil' },
         achtergrond: { grond: { kleur: '#b2dfdb', ruw: 0.8 } },
@@ -423,6 +545,10 @@
         bal: { ontwerp: { soort: 'voetbal', basis: '#ffffff' }, ruw: 0.5 },
         achtergrond: { lucht: 'skybox', grond: { hout: 'grass.jpg', herhaal: 40, ruw: 1 } },
         blok: { hout: 'crate.png', ruw: 0.8 } },
+      { naam: 'Sterrenhemel', tafel: { hout: 'floor.png', herhaal: 2, kleur: '#3949ab', metaal: 0.8, ruw: 0.3 },
+        bal: { vorm: 'ster' },
+        achtergrond: { lucht: 'Space/space', grond: 'geen' },
+        blok: { kleur: '#e1bee7', metaal: 1, ruw: 0.1 } },
       { naam: 'Kristalgrot', tafel: { hout: 'rock.png', herhaal: 2, ruw: 0.8 },
         bal: { vorm: 'd12' },
         achtergrond: { lucht: 'skybox3', grond: { hout: 'rock.png', herhaal: 30, ruw: 1 } },
@@ -431,6 +557,10 @@
         bal: { ontwerp: { soort: 'strandbal', basis: '#ffffff', kleuren: ['#e53935', '#ffffff', '#1e88e5', '#ffffff', '#fdd835', '#ffffff'] }, ruw: 0.2, lak: true },
         achtergrond: { lucht: 'TropicalSunnyDay', grond: { hout: 'sand.jpg', herhaal: 30, ruw: 1 } },
         blok: { kleur: '#ff8a65', ruw: 0.6 } },
+      { naam: 'Muizenhol', tafel: { hout: 'wood.jpg', ruw: 0.8 },
+        bal: { vorm: 'kaas' },
+        achtergrond: { lucht: 'skybox2', grond: { hout: 'floor.png', ruw: 0.6 } },
+        blok: { kleur: '#8d6e63', ruw: 0.9 } },
       { naam: 'Piramide', tafel: { hout: 'sand.jpg', herhaal: 2, ruw: 1 },
         bal: { vorm: 'd4' },
         achtergrond: { grond: { hout: 'sand.jpg', herhaal: 30, ruw: 1 } },
@@ -439,6 +569,10 @@
         bal: { plaatje: 'amiga.jpg', ruw: 0.3, lak: true },
         achtergrond: { lucht: 'skybox4', grond: { kleur: '#e8eef4', ruw: 0.8 } },
         blok: { kleur: '#3949ab', ruw: 0.2, metaal: 0.5 } },
+      { naam: 'Snackbar', tafel: { kleur: '#c62828', ruw: 0.2, lak: true },
+        bal: { vorm: 'hamburger' },
+        achtergrond: { lucht: 'skybox2', grond: { kleur: '#1a1a22', ruw: 0.4, lak: true } },
+        blok: { kleur: '#ffeb3b', ruw: 0.3, lak: true } },
       { naam: 'Kasteel', tafel: { hout: 'bricktile.jpg', herhaal: 2, ruw: 0.8 },
         bal: { vorm: 'd8' },
         achtergrond: { lucht: 'skybox4', grond: { kleur: '#e8eef4', ruw: 0.8 } },
