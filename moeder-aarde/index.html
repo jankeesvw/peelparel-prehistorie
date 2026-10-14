@@ -106,7 +106,7 @@
 
     // De zon staat in het midden. Afstand en grootte zijn in 'eenheden' (zie eenheid()),
     // niet op echte schaal, anders zou je de kleine planeten niet eens zien.
-    const ZON = {
+    const ECHTE_ZON = {
       naam: 'Zon', kleur: '#ffe066', grootte: 0.9, isZon: true,
       info: {
         'Temperatuur': 'ongeveer 5.500 °C aan de buitenkant',
@@ -117,7 +117,7 @@
       weetje: 'In de zon passen wel 1 miljoen aardes!',
     };
 
-    const planeten = [
+    const echtePlaneten = [
       { naam: 'Mercurius', afstand: 1.7, grootte: 0.22, kleur: '#c9bfb5', uiterlijk: 'kraters', hoek: 0.5,
         info: { 'Temperatuur': '-180 °C in de nacht, 430 °C overdag', 'Grootte': '4.879 km doorsnede', 'Afstand tot de zon': '58 miljoen km', 'Een dag duurt': '176 aardse dagen', 'Een jaar duurt': '88 dagen', 'Manen': '0' },
         weetje: 'Mercurius is de kleinste planeet en staat het dichtst bij de zon.' },
@@ -144,15 +144,75 @@
         weetje: 'Op Neptunus waait de hardste wind van het zonnestelsel: wel 2.000 km per uur!' },
     ];
     // Hoe verder weg, hoe langzamer een planeet om de zon draait (net als in het echt)
-    for (const p of planeten) p.snelheid = 0.25 / Math.pow(p.afstand / 1.7, 1.5);
+    for (const p of echtePlaneten) p.snelheid = 0.25 / Math.pow(p.afstand / 1.7, 1.5);
 
-    const AARDE = planeten[2];
+    const AARDE = echtePlaneten[2];
     const MAAN = {
       naam: 'Maan', kleur: '#e8e4f2', grootte: 0.13, uiterlijk: 'kraters', hoek: 0, snelheid: 1, isMaan: true,
       info: { 'Temperatuur': '-170 °C in de nacht, 120 °C overdag', 'Grootte': '3.474 km doorsnede', 'Afstand tot de aarde': '384.000 km', 'Een dag duurt': '29,5 aardse dagen', 'Rondje om de aarde': '27 dagen' },
       weetje: 'In 1969 liepen er voor het eerst mensen op de maan.',
     };
-    const lichamen = [ZON, ...planeten, MAAN];
+
+    // ---------- het fantasie-universum ----------
+    const FANTASIE_ZON = {
+      naam: 'Regenboogzon', kleur: '#ffd1f0', straal: '#b58cff', grootte: 0.9, isZon: true,
+      info: { 'Temperatuur': 'zo warm als een dikke knuffel', 'Gemaakt van': 'licht, glitters en blije gedachten', 'Kleur': 'alle kleuren tegelijk' },
+      weetje: 'De Regenboogzon zingt een liedje als je goed luistert.',
+    };
+    const fantasiePlaneten = [
+      { naam: 'Snoepplaneet', afstand: 2.0, grootte: 0.45, kleur: '#ff9ad5', uiterlijk: 'snoep', hoek: 1.0,
+        info: { 'Temperatuur': '25 °C, net niet warm genoeg om te smelten', 'Gemaakt van': 'suiker, drop en spekjes', 'Een dag duurt': '1 lolly lang', 'Manen': '3 lolly-manen' },
+        weetje: 'De rivieren op de Snoepplaneet zijn van limonade!' },
+      { naam: 'IJsjesplaneet', afstand: 3.15, grootte: 0.5, kleur: '#ffd1e0', uiterlijk: 'ijs', hoek: 3.0,
+        info: { 'Temperatuur': '-5 °C, lekker koud voor ijs', 'Gemaakt van': 'aardbeien-, vanille- en chocolade-ijs', 'Een dag duurt': '12 bolletjes', 'Manen': '1 hoorntjesmaan' },
+        weetje: 'Als het hier sneeuwt, valt er slagroom uit de lucht.' },
+      { naam: 'Dinoplaneet', afstand: 4.35, grootte: 0.6, kleur: '#8fd16a', uiterlijk: 'dino', hoek: 5.0,
+        info: { 'Temperatuur': '30 °C, tropisch warm', 'Gemaakt van': 'jungle, vulkanen en heel veel botten', 'Een dag duurt': '65 miljoen seconden', 'Manen': '2 eiermanen' },
+        weetje: 'Op de Dinoplaneet zijn de dino\'s nooit uitgestorven. Net als in de prehistorie!' },
+      { naam: 'Pizzaplaneet', afstand: 5.65, grootte: 0.55, kleur: '#ffcf5a', uiterlijk: 'pizza', hoek: 0.3,
+        info: { 'Temperatuur': '220 °C, net uit de oven', 'Gemaakt van': 'deeg, tomaat en gesmolten kaas', 'Een dag duurt': '8 punten', 'Manen': '1 olijvenmaan' },
+        weetje: 'De bergen op de Pizzaplaneet zijn van kaas, en die rekken uit als je erop loopt.' },
+      { naam: 'Regenboogplaneet', afstand: 7.0, grootte: 0.65, kleur: '#c9a8ff', uiterlijk: 'regenboog', hoek: 2.2,
+        info: { 'Temperatuur': 'altijd precies goed', 'Gemaakt van': 'wolken en regenbogen', 'Een dag duurt': '7 kleuren', 'Manen': 'een hele regenboog vol' },
+        weetje: 'Er is geen grond op de Regenboogplaneet: je zweeft van wolk naar wolk.' },
+    ];
+    for (const p of fantasiePlaneten) p.snelheid = 0.25 / Math.pow(p.afstand / 1.7, 1.5);
+
+    // Je moet de planeten op volgorde voltooien. Eerst de aarde!
+    const UNIVERSUMS = [
+      { zon: ECHTE_ZON, planeten: echtePlaneten, extra: [MAAN], lucht: ['#1b1440', '#3a2470'],
+        volgorde: ['Aarde', 'Maan', 'Mars', 'Venus', 'Mercurius', 'Jupiter', 'Saturnus', 'Uranus', 'Neptunus'] },
+      { zon: FANTASIE_ZON, planeten: fantasiePlaneten, extra: [], lucht: ['#3a1050', '#8a2a7a'],
+        volgorde: ['Snoepplaneet', 'IJsjesplaneet', 'Dinoplaneet', 'Pizzaplaneet', 'Regenboogplaneet'] },
+    ];
+    let universum = 0;
+    let ZON, planeten, lichamen;
+    function zetUniversum(i) {
+      universum = i;
+      const u = UNIVERSUMS[i];
+      ZON = u.zon;
+      planeten = u.planeten;
+      lichamen = [ZON, ...planeten, ...u.extra];
+    }
+    zetUniversum(0);
+
+    function vindLichaam(naam) {
+      for (const u of UNIVERSUMS) for (const l of [...u.planeten, ...u.extra]) if (l.naam === naam) return l;
+    }
+    // De eerste planeet in dit universum die nog niet voltooid is
+    function volgendeOpdracht() {
+      const naam = UNIVERSUMS[universum].volgorde.find(n => !vindLichaam(n).voltooid);
+      return naam ? vindLichaam(naam) : null;
+    }
+    function isOpen(l) {
+      const volgorde = UNIVERSUMS[universum].volgorde;
+      const plek = volgorde.indexOf(l.naam);
+      if (plek < 0) return true;
+      return volgorde.slice(0, plek).every(n => vindLichaam(n).voltooid);
+    }
+    function echtHeelalKlaar() {
+      return UNIVERSUMS[0].volgorde.every(n => vindLichaam(n).voltooid);
+    }
 
     // Vallende sterren
     const vallendeSterren = [];
@@ -168,12 +228,23 @@
     }
     const glitters = [];    // sterretjes die het poppetje achterlaat tijdens het vliegen
     let gekozen = null;     // het hemellichaam waarvan je het kaartje ziet
+    let portaalReis = null;   // door het portaal naar een ander universum
     let kijkModus = 'overzicht';   // 'overzicht' = zonnestelsel van boven, 'landschap' = door je ogen op een planeet
 
     function update(dt) {
       tijd += dt;
       for (const p of planeten) p.hoek += p.snelheid * dt;
       MAAN.hoek += MAAN.snelheid * dt;
+      if (portaalReis) {
+        portaalReis.t += dt / 2.5;
+        if (portaalReis.t >= 1) {
+          zetUniversum(portaalReis.naar);
+          poppetje.waar = portaalReis.naar === 1 ? fantasiePlaneten[0] : AARDE;
+          gekozen = null;
+          info.hidden = true;
+          portaalReis = null;
+        }
+      }
 
       // Af en toe een nieuwe vallende ster
       if (Math.random() < dt * 0.4) {
@@ -296,8 +367,8 @@
     function tekenRuimte() {
       const b = canvas.width, h = canvas.height;
       const lucht = ctx.createLinearGradient(0, 0, 0, h);
-      lucht.addColorStop(0, '#1b1440');
-      lucht.addColorStop(1, '#3a2470');
+      lucht.addColorStop(0, UNIVERSUMS[universum].lucht[0]);
+      lucht.addColorStop(1, UNIVERSUMS[universum].lucht[1]);
       ctx.fillStyle = lucht;
       ctx.fillRect(0, 0, b, h);
 
@@ -373,7 +444,7 @@
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(tijd * 0.3);
-      ctx.fillStyle = '#ffb347';
+      ctx.fillStyle = ZON.straal || '#ffb347';
       ctx.strokeStyle = LIJN;
       ctx.lineWidth = 3;
       ctx.lineJoin = 'round';
@@ -382,7 +453,7 @@
       ctx.stroke();
       ctx.restore();
 
-      cirkel(x, y, r, '#ffe066', 3);
+      cirkel(x, y, r, ZON.kleur, 3);
       gezichtje(x, y + r * 0.05, r, { blij: true });
     }
 
@@ -510,6 +581,42 @@
         ctx.fillStyle = '#e0563a';
         ctx.beginPath(); ctx.ellipse(x + r * 0.45, y + r * 0.55, r * 0.2, r * 0.11, 0, 0, Math.PI * 2); ctx.fill();
       }
+      if (l.uiterlijk === 'snoep') {
+        // Hagelslag
+        const kleuren = ['#ffffff', '#ffe14a', '#9ae6ff', '#7ddc6a', '#b58cff'];
+        for (let i = 0; i < 18; i++) {
+          ctx.save();
+          ctx.translate(x + (vast(i) - 0.5) * r * 1.8, y + (vast(i + 30) - 0.5) * r * 1.8);
+          ctx.rotate(vast(i + 60) * 6);
+          ctx.fillStyle = kleuren[i % kleuren.length];
+          ctx.fillRect(-r * 0.08, -r * 0.025, r * 0.16, r * 0.05);
+          ctx.restore();
+        }
+      }
+      if (l.uiterlijk === 'ijs') {
+        // Witte slagroom met druppels bovenop
+        ctx.fillStyle = '#fffaf2';
+        ctx.beginPath();
+        ctx.moveTo(x - r, y - r);
+        ctx.lineTo(x - r, y - r * 0.2);
+        for (let i = 0; i <= 6; i++) {
+          const dx = x - r + i * r / 3;
+          ctx.quadraticCurveTo(dx + r / 6, y + (i % 2 ? r * 0.25 : -r * 0.1), dx + r / 3, y - r * 0.2);
+        }
+        ctx.lineTo(x + r, y - r);
+        ctx.fill();
+        cirkel(x + r * 0.2, y - r * 0.75, r * 0.13, '#e3262f', 2);
+      }
+      if (l.uiterlijk === 'dino') {
+        for (let i = 0; i < 6; i++) cirkel(x + (vast(i + 3) - 0.5) * r * 1.6, y + (vast(i + 9) - 0.5) * r * 1.6, r * (0.1 + vast(i) * 0.1), '#5aa04a');
+      }
+      if (l.uiterlijk === 'pizza') {
+        for (let i = 0; i < 6; i++) cirkel(x + (vast(i + 13) - 0.5) * r * 1.5, y + (vast(i + 19) - 0.5) * r * 1.5, r * 0.17, '#e3262f', 2);
+      }
+      if (l.uiterlijk === 'regenboog') {
+        const kleuren = ['#ff6f6f', '#ffb347', '#ffe14a', '#7ddc6a', '#5ec8ff', '#b58cff'];
+        kleuren.forEach((k, i) => { ctx.fillStyle = k; ctx.fillRect(x - r, y - r + i * r / 3, r * 2, r / 3 + 1); });
+      }
       if (l.uiterlijk === 'wolken') {
         ctx.strokeStyle = 'rgba(255,255,255,0.45)';
         ctx.lineWidth = r * 0.12;
@@ -537,6 +644,26 @@
       if (l.uiterlijk === 'schuineRing') tekenRing(x, y, r, true, 1.4, 1.6, 0.35);
 
       if (bezoek) tekenPoppetje(x, y - r);
+      if (!ooglens && !l.isZon && !isOpen(l)) {
+        // Op slot: grijs waas en een hangslotje
+        cirkel(x, y, r, 'rgba(27,20,64,0.55)');
+        const sr = Math.max(7, r * 0.35);
+        ctx.lineWidth = Math.max(2.5, sr * 0.25);
+        ctx.strokeStyle = LIJN;
+        ctx.beginPath(); ctx.arc(x, y - sr * 0.3, sr * 0.55, Math.PI, 0); ctx.stroke();
+        ctx.fillStyle = '#ffd84a';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.roundRect(x - sr * 0.8, y - sr * 0.3, sr * 1.6, sr * 1.2, sr * 0.25); ctx.fill(); ctx.stroke();
+        cirkel(x, y + sr * 0.25, sr * 0.15, LIJN);
+      }
+      if (!ooglens && gestart && l === volgendeOpdracht()) {
+        // Een springend pijltje wijst naar de planeet die je nu moet doen
+        const py = y - r - 22 + Math.sin(tijd * 5) * 6;
+        ctx.fillStyle = '#7ddc6a';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = LIJN;
+        ctx.beginPath(); ctx.moveTo(x - 12, py - 16); ctx.lineTo(x + 12, py - 16); ctx.lineTo(x, py + 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
       if (l.voltooid && !ooglens) {
         ctx.fillStyle = '#ffd84a';
         ctx.lineWidth = 2.5;
@@ -560,6 +687,11 @@
       Saturnus:  { pak: '#b58cff', accent: '#fff0a0', glas: 'rgba(255,220,240,0.45)', jetpack: true, embleem: 'ring' },
       Uranus:    { pak: '#7fe0dc', accent: '#ffffff', glas: 'rgba(214,255,253,0.5)', jetpack: true, dik: true, embleem: 'sneeuw' },
       Neptunus:  { pak: '#3a55d6', accent: '#9ae6ff', glas: 'rgba(170,230,255,0.4)', jetpack: true, dik: true, embleem: 'wind' },
+      Snoepplaneet:     { pak: '#ffb3d9', accent: '#ff4f6d', glas: 'rgba(255,200,230,0.45)', rugzak: true, embleem: 'ster' },
+      IJsjesplaneet:    { pak: '#bff4ff', accent: '#ff9ad5', glas: 'rgba(214,255,253,0.5)', rugzak: true, dik: true, embleem: 'sneeuw' },
+      Dinoplaneet:      { pak: '#d8b47a', accent: '#5ccf5a', glas: 'rgba(200,255,200,0.4)', rugzak: true, embleem: 'vuur' },
+      Pizzaplaneet:     { pak: '#ffffff', accent: '#e3262f', glas: 'rgba(255,240,200,0.45)', rugzak: true, embleem: 'vuur' },
+      Regenboogplaneet: { pak: '#c9a8ff', accent: '#fff0a0', glas: 'rgba(255,220,240,0.45)', jetpack: true, embleem: 'ster' },
     };
 
     function huidigPakje() {
@@ -841,7 +973,7 @@
       if (!gestart) klikbaar = opKnop(e.clientX, e.clientY);
       else if (poppetje.reis) klikbaar = false;
       else if (kijkModus === 'landschap') klikbaar = opTerugKnop(e.clientX, e.clientY);
-      else klikbaar = lichaamOp(e.clientX, e.clientY);
+      else klikbaar = lichaamOp(e.clientX, e.clientY) || (portaalZichtbaar() && opPortaal(e.clientX, e.clientY));
       canvas.style.cursor = klikbaar ? 'pointer' : 'default';
     });
 
@@ -855,7 +987,7 @@
         }
         return;
       }
-      if (poppetje.reis) return;
+      if (poppetje.reis || portaalReis) return;
       if (kijkModus === 'landschap') {
         if (opTerugKnop(e.clientX, e.clientY)) {
           kijkModus = 'overzicht';
@@ -863,10 +995,16 @@
         }
         return;
       }
+      if (portaalZichtbaar() && opPortaal(e.clientX, e.clientY)) {
+        portaalReis = { t: 0, naar: universum === 0 ? 1 : 0 };
+        return;
+      }
       const doel = lichaamOp(e.clientX, e.clientY);
       if (!doel) return;
       gekozen = doel;
-      if (doel.isZon) {
+      if (!doel.isZon && !isOpen(doel)) {
+        toonInfo(doel, '🔒 Op slot! Haal eerst alle levels op ' + volgendeOpdracht().naam + '.');
+      } else if (doel.isZon) {
         toonInfo(doel, 'Au, veel te heet! Hier kun je niet landen.');
       } else if (doel === poppetje.waar) {
         // Terug naar beneden, rondkijken op je eigen planeet
@@ -950,6 +1088,12 @@
       Saturnus:  { lucht: ['#cdb15e', '#fff3c4'], gas: ['#fff0a0', '#f3dc8a', '#fffbe0'], zon: 0.02, ringInLucht: true },
       Uranus:    { lucht: ['#4fb8c0', '#c9fbf8'], gas: ['#a6f0ee', '#8adcd9', '#d6fffd'], zon: 0.012 },
       Neptunus:  { lucht: ['#14206a', '#5b7cff'], gas: ['#6f8cff', '#4d68e0', '#9fb2ff'], zon: 0.008, wind: true },
+      // Fantasieplaneten
+      Snoepplaneet:     { lucht: ['#ff9ad5', '#fff0f8'], grond: '#ffb3d9', donker: '#e05aa0', zon: 0.07, lollys: true, hagelslag: true, wolkjes: true },
+      IJsjesplaneet:    { lucht: ['#8fdcff', '#f0fbff'], grond: '#fffaf2', donker: '#ffd1e0', zon: 0.05, ijshoorntjes: true, hagelslag: true },
+      Dinoplaneet:      { lucht: ['#ff9a5a', '#fff0c4'], grond: '#8fd16a', donker: '#5aa04a', zon: 0.08, vulkaan: true, palmen: true, pterosaurus: true },
+      Pizzaplaneet:     { lucht: ['#ff8a65', '#ffe0b0'], grond: '#ffd36b', donker: '#e8a83a', zon: 0.06, pepperoni: true },
+      Regenboogplaneet: { lucht: ['#c9a8ff', '#fff0fb'], gas: ['#ffd1f0', '#fff6a8', '#d6fffd', '#e9d8ff'], zon: 0.05, regenboog: true },
     };
 
     // Vaste 'willekeurige' getallen, zodat bomen en stenen niet elke keer verspringen
@@ -1061,6 +1205,33 @@
         ctx.globalAlpha = 1;
       }
 
+      // Grote regenboog aan de hemel
+      if (c.regenboog) {
+        const kleuren = ['#ff6f6f', '#ffb347', '#ffe14a', '#7ddc6a', '#5ec8ff', '#b58cff'];
+        kleuren.forEach((k, i) => {
+          ctx.strokeStyle = k;
+          ctx.lineWidth = maat * 0.035;
+          ctx.beginPath();
+          ctx.arc(b * 0.5, horizon + h * 0.15, Math.min(b * 0.45, h * 0.6) - i * maat * 0.034, Math.PI, Math.PI * 2);
+          ctx.stroke();
+        });
+      }
+
+      // Een vriendelijke vliegende dino aan de hemel
+      if (c.pterosaurus) {
+        const px = ((tijd * 60) % (b + 300)) - 150, py = h * 0.2 + Math.sin(tijd * 1.5) * 20;
+        const klap = Math.sin(tijd * 6) * maat * 0.03;
+        ctx.fillStyle = '#9b7ad8';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = LIJN;
+        ctx.beginPath();
+        ctx.moveTo(px - maat * 0.08, py - klap); ctx.lineTo(px, py); ctx.lineTo(px + maat * 0.08, py - klap); ctx.lineTo(px, py + maat * 0.02);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        cirkel(px + maat * 0.02, py - maat * 0.005, maat * 0.02, '#9b7ad8', 3);
+        ctx.beginPath(); ctx.moveTo(px + maat * 0.035, py - maat * 0.01); ctx.lineTo(px + maat * 0.07, py); ctx.lineTo(px + maat * 0.035, py + maat * 0.005); ctx.fill(); ctx.stroke();
+        cirkel(px + maat * 0.025, py - maat * 0.01, 2.5, LIJN);
+      }
+
       // Op de maan zie je de aarde hangen, met haar gezichtje
       if (c.aardeInLucht) tekenLichaam(AARDE, { x: b * 0.27, y: h * 0.27, r: maat * 0.09 }, true);
 
@@ -1165,6 +1336,77 @@
             ctx.lineWidth = 3;
             ctx.strokeStyle = LIJN;
             ctx.stroke();
+          }
+        }
+
+        // Reuzenlolly's
+        if (c.lollys) {
+          for (let i = 0; i < 4; i++) {
+            const lx = b * (0.12 + i * 0.25 + vast(i + 300) * 0.05), ly = horizon + 10, lh = maat * (0.2 + vast(i + 310) * 0.12);
+            ctx.fillStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = LIJN;
+            ctx.beginPath(); ctx.roundRect(lx - 4, ly - lh, 8, lh, 3); ctx.fill(); ctx.stroke();
+            const lr = maat * 0.05;
+            cirkel(lx, ly - lh, lr, ['#ff6f6f', '#7ddc6a', '#5ec8ff', '#ffe14a'][i], 3.5);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = lr * 0.18;
+            ctx.beginPath();
+            for (let k = 0; k <= 30; k++) { const t = k / 30, a = t * Math.PI * 5 + tijd; ctx.lineTo(lx + Math.cos(a) * t * lr * 0.8, ly - lh + Math.sin(a) * t * lr * 0.8); }
+            ctx.stroke();
+          }
+        }
+        // Reuzenijshoorntjes
+        if (c.ijshoorntjes) {
+          for (let i = 0; i < 3; i++) {
+            const ix = b * (0.15 + i * 0.33), iy = horizon + 10, ih = maat * 0.18;
+            ctx.fillStyle = '#e8b070';
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = LIJN;
+            ctx.beginPath(); ctx.moveTo(ix - ih * 0.3, iy - ih); ctx.lineTo(ix + ih * 0.3, iy - ih); ctx.lineTo(ix, iy); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ['#ffb3d9', '#fffaf2', '#9b6a3f'].forEach((k, j) => cirkel(ix + (j - 1) * ih * 0.12, iy - ih - ih * 0.12 - j * ih * 0.14, ih * 0.24, k, 3));
+          }
+        }
+        // Palmbomen
+        if (c.palmen) {
+          for (let i = 0; i < 3; i++) {
+            const px = b * (0.1 + i * 0.36), py = horizon + 15, ph = maat * 0.22;
+            ctx.strokeStyle = LIJN;
+            ctx.lineWidth = 12;
+            ctx.beginPath(); ctx.moveTo(px, py); ctx.quadraticCurveTo(px + 20, py - ph * 0.5, px + 10, py - ph); ctx.stroke();
+            ctx.strokeStyle = '#b07a4a';
+            ctx.lineWidth = 7;
+            ctx.stroke();
+            ctx.fillStyle = '#5ccf5a';
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = LIJN;
+            for (let k = 0; k < 5; k++) {
+              const a = Math.PI + k * Math.PI / 4 + Math.sin(tijd + k) * 0.05;
+              ctx.beginPath();
+              ctx.ellipse(px + 10 + Math.cos(a) * ph * 0.22, py - ph + Math.sin(a) * ph * 0.12, ph * 0.22, ph * 0.06, a, 0, Math.PI * 2);
+              ctx.fill(); ctx.stroke();
+            }
+          }
+        }
+        // Hagelslag over de grond
+        if (c.hagelslag) {
+          const kleuren = ['#ff6f6f', '#ffe14a', '#5ec8ff', '#7ddc6a', '#b58cff'];
+          for (let i = 0; i < 40; i++) {
+            ctx.save();
+            ctx.translate(vast(i + 400) * b, horizon + h * 0.16 + vast(i + 450) * h * 0.24);
+            ctx.rotate(vast(i + 500) * 6);
+            ctx.fillStyle = kleuren[i % kleuren.length];
+            ctx.fillRect(-7, -2.5, 14, 5);
+            ctx.restore();
+          }
+        }
+        // Pepperoni op de pizzagrond
+        if (c.pepperoni) {
+          for (let i = 0; i < 9; i++) {
+            const px = vast(i + 600) * b, py = horizon + h * 0.18 + vast(i + 650) * h * 0.22, pr = maat * (0.03 + vast(i + 700) * 0.02);
+            ctx.beginPath(); ctx.ellipse(px, py, pr, pr * 0.5, 0, 0, Math.PI * 2);
+            ctx.fillStyle = '#d8402f'; ctx.fill();
+            ctx.lineWidth = 2.5; ctx.strokeStyle = LIJN; ctx.stroke();
           }
         }
 
@@ -1292,8 +1534,37 @@
       ],
     };
 
+    Object.assign(UITDAGINGEN, {
+      Snoepplaneet: [
+        { type: 'verzamel', ding: 'snoepje', aantal: 5, tekst: 'Verzamel 5 snoepjes' },
+        { type: 'spring', aantal: 3, tekst: 'Spring 3 keer op de spekjesgrond' },
+        { type: 'bezoek', doel: 'lolly', x: 0.82, tekst: 'Lik aan de reuzenlolly' },
+      ],
+      IJsjesplaneet: [
+        { type: 'verzamel', ding: 'bolletje', aantal: 4, tekst: 'Verzamel 4 ijsbolletjes' },
+        { type: 'bezoek', doel: 'ijsje', x: 0.62, tekst: 'Vind het allergrootste ijsje' },
+        { type: 'spring', aantal: 3, tekst: 'Spring 3 keer' },
+      ],
+      Dinoplaneet: [
+        { type: 'verzamel', ding: 'botje', aantal: 4, tekst: 'Graaf 4 dinobotjes op' },
+        { type: 'bezoek', doel: 'dinoEi', x: 0.88, tekst: 'Vind het dino-ei' },
+        { type: 'bezoek', doel: 'vulkaan', x: 0.68, tekst: 'Loop naar de vulkaan' },
+      ],
+      Pizzaplaneet: [
+        { type: 'verzamel', ding: 'pizzapunt', aantal: 5, tekst: 'Verzamel 5 pizzapunten' },
+        { type: 'spring', aantal: 3, tekst: 'Spring 3 keer over de kaas' },
+        { type: 'bezoek', doel: 'oven', x: 0.85, tekst: 'Vind de pizzaoven' },
+      ],
+      Regenboogplaneet: [
+        { type: 'verzamel', ding: 'regenboogster', aantal: 5, tekst: 'Vang 5 regenboogsterren' },
+        { type: 'bezoek', doel: 'potGoud', x: 0.72, y: 0.78, tekst: 'Vlieg naar de pot met goud' },
+        { type: 'hoog', tekst: 'Vlieg naar de top van de regenboog' },
+      ],
+    });
+
     // Zwaartekracht vergeleken met de aarde: op de maan spring je veel hoger!
-    const ZWAARTEKRACHT = { Mercurius: 0.38, Venus: 0.9, Aarde: 1, Maan: 0.17, Mars: 0.38 };
+    const ZWAARTEKRACHT = { Mercurius: 0.38, Venus: 0.9, Aarde: 1, Maan: 0.17, Mars: 0.38,
+      Snoepplaneet: 0.6, IJsjesplaneet: 0.8, Dinoplaneet: 1, Pizzaplaneet: 0.7 };
 
     // Het mensje in het landschap
     const speler = { x: 0, y: 0, vy: 0, opGrond: true, richting: 1, loopt: false };
@@ -1312,6 +1583,11 @@
       Saturnus:  { naam: 'ijsmonsters',   kleur: '#bff4ff', soort: 'vlieger',  snelheid: 0.11, aantal: 3 },
       Uranus:    { naam: 'ijskwallen',    kleur: '#c9a8ff', soort: 'kwal',     snelheid: 0.09, aantal: 4 },
       Neptunus:  { naam: 'stormkwallen',  kleur: '#4d68e0', soort: 'kwal',     snelheid: 0.16, aantal: 4 },
+      Snoepplaneet:     { naam: 'boze gummibeertjes', kleur: '#ff4f6d', soort: 'loper',    snelheid: 0.12, aantal: 3 },
+      IJsjesplaneet:    { naam: 'sneeuwballen',       kleur: '#ffffff', soort: 'springer', snelheid: 0.1,  aantal: 3 },
+      Dinoplaneet:      { naam: 'kleine T-rexjes',    kleur: '#5ccf5a', soort: 'loper',    snelheid: 0.14, aantal: 3 },
+      Pizzaplaneet:     { naam: 'hete pepers',        kleur: '#ff3a2a', soort: 'springer', snelheid: 0.11, aantal: 3 },
+      Regenboogplaneet: { naam: 'grijze buiwolken',   kleur: '#9aa3b8', soort: 'vlieger',  snelheid: 0.13, aantal: 4 },
     };
     const MAX_LEVENS = 3;
     let levens = MAX_LEVENS;
@@ -1630,6 +1906,34 @@
         ctx.moveTo(x + r * 0.2, y - r); ctx.lineTo(x - r * 0.5, y + r * 0.1); ctx.lineTo(x, y + r * 0.1);
         ctx.lineTo(x - r * 0.2, y + r); ctx.lineTo(x + r * 0.5, y - r * 0.15); ctx.lineTo(x, y - r * 0.15);
         ctx.closePath(); ctx.fill(); ctx.stroke();
+      } else if (ding === 'snoepje') {
+        ctx.fillStyle = '#ff6fae';
+        for (const kant of [-1, 1]) {
+          ctx.beginPath(); ctx.moveTo(x + kant * r * 0.5, y); ctx.lineTo(x + kant * r * 1.1, y - r * 0.45); ctx.lineTo(x + kant * r * 1.1, y + r * 0.45); ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
+        cirkel(x, y, r * 0.6, '#ffe14a', 3);
+      } else if (ding === 'bolletje') {
+        ctx.fillStyle = '#e8b070';
+        ctx.beginPath(); ctx.moveTo(x - r * 0.55, y); ctx.lineTo(x + r * 0.55, y); ctx.lineTo(x, y + r * 1.1); ctx.closePath(); ctx.fill(); ctx.stroke();
+        cirkel(x, y - r * 0.2, r * 0.65, '#ffb3d9', 3);
+      } else if (ding === 'botje') {
+        ctx.fillStyle = '#fffbe8';
+        ctx.save(); ctx.translate(x, y); ctx.rotate(-0.4);
+        ctx.beginPath(); ctx.roundRect(-r * 0.8, -r * 0.2, r * 1.6, r * 0.4, 4); ctx.fill(); ctx.stroke();
+        for (const dx of [-0.8, 0.8]) for (const dy of [-0.25, 0.25]) cirkel(dx * r, dy * r, r * 0.28, '#fffbe8', 2.5);
+        ctx.restore();
+      } else if (ding === 'pizzapunt') {
+        ctx.fillStyle = '#ffd36b';
+        ctx.beginPath(); ctx.moveTo(x - r, y - r * 0.6); ctx.lineTo(x + r, y - r * 0.6); ctx.lineTo(x, y + r); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#e8a83a';
+        ctx.beginPath(); ctx.roundRect(x - r * 1.05, y - r * 0.85, r * 2.1, r * 0.35, 5); ctx.fill(); ctx.stroke();
+        cirkel(x - r * 0.25, y - r * 0.15, r * 0.18, '#d8402f');
+        cirkel(x + r * 0.25, y - r * 0.2, r * 0.15, '#d8402f');
+      } else if (ding === 'regenboogster') {
+        const kleuren = ['#ff6f6f', '#ffb347', '#ffe14a', '#7ddc6a', '#5ec8ff', '#b58cff'];
+        ctx.fillStyle = kleuren[Math.floor(tijd * 6 + x) % 6];
+        sterVorm(x, y, r * 1.1, 5, 0.5);
+        ctx.fill(); ctx.stroke();
       } else if (ding === 'bloem') {
         for (let k = 0; k < 5; k++) {
           const a = k / 5 * Math.PI * 2 + tijd;
@@ -1652,7 +1956,50 @@
     function tekenDoel(u, x, y, m) {
       ctx.lineWidth = 3.5;
       ctx.strokeStyle = LIJN;
-      if (u.doel === 'krater') {
+      if (u.doel === 'lolly') {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.roundRect(x - 6, y - m * 0.32, 12, m * 0.32, 4); ctx.fill(); ctx.stroke();
+        cirkel(x, y - m * 0.36, m * 0.09, '#b58cff', 4);
+        ctx.strokeStyle = '#ffe14a';
+        ctx.lineWidth = m * 0.016;
+        ctx.beginPath();
+        for (let k = 0; k <= 40; k++) { const t = k / 40, a = t * Math.PI * 6 - tijd; ctx.lineTo(x + Math.cos(a) * t * m * 0.075, y - m * 0.36 + Math.sin(a) * t * m * 0.075); }
+        ctx.stroke();
+        ctx.strokeStyle = LIJN;
+        ctx.lineWidth = 3.5;
+        y -= m * 0.25;
+      } else if (u.doel === 'ijsje') {
+        const ih = m * 0.25;
+        ctx.fillStyle = '#e8b070';
+        ctx.beginPath(); ctx.moveTo(x - ih * 0.3, y - ih); ctx.lineTo(x + ih * 0.3, y - ih); ctx.lineTo(x, y); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ['#ffb3d9', '#fffaf2', '#9b6a3f', '#7ddc6a'].forEach((k, j) => cirkel(x + (j % 2 ? 1 : -1) * ih * 0.06, y - ih - ih * 0.12 - j * ih * 0.17, ih * 0.22, k, 3.5));
+        cirkel(x, y - ih - ih * 0.8, ih * 0.07, '#e3262f', 3);
+        y -= m * 0.3;
+      } else if (u.doel === 'dinoEi') {
+        const wiebel = Math.sin(tijd * 8) * 0.15;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(wiebel);
+        ctx.fillStyle = '#f5f0d8';
+        ctx.beginPath(); ctx.ellipse(0, -m * 0.07, m * 0.05, m * 0.07, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        cirkel(-m * 0.015, -m * 0.09, m * 0.012, '#7ddc6a');
+        cirkel(m * 0.02, -m * 0.05, m * 0.01, '#7ddc6a');
+        ctx.beginPath(); ctx.moveTo(-m * 0.04, -m * 0.07); ctx.lineTo(-m * 0.02, -m * 0.08); ctx.lineTo(0, -m * 0.065); ctx.lineTo(m * 0.02, -m * 0.08); ctx.stroke();
+        ctx.restore();
+      } else if (u.doel === 'oven') {
+        ctx.fillStyle = '#c8603a';
+        ctx.beginPath(); ctx.arc(x, y, m * 0.1, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = LIJN;
+        ctx.beginPath(); ctx.arc(x, y, m * 0.045, Math.PI, 0); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ffb347';
+        ctx.beginPath(); ctx.moveTo(x - m * 0.03, y); ctx.quadraticCurveTo(x, y - m * (0.04 + Math.sin(tijd * 10) * 0.008), x + m * 0.03, y); ctx.fill();
+        ctx.fillStyle = '#9a9088';
+        ctx.beginPath(); ctx.roundRect(x + m * 0.03, y - m * 0.14, m * 0.025, m * 0.06, 3); ctx.fill(); ctx.stroke();
+      } else if (u.doel === 'potGoud') {
+        for (let k = 0; k < 5; k++) cirkel(x - m * 0.04 + k * m * 0.02, y - m * 0.045 - (k % 2) * m * 0.01, m * 0.015, '#ffd84a', 2.5);
+        ctx.fillStyle = LIJN;
+        ctx.beginPath(); ctx.ellipse(x, y, m * 0.06, m * 0.05, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#4a3a6a';
+        ctx.beginPath(); ctx.roundRect(x - m * 0.065, y - m * 0.045, m * 0.13, m * 0.02, 5); ctx.fill(); ctx.stroke();
+      } else if (u.doel === 'krater') {
         ctx.fillStyle = '#9a9088';
         ctx.beginPath(); ctx.ellipse(x, y + 4, m * 0.12, m * 0.035, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
         ctx.fillStyle = '#7a7068';
@@ -1983,7 +2330,65 @@
       tekenHelm();
     }
 
+    // ---------- het portaal naar het andere universum ----------
+
+    function portaalZichtbaar() { return gestart && kijkModus === 'overzicht' && (universum === 1 || echtHeelalKlaar()); }
+    function portaalPlek() {
+      const m = Math.min(canvas.width, canvas.height);
+      return { x: canvas.width * 0.1 + m * 0.03, y: canvas.height - m * 0.16, r: m * 0.075 };
+    }
+    function opPortaal(x, y) {
+      const p = portaalPlek();
+      return Math.hypot(x - p.x, y - p.y) < p.r * 1.2;
+    }
+
+    function tekenDraaikolk(x, y, r, draai) {
+      const kleuren = ['#ff6f6f', '#ffb347', '#ffe14a', '#7ddc6a', '#5ec8ff', '#b58cff'];
+      for (let i = 0; i < 6; i++) {
+        ctx.strokeStyle = kleuren[i];
+        ctx.lineWidth = r * 0.14;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        for (let k = 0; k <= 40; k++) {
+          const t = k / 40;
+          const hoek = draai + i * Math.PI / 3 + t * Math.PI * 2.2;
+          ctx.lineTo(x + Math.cos(hoek) * t * r, y + Math.sin(hoek) * t * r);
+        }
+        ctx.stroke();
+      }
+      cirkel(x, y, r * 0.18, '#ffffff');
+    }
+
+    function tekenPortaal() {
+      if (!portaalZichtbaar()) return;
+      const p = portaalPlek();
+      const gloed = ctx.createRadialGradient(p.x, p.y, p.r * 0.5, p.x, p.y, p.r * 1.6);
+      gloed.addColorStop(0, 'rgba(255,170,240,0.6)');
+      gloed.addColorStop(1, 'rgba(255,170,240,0)');
+      cirkel(p.x, p.y, p.r * 1.6, gloed);
+      cirkel(p.x, p.y, p.r, '#2a1b4a', 4);
+      tekenDraaikolk(p.x, p.y, p.r * 0.95, tijd * 2);
+      cirkel(p.x, p.y, p.r, null, 4);
+      tekenTekst(universum === 0 ? 'Naar het fantasie-universum!' : 'Terug naar ons zonnestelsel', p.x + p.r * 0.2, p.y - p.r - 18, Math.min(canvas.width * 0.03, 20), '#ffffff');
+    }
+
+    // Door het portaal: alles draait in een regenboogkolk
+    function tekenPortaalReis() {
+      const b = canvas.width, h = canvas.height, t = portaalReis.t;
+      ctx.fillStyle = '#1b1440';
+      ctx.fillRect(0, 0, b, h);
+      tekenDraaikolk(b / 2, h / 2, Math.hypot(b, h) * 0.6 * (0.3 + t), tijd * 6);
+      tekenTekst(portaalReis.naar === 1 ? 'Op naar het fantasie-universum!' : 'Terug naar ons zonnestelsel!', b / 2, h * 0.14, Math.min(b * 0.06, 40));
+      tekenHelm();
+      // Witte flits aan het eind
+      if (t > 0.8) {
+        ctx.fillStyle = 'rgba(255,255,255,' + (t - 0.8) * 5 + ')';
+        ctx.fillRect(0, 0, b, h);
+      }
+    }
+
     function draw() {
+      if (portaalReis) { tekenPortaalReis(); return; }
       // Tijdens een reis zie je alles door je eigen ogen; aan het begin en eind vervaagt het naar het overzicht
       if (poppetje.reis) {
         const t = poppetje.reis.t;
@@ -2012,6 +2417,7 @@
       // Van achter (hoog op het scherm) naar voor tekenen, zodat planeten netjes achter de zon langs gaan
       const opVolgorde = [...lichamen].sort((a, b) => plekVan(a).y - plekVan(b).y);
       for (const l of opVolgorde) tekenLichaam(l);
+      tekenPortaal();
       tekenReis();
       if (!gestart) tekenStartscherm();
     }
