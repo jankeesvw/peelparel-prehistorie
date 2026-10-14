@@ -8,10 +8,37 @@
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #1b1440; color: #fff; font-family: 'Fredoka', sans-serif; }
     canvas { display: block; background: #1b1440; }
+    #info {
+      position: fixed; top: 16px; right: 16px; width: min(320px, calc(100vw - 32px)); box-sizing: border-box;
+      background: #fff7fb; color: #2a1b4a; border: 4px solid #2a1b4a; border-radius: 24px;
+      box-shadow: 0 7px 0 #2a1b4a; padding: 16px 18px 14px; font-family: 'Fredoka', sans-serif;
+      animation: plop 0.35s cubic-bezier(.3,1.6,.5,1);
+    }
+    #info[hidden] { display: none; }
+    @keyframes plop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    #info h2 { margin: 0 0 4px; font-size: 30px; display: flex; align-items: center; gap: 10px; }
+    #info .bol { width: 26px; height: 26px; border-radius: 50%; border: 3px solid #2a1b4a; flex: none; }
+    #info .melding { margin: 0 0 10px; color: #c2357a; font-size: 17px; }
+    #info .melding:empty { display: none; }
+    #info dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; font-size: 17px; }
+    #info dt { font-weight: 700; }
+    #info dd { margin: 0; }
+    #info .weetje { margin: 12px 0 0; padding: 10px 12px; background: #fff0a8; border: 3px solid #2a1b4a; border-radius: 16px; font-size: 16px; }
+    #sluit {
+      position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border-radius: 50%;
+      border: 3px solid #2a1b4a; background: #ffb3d9; color: #2a1b4a; font: 700 18px 'Fredoka', sans-serif; cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <canvas id="game"></canvas>
+  <div id="info" hidden>
+    <button id="sluit" aria-label="Sluiten">✕</button>
+    <h2><span class="bol"></span><span class="naam"></span></h2>
+    <p class="melding"></p>
+    <dl></dl>
+    <p class="weetje"></p>
+  </div>
   <script>
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
@@ -51,27 +78,69 @@
       { x: 0.7,  y: 0.9,  r: 0.25, kleur: '255,130,200' },
     ];
 
-    // Planeten die rond de aarde draaien (afstand en grootte ten opzichte van de aarde)
+    // De zon staat in het midden. Afstand en grootte zijn in 'eenheden' (zie eenheid()),
+    // niet op echte schaal, anders zou je de kleine planeten niet eens zien.
+    const ZON = {
+      naam: 'Zon', kleur: '#ffe066', grootte: 0.9, isZon: true,
+      info: {
+        'Temperatuur': 'ongeveer 5.500 °C aan de buitenkant',
+        'Grootte': '1.392.000 km doorsnede',
+        'Draait om zich heen in': 'ongeveer 27 dagen',
+        'Soort': 'een ster, geen planeet',
+      },
+      weetje: 'In de zon passen wel 1 miljoen aardes!',
+    };
+
     const planeten = [
-      { naam: 'maan',     afstand: 1.7, grootte: 0.27, snelheid: 0.6,  kleur: '#e8e4f2', hoek: 0, slaperig: true },
-      { naam: 'mars',     afstand: 2.5, grootte: 0.33, snelheid: 0.3,  kleur: '#ff8a65', hoek: 2 },
-      { naam: 'jupiter',  afstand: 3.3, grootte: 0.55, snelheid: 0.15, kleur: '#ffcf8a', hoek: 4, strepen: true },
-      { naam: 'saturnus', afstand: 4.1, grootte: 0.45, snelheid: 0.1,  kleur: '#fff0a0', hoek: 1, ring: true },
+      { naam: 'Mercurius', afstand: 1.7, grootte: 0.22, kleur: '#c9bfb5', uiterlijk: 'kraters', hoek: 0.5,
+        info: { 'Temperatuur': '-180 °C in de nacht, 430 °C overdag', 'Grootte': '4.879 km doorsnede', 'Afstand tot de zon': '58 miljoen km', 'Een dag duurt': '176 aardse dagen', 'Een jaar duurt': '88 dagen', 'Manen': '0' },
+        weetje: 'Mercurius is de kleinste planeet en staat het dichtst bij de zon.' },
+      { naam: 'Venus', afstand: 2.35, grootte: 0.36, kleur: '#ffd59a', uiterlijk: 'wolken', hoek: 2.2,
+        info: { 'Temperatuur': '465 °C, de heetste planeet!', 'Grootte': '12.104 km doorsnede', 'Afstand tot de zon': '108 miljoen km', 'Een dag duurt': '243 aardse dagen', 'Een jaar duurt': '225 dagen', 'Manen': '0' },
+        weetje: 'Op Venus duurt een dag langer dan een jaar. En de zon komt op in het westen!' },
+      { naam: 'Aarde', afstand: 3.05, grootte: 0.4, kleur: '#5ec8ff', uiterlijk: 'aarde', hoek: 4.4,
+        info: { 'Temperatuur': 'gemiddeld 15 °C', 'Grootte': '12.742 km doorsnede', 'Afstand tot de zon': '150 miljoen km', 'Een dag duurt': '24 uur', 'Een jaar duurt': '365 dagen', 'Manen': '1' },
+        weetje: 'De aarde is de enige planeet waarvan we weten dat er leven is. Hier woon jij!' },
+      { naam: 'Mars', afstand: 3.75, grootte: 0.29, kleur: '#ff8a65', uiterlijk: 'kraters', hoek: 1.2,
+        info: { 'Temperatuur': 'gemiddeld -65 °C', 'Grootte': '6.779 km doorsnede', 'Afstand tot de zon': '228 miljoen km', 'Een dag duurt': '24 uur en 37 minuten', 'Een jaar duurt': '687 dagen', 'Manen': '2' },
+        weetje: 'Mars is rood door roest. Er staat de hoogste vulkaan van het zonnestelsel.' },
+      { naam: 'Jupiter', afstand: 4.85, grootte: 0.72, kleur: '#ffcf8a', uiterlijk: 'strepen', hoek: 3.4,
+        info: { 'Temperatuur': 'ongeveer -110 °C', 'Grootte': '139.820 km doorsnede', 'Afstand tot de zon': '778 miljoen km', 'Een dag duurt': '10 uur', 'Een jaar duurt': '12 jaar', 'Manen': '95' },
+        weetje: 'Jupiter is de grootste planeet. De rode vlek is een storm die groter is dan de aarde!' },
+      { naam: 'Saturnus', afstand: 5.95, grootte: 0.6, kleur: '#fff0a0', uiterlijk: 'ring', hoek: 5.5,
+        info: { 'Temperatuur': 'ongeveer -140 °C', 'Grootte': '116.460 km doorsnede', 'Afstand tot de zon': '1,4 miljard km', 'Een dag duurt': '10,5 uur', 'Een jaar duurt': '29 jaar', 'Manen': '274' },
+        weetje: 'Saturnus is zo licht dat hij zou blijven drijven in een heel groot bad water.' },
+      { naam: 'Uranus', afstand: 6.95, grootte: 0.46, kleur: '#a6f0ee', uiterlijk: 'schuineRing', hoek: 0.2,
+        info: { 'Temperatuur': 'ongeveer -195 °C', 'Grootte': '50.724 km doorsnede', 'Afstand tot de zon': '2,9 miljard km', 'Een dag duurt': '17 uur', 'Een jaar duurt': '84 jaar', 'Manen': '29' },
+        weetje: 'Uranus ligt op zijn kant en rolt zo om de zon heen.' },
+      { naam: 'Neptunus', afstand: 7.8, grootte: 0.45, kleur: '#6f8cff', uiterlijk: 'wolken', hoek: 2.8,
+        info: { 'Temperatuur': 'ongeveer -200 °C', 'Grootte': '49.244 km doorsnede', 'Afstand tot de zon': '4,5 miljard km', 'Een dag duurt': '16 uur', 'Een jaar duurt': '165 jaar', 'Manen': '16' },
+        weetje: 'Op Neptunus waait de hardste wind van het zonnestelsel: wel 2.000 km per uur!' },
     ];
+    // Hoe verder weg, hoe langzamer een planeet om de zon draait (net als in het echt)
+    for (const p of planeten) p.snelheid = 0.25 / Math.pow(p.afstand / 1.7, 1.5);
+
+    const AARDE = planeten[2];
+    const MAAN = {
+      naam: 'Maan', kleur: '#e8e4f2', grootte: 0.13, uiterlijk: 'kraters', hoek: 0, snelheid: 1, isMaan: true,
+      info: { 'Temperatuur': '-170 °C in de nacht, 120 °C overdag', 'Grootte': '3.474 km doorsnede', 'Afstand tot de aarde': '384.000 km', 'Een dag duurt': '29,5 aardse dagen', 'Rondje om de aarde': '27 dagen' },
+      weetje: 'In 1969 liepen er voor het eerst mensen op de maan.',
+    };
+    const lichamen = [ZON, ...planeten, MAAN];
 
     // Vallende sterren
     const vallendeSterren = [];
 
-    // Het poppetje: springt van blijdschap als je op START drukt
-    // Het poppetje staat op 'waar' (de aarde of een planeet). Tijdens een reis vliegt het van 'van' naar 'naar'.
-    const AARDE = { naam: 'aarde' };
+    // Het poppetje staat op 'waar' (een planeet of de maan). Tijdens een reis vliegt het van 'van' naar 'naar'.
     const poppetje = { sprong: 0, sprongSnelheid: 0, waar: AARDE, reis: null };
-    const REISTIJD = 1.4;   // seconden
+    const REISTIJD = 1.6;   // seconden
     const glitters = [];    // sterretjes die het poppetje achterlaat tijdens het vliegen
+    let gekozen = null;     // het hemellichaam waarvan je het kaartje ziet
 
     function update(dt) {
       tijd += dt;
       for (const p of planeten) p.hoek += p.snelheid * dt;
+      MAAN.hoek += MAAN.snelheid * dt;
 
       // Af en toe een nieuwe vallende ster
       if (Math.random() < dt * 0.4) {
@@ -248,7 +317,6 @@
       }
       ctx.globalAlpha = 1;
 
-      tekenZon(b * 0.88, h * 0.16, Math.min(b, h) * 0.08);
     }
 
     // De zon met draaiende stralen en een blij gezicht
@@ -275,20 +343,32 @@
       gezichtje(x, y + r * 0.05, r, { blij: true });
     }
 
-    // ---------- aarde en planeten ----------
+    // ---------- zonnestelsel ----------
 
-    function aardeStraal() {
-      return Math.min(canvas.width, canvas.height) * 0.13;
+    // Banen zijn platte ellipsen, alsof je er schuin op kijkt
+    const PLAT = 0.42;
+
+    // Eén eenheid in pixels, zo gekozen dat Neptunus nog net op het scherm past
+    function eenheid() {
+      return Math.min(canvas.width * 0.46, canvas.height * 0.44 / PLAT) / 7.8;
     }
 
     // Waar staat een hemellichaam nu op het scherm, en hoe groot is het?
     function plekVan(lichaam) {
-      const mx = canvas.width / 2, my = canvas.height / 2, r = aardeStraal();
-      if (lichaam === AARDE) return { x: mx, y: my, r };
+      const mx = canvas.width / 2, my = canvas.height / 2, e = eenheid();
+      if (lichaam.isZon) return { x: mx, y: my, r: ZON.grootte * e };
+      if (lichaam.isMaan) {
+        const a = plekVan(AARDE);
+        return {
+          x: a.x + Math.cos(MAAN.hoek) * a.r * 2.1,
+          y: a.y + Math.sin(MAAN.hoek) * a.r * 0.9,
+          r: MAAN.grootte * e,
+        };
+      }
       return {
-        x: mx + Math.cos(lichaam.hoek) * lichaam.afstand * r,
-        y: my + Math.sin(lichaam.hoek) * lichaam.afstand * r * 0.35,
-        r: lichaam.grootte * r,
+        x: mx + Math.cos(lichaam.hoek) * lichaam.afstand * e,
+        y: my + Math.sin(lichaam.hoek) * lichaam.afstand * e * PLAT,
+        r: lichaam.grootte * e,
       };
     }
 
@@ -300,73 +380,39 @@
       const ax = a.x, ay = a.y - a.r, bx = b.x, by = b.y - b.r;
       return {
         x: ax + (bx - ax) * zacht,
-        y: ay + (by - ay) * zacht - Math.sin(Math.PI * t) * aardeStraal() * 1.5,
+        y: ay + (by - ay) * zacht - Math.sin(Math.PI * t) * eenheid() * 1.3,
       };
     }
 
     function tekenBanen() {
-      const mx = canvas.width / 2, my = canvas.height / 2, r = aardeStraal();
+      const mx = canvas.width / 2, my = canvas.height / 2, e = eenheid();
       ctx.strokeStyle = 'rgba(255,255,255,0.18)';
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 10]);
       for (const p of planeten) {
         ctx.beginPath();
-        ctx.ellipse(mx, my, p.afstand * r, p.afstand * r * 0.35, 0, 0, Math.PI * 2);
+        ctx.ellipse(mx, my, p.afstand * e, p.afstand * e * PLAT, 0, 0, Math.PI * 2);
         ctx.stroke();
       }
       ctx.setLineDash([]);
     }
 
-    function tekenRing(x, y, pr, voorkant) {
-      ctx.lineWidth = pr * 0.22;
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = LIJN;
+    function tekenRing(x, y, pr, voorkant, kanteling, breedte, hoogte) {
       const van = voorkant ? 0 : Math.PI, tot = voorkant ? Math.PI : Math.PI * 2;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = pr * 0.22;
+      ctx.strokeStyle = LIJN;
       ctx.beginPath();
-      ctx.ellipse(x, y, pr * 1.8, pr * 0.5, -0.3, van, tot);
+      ctx.ellipse(x, y, pr * breedte, pr * hoogte, kanteling, van, tot);
       ctx.stroke();
       ctx.lineWidth = pr * 0.14;
-      ctx.strokeStyle = '#ffb3d9';
+      ctx.strokeStyle = kanteling > 1 ? '#d6fffd' : '#ffb3d9';
       ctx.beginPath();
-      ctx.ellipse(x, y, pr * 1.8, pr * 0.5, -0.3, van, tot);
+      ctx.ellipse(x, y, pr * breedte, pr * hoogte, kanteling, van, tot);
       ctx.stroke();
     }
 
-    function tekenPlaneet(p) {
-      const mx = canvas.width / 2, my = canvas.height / 2, r = aardeStraal();
-      const x = mx + Math.cos(p.hoek) * p.afstand * r;
-      const y = my + Math.sin(p.hoek) * p.afstand * r * 0.35;
-      const pr = p.grootte * r;
-
-      if (p.ring) tekenRing(x, y, pr, false);
-
-      ctx.save();
-      cirkel(x, y, pr, p.kleur);
-      ctx.clip();
-      if (p.strepen) {
-        ctx.fillStyle = '#f2a65a';
-        for (let i = -2; i <= 2; i += 2) ctx.fillRect(x - pr, y + i * pr * 0.4 - pr * 0.1, pr * 2, pr * 0.2);
-      }
-      if (p.naam === 'maan') {
-        cirkel(x - pr * 0.45, y - pr * 0.5, pr * 0.18, '#cfc8e0');
-        cirkel(x + pr * 0.5, y + pr * 0.45, pr * 0.14, '#cfc8e0');
-      }
-      // Zacht licht bovenop
-      ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      ctx.beginPath();
-      ctx.ellipse(x - pr * 0.4, y - pr * 0.5, pr * 0.3, pr * 0.15, -0.6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-      cirkel(x, y, pr, null, 3);
-
-      const bezoek = poppetje.waar === p && !poppetje.reis;
-      gezichtje(x, y + pr * 0.1, pr * 0.85, { slaperig: p.slaperig && !bezoek, blij: bezoek, fase: p.hoek * 3 });
-
-      if (p.ring) tekenRing(x, y, pr, true);
-      if (bezoek) tekenPoppetje(x, y - pr);
-    }
-
-    // Landen als ronde vlekjes
+    // Landen als ronde vlekjes op de aarde
     const landen = [
       { x: -0.4,  y: -0.45, r: 0.3 },
       { x: -0.15, y: -0.65, r: 0.22 },
@@ -377,52 +423,84 @@
       { x: -0.4,  y: 0.65,  r: 0.18 },
     ];
 
-    function tekenAarde() {
-      const mx = canvas.width / 2;
-      const my = canvas.height / 2;
-      const r = aardeStraal();
+    function tekenLichaam(l) {
+      const { x, y, r } = plekVan(l);
+      const bezoek = poppetje.waar === l && !poppetje.reis;
+
+      // Gekozen hemellichaam krijgt een kloppend stippelrondje
+      if (l === gekozen) {
+        ctx.strokeStyle = '#fff6a8';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([5, 7]);
+        ctx.lineDashOffset = -tijd * 20;
+        cirkel(x, y, r * (l.isZon ? 1.7 : 1.35) + 6 + Math.sin(tijd * 5) * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      if (l.isZon) { tekenZon(x, y, r); return; }
+
+      if (l.uiterlijk === 'ring') tekenRing(x, y, r, false, -0.3, 1.9, 0.5);
+      if (l.uiterlijk === 'schuineRing') tekenRing(x, y, r, false, 1.4, 1.6, 0.35);
 
       ctx.save();
-      cirkel(mx, my, r, '#5ec8ff');
+      cirkel(x, y, r, l.kleur);
       ctx.clip();
-
-      // Land met een donkerder randje
-      for (const land of landen) {
-        cirkel(mx + land.x * r, my + land.y * r, land.r * r, '#7ddc6a');
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = '#4fae4a';
-        ctx.stroke();
+      if (l.uiterlijk === 'aarde') {
+        for (const land of landen) {
+          cirkel(x + land.x * r, y + land.y * r, land.r * r, '#7ddc6a');
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#4fae4a';
+          ctx.stroke();
+        }
       }
-
-      // Wolkjes die over de aarde drijven
-      for (let i = 0; i < 3; i++) {
-        const wx = mx + ((tijd * 15 + i * 90) % (r * 2.6)) - r * 1.3;
-        const wy = my - r * 0.3 + i * r * 0.35;
-        ctx.fillStyle = 'rgba(255,255,255,0.85)';
-        cirkel(wx, wy, r * 0.09, 'rgba(255,255,255,0.85)');
-        cirkel(wx + r * 0.1, wy - r * 0.04, r * 0.11, 'rgba(255,255,255,0.85)');
-        cirkel(wx + r * 0.21, wy, r * 0.08, 'rgba(255,255,255,0.85)');
+      if (l.uiterlijk === 'kraters') {
+        const krater = l.naam === 'Mars' ? '#e0684a' : 'rgba(0,0,0,0.12)';
+        cirkel(x - r * 0.45, y - r * 0.5, r * 0.2, krater);
+        cirkel(x + r * 0.5, y + r * 0.45, r * 0.16, krater);
+        cirkel(x - r * 0.55, y + r * 0.55, r * 0.12, krater);
       }
-
+      if (l.uiterlijk === 'strepen') {
+        ctx.fillStyle = '#f2a65a';
+        for (let i = -2; i <= 2; i += 2) ctx.fillRect(x - r, y + i * r * 0.4 - r * 0.1, r * 2, r * 0.2);
+        ctx.fillStyle = '#e0563a';
+        ctx.beginPath(); ctx.ellipse(x + r * 0.45, y + r * 0.55, r * 0.2, r * 0.11, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      if (l.uiterlijk === 'wolken') {
+        ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+        ctx.lineWidth = r * 0.12;
+        for (let i = -1; i <= 1; i++) {
+          ctx.beginPath();
+          ctx.arc(x + i * r * 0.3, y + i * r * 0.55, r * 0.5, Math.PI * 1.1, Math.PI * 1.6);
+          ctx.stroke();
+        }
+      }
       // Glimmetje
       ctx.fillStyle = 'rgba(255,255,255,0.4)';
       ctx.beginPath();
-      ctx.ellipse(mx - r * 0.45, my - r * 0.55, r * 0.25, r * 0.12, -0.6, 0, Math.PI * 2);
+      ctx.ellipse(x - r * 0.4, y - r * 0.5, r * 0.28, r * 0.13, -0.6, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
+      cirkel(x, y, r, null, 3);
 
-      cirkel(mx, my, r, null, 4);
-      gezichtje(mx, my + r * 0.1, r * 0.75, { blij: gestart && poppetje.waar === AARDE && poppetje.sprong > 0 });
+      gezichtje(x, y + r * 0.1, r * 0.8, {
+        slaperig: l.isMaan && !bezoek,
+        blij: bezoek,
+        fase: l.afstand || 7,
+      });
 
-      if (poppetje.waar === AARDE && !poppetje.reis) tekenPoppetje(mx, my - r);
+      if (l.uiterlijk === 'ring') tekenRing(x, y, r, true, -0.3, 1.9, 0.5);
+      if (l.uiterlijk === 'schuineRing') tekenRing(x, y, r, true, 1.4, 1.6, 0.35);
+
+      if (bezoek) tekenPoppetje(x, y - r);
     }
 
     // Een klein mensje dat bovenop de aarde staat en zwaait
     function tekenPoppetje(x, voetY) {
-      const r = aardeStraal();
-      const s = r * 0.0065;                    // schaal: poppetje groeit mee met de aarde
+      const e = eenheid();
+      const s = e * 0.0045;                    // schaal: poppetje groeit mee met het zonnestelsel
       const wiebel = Math.sin(tijd * 3) * 2 * s;
-      const y = voetY - poppetje.sprong * r * 0.6 + wiebel;
+      const y = voetY - poppetje.sprong * e * 0.5 + wiebel;
       ctx.save();
       ctx.translate(x, y);
       ctx.scale(s, s);
@@ -555,40 +633,74 @@
       ctx.restore();
     }
 
-    // Op welk hemellichaam wordt geklikt? Wat vooraan staat telt eerst.
+    // Op welk hemellichaam wordt geklikt? Wat vooraan (lager op het scherm) staat telt eerst.
     function lichaamOp(x, y) {
-      const voor = planeten.filter(p => Math.sin(p.hoek) >= 0);
-      const achter = planeten.filter(p => Math.sin(p.hoek) < 0);
-      for (const l of [...voor, AARDE, ...achter]) {
+      const opVolgorde = [...lichamen].sort((a, b) => plekVan(b).y - plekVan(a).y);
+      for (const l of opVolgorde) {
         const pl = plekVan(l);
-        if (Math.hypot(x - pl.x, y - pl.y) <= Math.max(pl.r * 1.15, 25)) return l;
+        if (Math.hypot(x - pl.x, y - pl.y) <= Math.max(pl.r * 1.2, 18)) return l;
       }
       return null;
     }
 
+    // Het kaartje met de eigenschappen invullen en laten zien
+    const info = document.getElementById('info');
+    function toonInfo(l, melding) {
+      info.querySelector('.naam').textContent = l.naam;
+      info.querySelector('.bol').style.background = l.kleur;
+      info.querySelector('.melding').textContent = melding || '';
+      const lijst = info.querySelector('dl');
+      lijst.innerHTML = '';
+      for (const [vraag, antwoord] of Object.entries(l.info)) {
+        const dt = document.createElement('dt');
+        dt.textContent = vraag;
+        const dd = document.createElement('dd');
+        dd.textContent = antwoord;
+        lijst.append(dt, dd);
+      }
+      info.querySelector('.weetje').textContent = '⭐ ' + l.weetje;
+      // Opnieuw laten 'ploppen'
+      info.hidden = true;
+      void info.offsetWidth;
+      info.hidden = false;
+    }
+    document.getElementById('sluit').addEventListener('click', () => {
+      info.hidden = true;
+      gekozen = null;
+    });
+
     canvas.addEventListener('mousemove', (e) => {
       muis = { x: e.clientX, y: e.clientY };
-      const klikbaar = gestart ? (lichaamOp(e.clientX, e.clientY) && !poppetje.reis) : opKnop(e.clientX, e.clientY);
+      const klikbaar = gestart ? lichaamOp(e.clientX, e.clientY) : opKnop(e.clientX, e.clientY);
       canvas.style.cursor = klikbaar ? 'pointer' : 'default';
     });
 
     canvas.addEventListener('click', (e) => {
-      if (!gestart && opKnop(e.clientX, e.clientY)) {
-        gestart = true;
-        canvas.style.cursor = 'default';
-        poppetje.sprong = 0.01;
-        poppetje.sprongSnelheid = 3;
+      if (!gestart) {
+        if (opKnop(e.clientX, e.clientY)) {
+          gestart = true;
+          canvas.style.cursor = 'default';
+          poppetje.sprong = 0.01;
+          poppetje.sprongSnelheid = 3;
+        }
         return;
       }
-      // Klik op een planeet (of de aarde): het poppetje vliegt erheen
-      if (gestart && !poppetje.reis) {
-        const doel = lichaamOp(e.clientX, e.clientY);
-        if (doel && doel !== poppetje.waar) {
-          poppetje.sprong = 0;
-          poppetje.sprongSnelheid = 0;
-          poppetje.reis = { van: poppetje.waar, naar: doel, t: 0 };
-          poppetje.waar = null;
-        }
+      const doel = lichaamOp(e.clientX, e.clientY);
+      if (!doel) return;
+      gekozen = doel;
+      if (doel.isZon) {
+        toonInfo(doel, 'Au, veel te heet! Hier kun je niet landen.');
+      } else if (doel === poppetje.waar) {
+        toonInfo(doel, 'Hier sta je nu!');
+      } else if (poppetje.reis) {
+        toonInfo(doel, 'Even wachten, je bent nog onderweg.');
+      } else {
+        // Het poppetje vliegt erheen
+        toonInfo(doel, 'Op weg naar ' + doel.naam + '!');
+        poppetje.sprong = 0;
+        poppetje.sprongSnelheid = 0;
+        poppetje.reis = { van: poppetje.waar, naar: doel, t: 0 };
+        poppetje.waar = null;
       }
     });
 
@@ -609,10 +721,9 @@
     function draw() {
       tekenRuimte();
       tekenBanen();
-      // Wat achter de aarde langs gaat eerst tekenen
-      for (const p of planeten) if (Math.sin(p.hoek) < 0) tekenPlaneet(p);
-      tekenAarde();
-      for (const p of planeten) if (Math.sin(p.hoek) >= 0) tekenPlaneet(p);
+      // Van achter (hoog op het scherm) naar voor tekenen, zodat planeten netjes achter de zon langs gaan
+      const opVolgorde = [...lichamen].sort((a, b) => plekVan(a).y - plekVan(b).y);
+      for (const l of opVolgorde) tekenLichaam(l);
       tekenReis();
       if (!gestart) tekenStartscherm();
     }
