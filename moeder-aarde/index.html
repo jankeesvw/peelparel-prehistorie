@@ -282,6 +282,8 @@
     }
     const glitters = [];    // sterretjes die het poppetje achterlaat tijdens het vliegen
     let gekozen = null;     // het hemellichaam waarvan je het kaartje ziet
+    let aftiteling = null;     // de namen van de makers die omhoog rollen
+    let aftitelingWacht = 0;
     let portaalReis = null;   // door het portaal naar een ander universum
     let kijkModus = 'overzicht';   // 'overzicht' = zonnestelsel van boven, 'landschap' = door je ogen op een planeet
 
@@ -289,6 +291,11 @@
       tijd += dt;
       for (const p of planeten) p.hoek += p.snelheid * dt;
       MAAN.hoek += MAAN.snelheid * dt;
+      if (aftitelingWacht > 0) {
+        aftitelingWacht -= dt;
+        if (aftitelingWacht <= 0) aftiteling = { t: 0 };
+      }
+      if (aftiteling) aftiteling.t += dt;
       if (portaalReis) {
         portaalReis.t += dt / 2.5;
         if (portaalReis.t >= 1) {
@@ -1043,6 +1050,14 @@
     });
 
     canvas.addEventListener('click', (e) => {
+      // Na de aftiteling klik je terug naar de Eindplaneet
+      if (aftiteling) {
+        if (aftiteling.t > 4) {
+          aftiteling = null;
+          lijstKaart.hidden = false;
+        }
+        return;
+      }
       if (!gestart) {
         if (opKnop(e.clientX, e.clientY)) {
           gestart = true;
@@ -1978,7 +1993,10 @@
           l.wachtTijd = 3;
         } else {
           l.voltooid = true;
-          if (l.naam === 'Eindplaneet') startFeest('Je hebt het spel uitgespeeld!');
+          if (l.naam === 'Eindplaneet') {
+            startFeest('Je hebt het spel uitgespeeld!');
+            aftitelingWacht = 3.5;   // eerst even feest, dan de aftiteling
+          }
           else startFeest(letterVan(l) ? 'Planeet voltooid! Letter: ' + letterVan(l).toUpperCase() : 'Planeet voltooid!');
         }
       }
@@ -2591,7 +2609,65 @@
       if (e.key === 'Enter') probeerCode();
     });
 
+    // ---------- aftiteling ----------
+    const MAKERS = ['Luuk', 'Dorus', 'Guus', 'Soof', 'Mijs'];
+
+    function tekenAftiteling() {
+      const b = canvas.width, h = canvas.height, m = Math.min(b, h);
+      const t = aftiteling.t;
+      ctx.fillStyle = '#1b1440';
+      ctx.fillRect(0, 0, b, h);
+      for (const st of sterren) {
+        ctx.globalAlpha = 0.6 + 0.4 * Math.sin(tijd * 2 + st.fase);
+        cirkel(st.x * b, st.y * h, st.grootte * 0.35, st.kleur);
+      }
+      ctx.globalAlpha = 1;
+
+      // Alle regels rollen langzaam omhoog en stoppen als 'Jankees' in het midden staat
+      const regel = m * 0.11;
+      const regels = [
+        { tekst: 'Je hebt het spel uitgespeeld!', grootte: 0.07, kleur: '#fff6a8' },
+        { tekst: '', grootte: 0.05 },
+        { tekst: 'Gemaakt door', grootte: 0.06, kleur: '#ff9ad5' },
+        { tekst: '', grootte: 0.03 },
+        ...MAKERS.map(naam => ({ tekst: naam, grootte: 0.08, kleur: '#ffffff' })),
+        { tekst: '', grootte: 0.03 },
+        { tekst: 'En', grootte: 0.06, kleur: '#ff9ad5' },
+        { tekst: 'Jankees', grootte: 0.1, kleur: '#ffd84a', kroon: true },
+      ];
+      const snelheid = m * 0.12;
+      const eindPlek = h * 0.5 - (regels.length - 1) * regel;
+      const start = h + regel;
+      const y0 = Math.max(eindPlek, start - t * snelheid);
+      regels.forEach((r, i) => {
+        if (!r.tekst) return;
+        const y = y0 + i * regel;
+        if (y < -regel || y > h + regel) return;
+        const fg = m * r.grootte;
+        tekenTekst(r.tekst, b / 2, y, fg, r.kleur);
+        if (r.kroon) {
+          ctx.font = '700 ' + fg + 'px ' + FONT;
+          const breedte = ctx.measureText(r.tekst).width;
+          tekenKroon(b / 2 + breedte / 2 + fg * 0.55, y + fg * 0.25, fg * 0.4);
+        }
+      });
+
+      // Klaar met rollen: confetti en een tip om verder te spelen
+      if (y0 === eindPlek) {
+        tekenTekst('Klik om verder te spelen', b / 2, h * 0.88, m * 0.04, '#ffffff');
+      }
+      tekenHelm();
+    }
+
     function draw() {
+      if (aftiteling) {
+        lijstKaart.hidden = true;
+        info.hidden = true;
+        slotKnop.hidden = true;
+        codeKaart.hidden = true;
+        tekenAftiteling();
+        return;
+      }
       // Het slot zie je alleen in het zonnestelsel
       const slotZichtbaar = gestart && kijkModus === 'overzicht' && !poppetje.reis && !portaalReis;
       if (slotKnop.hidden === slotZichtbaar) slotKnop.hidden = !slotZichtbaar;
