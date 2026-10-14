@@ -549,11 +549,61 @@
 
     // Een klein mensje dat bovenop de aarde staat en zwaait
     // 'schaal' en 'richting' (1 = rechts, -1 = links) kun je meegeven voor het landschap
+    // Pakjes per planeet. Op aarde gewone kleren; elders een ruimtepak met helm.
+    // 'rugzak' = zuurstoftank, 'jetpack' = om te zweven op gasplaneten, 'dik' = extra warm opgevuld pak.
+    const PAKJES = {
+      Mercurius: { pak: '#e4e8f2', accent: '#ffb347', glas: 'rgba(255,214,90,0.45)', rugzak: true, embleem: 'zon' },
+      Venus:     { pak: '#ff9a3a', accent: '#ffe14a', glas: 'rgba(255,240,170,0.45)', rugzak: true, embleem: 'vuur' },
+      Maan:      { pak: '#ffffff', accent: '#e3262f', glas: 'rgba(170,230,255,0.4)', rugzak: true, embleem: 'brabant' },
+      Mars:      { pak: '#ffffff', accent: '#ff6f3a', glas: 'rgba(170,230,255,0.4)', rugzak: true, embleem: 'ster' },
+      Jupiter:   { pak: '#ff7a7a', accent: '#ffd84a', glas: 'rgba(170,230,255,0.4)', jetpack: true, embleem: 'bliksem' },
+      Saturnus:  { pak: '#b58cff', accent: '#fff0a0', glas: 'rgba(255,220,240,0.45)', jetpack: true, embleem: 'ring' },
+      Uranus:    { pak: '#7fe0dc', accent: '#ffffff', glas: 'rgba(214,255,253,0.5)', jetpack: true, dik: true, embleem: 'sneeuw' },
+      Neptunus:  { pak: '#3a55d6', accent: '#9ae6ff', glas: 'rgba(170,230,255,0.4)', jetpack: true, dik: true, embleem: 'wind' },
+    };
+
+    function huidigPakje() {
+      const plek = poppetje.waar || (poppetje.reis && poppetje.reis.naar);
+      return plek ? PAKJES[plek.naam] : null;
+    }
+
+    function tekenEmbleem(soort, x, y) {
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = LIJN;
+      if (soort === 'brabant') {
+        for (let r = 0; r < 2; r++) for (let k = 0; k < 3; k++) {
+          ctx.fillStyle = (r + k) % 2 === 0 ? '#e3262f' : '#ffffff';
+          ctx.fillRect(x - 7.5 + k * 5, y - 5 + r * 5, 5, 5);
+        }
+        ctx.strokeRect(x - 7.5, y - 5, 15, 10);
+      } else if (soort === 'zon') {
+        cirkel(x, y, 5, '#ffd84a', 2);
+      } else if (soort === 'vuur') {
+        ctx.fillStyle = '#ff4f2a';
+        ctx.beginPath(); ctx.moveTo(x, y - 7); ctx.quadraticCurveTo(x + 7, y, x, y + 6); ctx.quadraticCurveTo(x - 7, y, x, y - 7); ctx.fill(); ctx.stroke();
+      } else if (soort === 'bliksem') {
+        ctx.fillStyle = '#ffe14a';
+        ctx.beginPath(); ctx.moveTo(x + 2, y - 7); ctx.lineTo(x - 4, y + 1); ctx.lineTo(x, y + 1); ctx.lineTo(x - 2, y + 7); ctx.lineTo(x + 4, y - 1); ctx.lineTo(x, y - 1); ctx.closePath(); ctx.fill(); ctx.stroke();
+      } else if (soort === 'ring') {
+        cirkel(x, y, 4, '#fff0a0', 2);
+        ctx.beginPath(); ctx.ellipse(x, y, 8, 3, -0.3, 0, Math.PI * 2); ctx.stroke();
+      } else if (soort === 'sneeuw') {
+        for (let k = 0; k < 3; k++) { const a = k * Math.PI / 3; ctx.beginPath(); ctx.moveTo(x - Math.cos(a) * 6, y - Math.sin(a) * 6); ctx.lineTo(x + Math.cos(a) * 6, y + Math.sin(a) * 6); ctx.stroke(); }
+      } else if (soort === 'wind') {
+        ctx.beginPath(); ctx.moveTo(x - 7, y - 3); ctx.quadraticCurveTo(x + 4, y - 7, x + 6, y - 3); ctx.moveTo(x - 7, y + 3); ctx.quadraticCurveTo(x + 2, y, x + 5, y + 4); ctx.stroke();
+      } else {
+        ctx.fillStyle = '#ff8ac4';
+        sterVorm(x, y, 6, 5, 0.5); ctx.fill(); ctx.stroke();
+      }
+    }
+
+    // 'schaal' en 'richting' (1 = rechts, -1 = links) kun je meegeven voor het landschap
     function tekenPoppetje(x, voetY, schaal, richting = 1) {
       const e = eenheid();
       const s = schaal || e * 0.0045;          // schaal: poppetje groeit mee met het zonnestelsel
       const wiebel = schaal ? 0 : Math.sin(tijd * 3) * 2 * s;
       const y = voetY - (schaal ? 0 : poppetje.sprong * e * 0.5) + wiebel;
+      const pakje = huidigPakje();
       ctx.save();
       ctx.translate(x, y);
       if (richting < 0) ctx.scale(-1, 1);
@@ -563,36 +613,74 @@
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
 
-      // Schoentjes
-      ctx.fillStyle = '#ff6f6f';
-      ctx.beginPath(); ctx.ellipse(-8, -3, 8, 5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.ellipse(8, -3, 8, 5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      // Op de rug: zuurstoftank of jetpack met vlammetjes
+      if (pakje && (pakje.rugzak || pakje.jetpack)) {
+        if (pakje.jetpack) {
+          for (const dx of [-20, -12]) {
+            const vlam = 12 + Math.sin(tijd * 30 + dx) * 5;
+            ctx.fillStyle = '#ffb347';
+            ctx.beginPath(); ctx.moveTo(dx - 4, -22); ctx.lineTo(dx + 4, -22); ctx.lineTo(dx, -22 + vlam); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#fff6a8';
+            ctx.beginPath(); ctx.moveTo(dx - 2, -22); ctx.lineTo(dx + 2, -22); ctx.lineTo(dx, -22 + vlam * 0.6); ctx.closePath(); ctx.fill();
+          }
+          ctx.fillStyle = '#9aa3b8';
+          ctx.beginPath(); ctx.roundRect(-25, -48, 9, 26, 4); ctx.fill(); ctx.stroke();
+          ctx.beginPath(); ctx.roundRect(-17, -48, 9, 26, 4); ctx.fill(); ctx.stroke();
+        } else {
+          ctx.fillStyle = '#cfd6e6';
+          ctx.beginPath(); ctx.roundRect(-24, -50, 14, 30, 6); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = pakje.accent;
+          ctx.fillRect(-22, -42, 10, 4);
+        }
+      }
 
-      // Spijkerbroek
-      ctx.fillStyle = '#4a7bd8';
-      ctx.beginPath(); ctx.roundRect(-12, -24, 10, 20, 4); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.roundRect(2, -24, 10, 20, 4); ctx.fill(); ctx.stroke();
+      // Schoenen, of dikke ruimtelaarzen
+      ctx.fillStyle = pakje ? pakje.accent : '#ff6f6f';
+      const voetB = pakje ? 10 : 8, voetH = pakje ? 6 : 5;
+      ctx.beginPath(); ctx.ellipse(-8, -3, voetB, voetH, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(8, -3, voetB, voetH, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-      // Armpje links omlaag, rechts zwaait (in een geel shirt-mouwtje)
+      // Broek of de pijpen van het pak
+      const dikte = pakje && pakje.dik ? 3 : 0;
+      ctx.fillStyle = pakje ? pakje.pak : '#4a7bd8';
+      ctx.beginPath(); ctx.roundRect(-12 - dikte, -24, 10 + dikte, 20, 4); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(2, -24, 10 + dikte, 20, 4); ctx.fill(); ctx.stroke();
+
+      // Armpje links omlaag, rechts zwaait. In een pak: dikke mouwen en handschoenen.
       const zwaai = Math.sin(tijd * 8) * 0.4;
       const hx = 14 + Math.cos(-1.1 + zwaai) * 16, hy = -38 + Math.sin(-1.1 + zwaai) * 16;
       for (const [ax, ay, bx, by] of [[-14, -38, -24, -24], [14, -38, hx, hy]]) {
-        ctx.lineWidth = 9; ctx.strokeStyle = LIJN;
+        ctx.lineWidth = pakje ? 12 + dikte : 9; ctx.strokeStyle = LIJN;
         ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
-        ctx.lineWidth = 5.5; ctx.strokeStyle = '#ffd1a8';
+        ctx.lineWidth = pakje ? 8.5 + dikte : 5.5; ctx.strokeStyle = pakje ? pakje.pak : '#ffd1a8';
         ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+        if (pakje) cirkel(bx, by, 5, pakje.accent, 2.5);
       }
       ctx.lineWidth = 3.5;
       ctx.strokeStyle = LIJN;
 
-      // T-shirt met een sterretje
-      ctx.fillStyle = '#ffd84a';
-      ctx.beginPath(); ctx.roundRect(-16, -46, 32, 26, 9); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#ff8ac4';
-      sterVorm(0, -33, 6, 5, 0.5);
-      ctx.lineWidth = 2;
-      ctx.fill(); ctx.stroke();
-      ctx.lineWidth = 3.5;
+      if (pakje) {
+        // Ruimtepak met een gekleurde riem en een embleem
+        ctx.fillStyle = pakje.pak;
+        ctx.beginPath(); ctx.roundRect(-16 - dikte, -47, 32 + dikte * 2, 28, 10); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = pakje.accent;
+        ctx.beginPath(); ctx.roundRect(-16 - dikte, -25, 32 + dikte * 2, 5, 2); ctx.fill(); ctx.stroke();
+        if (pakje.dik) {
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(-16, -37); ctx.lineTo(16, -37); ctx.stroke();
+          ctx.lineWidth = 3.5;
+        }
+        tekenEmbleem(pakje.embleem, 5, -36);
+      } else {
+        // T-shirt met een sterretje
+        ctx.fillStyle = '#ffd84a';
+        ctx.beginPath(); ctx.roundRect(-16, -46, 32, 26, 9); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#ff8ac4';
+        sterVorm(0, -33, 6, 5, 0.5);
+        ctx.lineWidth = 2;
+        ctx.fill(); ctx.stroke();
+        ctx.lineWidth = 3.5;
+      }
 
       // Hoofd met oortjes
       cirkel(-21, -62, 5, '#ffd1a8', 3);
@@ -616,6 +704,19 @@
       ctx.stroke();
 
       gezichtje(0, -60, 20, { blij: poppetje.sprong > 0, fase: 1 });
+
+      // Ronde glazen helm met een glimmetje
+      if (pakje) {
+        ctx.fillStyle = pakje.glas;
+        cirkel(0, -63, 31, pakje.glas, 3.5);
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(0, -63, 24, Math.PI * 1.15, Math.PI * 1.4); ctx.stroke();
+        ctx.fillStyle = pakje.accent;
+        ctx.strokeStyle = LIJN;
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.roundRect(-18, -37, 36, 7, 3); ctx.fill(); ctx.stroke();
+      }
       ctx.restore();
     }
 
