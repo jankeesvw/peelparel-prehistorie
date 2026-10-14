@@ -93,6 +93,8 @@ HEAD
     [[ "$naam" == "template" || "$naam" == "bin" || "$naam" == "geheim" ]] && continue
     [[ -f "$dir/index.html" ]] || continue
     icoon="${ICONEN[$((i % ${#ICONEN[@]}))]}"
+    # Een eigen icoon kan in een bestand 'icoon' in de game-map
+    [[ -f "$dir/icoon" ]] && icoon="$(tr -d '\n' < "$dir/icoon")"
     titel="${naam//-/ }"
     echo "      <li><a href=\"$naam/\"><span class=\"icoon\">$icoon</span><span><span class=\"naam\">$titel</span><span class=\"speel\">speel &rarr;</span></span></a></li>"
     i=$((i + 1)); aantal=$((aantal + 1))
