@@ -211,6 +211,10 @@
         info: { 'Temperatuur': 'altijd precies goed', 'Gemaakt van': 'wolken en regenbogen', 'Een dag duurt': '7 kleuren', 'Manen': 'een hele regenboog vol' },
         weetje: 'Er is geen grond op de Regenboogplaneet: je zweeft van wolk naar wolk.' },
     ];
+    // De allerlaatste planeet: een gouden planeet met een kroon
+    fantasiePlaneten.push({ naam: 'Eindplaneet', afstand: 7.85, grootte: 0.5, kleur: '#ffd84a', uiterlijk: 'goud', hoek: 4.0,
+      info: { 'Temperatuur': 'feestelijk warm', 'Gemaakt van': 'puur goud en confetti', 'Een dag duurt': 'één groot feest', 'Wie woont hier': 'iedereen die het spel uitspeelt' },
+      weetje: 'Wie de Eindplaneet voltooit, is de baas van alle universums!' });
     for (const p of fantasiePlaneten) p.snelheid = 0.25 / Math.pow(p.afstand / 1.7, 1.5);
 
     // Je moet de planeten op volgorde voltooien. Eerst de aarde!
@@ -218,7 +222,7 @@
       { zon: ECHTE_ZON, planeten: echtePlaneten, extra: [MAAN], lucht: ['#1b1440', '#3a2470'],
         volgorde: ['Aarde', 'Maan', 'Mars', 'Venus', 'Mercurius', 'Jupiter', 'Saturnus', 'Uranus', 'Neptunus'] },
       { zon: FANTASIE_ZON, planeten: fantasiePlaneten, extra: [], lucht: ['#3a1050', '#8a2a7a'],
-        volgorde: ['Snoepplaneet', 'IJsjesplaneet', 'Dinoplaneet', 'Pizzaplaneet', 'Regenboogplaneet'] },
+        volgorde: ['Pizzaplaneet', 'Snoepplaneet', 'IJsjesplaneet', 'Dinoplaneet', 'Regenboogplaneet', 'Eindplaneet'] },
     ];
     let universum = 0;
     let ZON, planeten, lichamen;
@@ -240,16 +244,21 @@
       return naam ? vindLichaam(naam) : null;
     }
     // Geheime cheatcode: wie hem weet, kan overal heen
-    const CODE = 'kroket12';
-    let alleOpen = false;
-    // Elke planeet van ons zonnestelsel geeft (op volgorde) één letter van de code
+    // Elk universum heeft zijn eigen code
+    UNIVERSUMS[0].code = 'kroket12';
+    UNIVERSUMS[1].code = 'pizz4';
+    for (const u of UNIVERSUMS) u.alleOpen = false;
+    // Elke planeet geeft (op volgorde) één letter van de code van zijn universum
     function letterVan(l) {
-      const i = UNIVERSUMS[0].volgorde.indexOf(l.naam);
-      return i >= 0 && i < CODE.length ? CODE[i] : null;
+      for (const u of UNIVERSUMS) {
+        const i = u.volgorde.indexOf(l.naam);
+        if (i >= 0) return i < u.code.length ? u.code[i] : null;
+      }
+      return null;
     }
 
     function isOpen(l) {
-      if (alleOpen) return true;
+      if (UNIVERSUMS[universum].alleOpen) return true;
       const volgorde = UNIVERSUMS[universum].volgorde;
       const plek = volgorde.indexOf(l.naam);
       if (plek < 0) return true;
@@ -284,7 +293,8 @@
         portaalReis.t += dt / 2.5;
         if (portaalReis.t >= 1) {
           zetUniversum(portaalReis.naar);
-          poppetje.waar = portaalReis.naar === 1 ? fantasiePlaneten[0] : AARDE;
+          poppetje.waar = portaalReis.naar === 1 ? vindLichaam('Pizzaplaneet') : AARDE;
+          slotKnop.textContent = UNIVERSUMS[universum].alleOpen ? '🔓' : '🔒';
           gekozen = null;
           info.hidden = true;
           portaalReis = null;
@@ -658,6 +668,14 @@
       if (l.uiterlijk === 'pizza') {
         for (let i = 0; i < 6; i++) cirkel(x + (vast(i + 13) - 0.5) * r * 1.5, y + (vast(i + 19) - 0.5) * r * 1.5, r * 0.17, '#e3262f', 2);
       }
+      if (l.uiterlijk === 'goud') {
+        ctx.fillStyle = '#fff6c4';
+        for (let i = 0; i < 6; i++) {
+          const fel = 0.5 + 0.5 * Math.sin(tijd * 4 + i * 2);
+          sterVorm(x + (vast(i + 800) - 0.5) * r * 1.4, y + (vast(i + 820) - 0.5) * r * 1.4, r * 0.12 * (0.5 + fel), 4, 0.4);
+          ctx.fill();
+        }
+      }
       if (l.uiterlijk === 'regenboog') {
         const kleuren = ['#ff6f6f', '#ffb347', '#ffe14a', '#7ddc6a', '#5ec8ff', '#b58cff'];
         kleuren.forEach((k, i) => { ctx.fillStyle = k; ctx.fillRect(x - r, y - r + i * r / 3, r * 2, r / 3 + 1); });
@@ -685,6 +703,7 @@
         fase: l.afstand || 7,
       });
 
+      if (l.uiterlijk === 'goud') tekenKroon(x, y - r * 0.95, r * 0.55);
       if (l.uiterlijk === 'ring') tekenRing(x, y, r, true, -0.3, 1.9, 0.5);
       if (l.uiterlijk === 'schuineRing') tekenRing(x, y, r, true, 1.4, 1.6, 0.35);
 
@@ -736,6 +755,7 @@
       IJsjesplaneet:    { pak: '#bff4ff', accent: '#ff9ad5', glas: 'rgba(214,255,253,0.5)', rugzak: true, dik: true, embleem: 'sneeuw' },
       Dinoplaneet:      { pak: '#d8b47a', accent: '#5ccf5a', glas: 'rgba(200,255,200,0.4)', rugzak: true, embleem: 'vuur' },
       Pizzaplaneet:     { pak: '#ffffff', accent: '#e3262f', glas: 'rgba(255,240,200,0.45)', rugzak: true, embleem: 'vuur' },
+      Eindplaneet:      { pak: '#ffd84a', accent: '#b58cff', glas: 'rgba(255,240,170,0.45)', rugzak: true, embleem: 'ster' },
       Regenboogplaneet: { pak: '#c9a8ff', accent: '#fff0a0', glas: 'rgba(255,220,240,0.45)', jetpack: true, embleem: 'ster' },
     };
 
@@ -1056,17 +1076,22 @@
         gaNaarLandschap(doel);
         toonInfo(doel, 'Hier sta je nu!');
       } else {
-        // Het poppetje vliegt erheen
-        toonInfo(doel, 'Op weg naar ' + doel.naam + '!');
-        poppetje.sprong = 0;
-        poppetje.sprongSnelheid = 0;
-        poppetje.reis = { van: poppetje.waar, naar: doel, t: 0 };
-        // Alvast klaarzetten, want aan het eind van de reis zie je het landschap al verschijnen
-        maakUitdagingen(doel);
-        zetSpelerNeer(doel);
-        poppetje.waar = null;
+        startReis(doel);
       }
     });
+
+    // Het poppetje vliegt naar een planeet
+    function startReis(doel) {
+      gekozen = doel;
+      toonInfo(doel, 'Op weg naar ' + doel.naam + '!');
+      poppetje.sprong = 0;
+      poppetje.sprongSnelheid = 0;
+      poppetje.reis = { van: poppetje.waar, naar: doel, t: 0 };
+      // Alvast klaarzetten, want aan het eind van de reis zie je het landschap al verschijnen
+      maakUitdagingen(doel);
+      zetSpelerNeer(doel);
+      poppetje.waar = null;
+    }
 
     function tekenReis() {
       for (const g of glitters) {
@@ -1138,6 +1163,7 @@
       IJsjesplaneet:    { lucht: ['#8fdcff', '#f0fbff'], grond: '#fffaf2', donker: '#ffd1e0', zon: 0.05, ijshoorntjes: true, hagelslag: true },
       Dinoplaneet:      { lucht: ['#ff9a5a', '#fff0c4'], grond: '#8fd16a', donker: '#5aa04a', zon: 0.08, vulkaan: true, palmen: true, pterosaurus: true },
       Pizzaplaneet:     { lucht: ['#ff8a65', '#ffe0b0'], grond: '#ffd36b', donker: '#e8a83a', zon: 0.06, pepperoni: true },
+      Eindplaneet:      { lucht: ['#2a1b4a', '#b58cff'], grond: '#ffd84a', donker: '#e0a830', zon: 0.06, sterren: true, kasteel: true, vuurwerk: true },
       Regenboogplaneet: { lucht: ['#c9a8ff', '#fff0fb'], gas: ['#ffd1f0', '#fff6a8', '#d6fffd', '#e9d8ff'], zon: 0.05, regenboog: true },
     };
 
@@ -1247,6 +1273,22 @@
           ctx.ellipse(b * 0.5, horizon + h * 0.05, b * 0.75 - i * maat * 0.04, h * 0.42 - i * maat * 0.04, -0.12, Math.PI, Math.PI * 2);
           ctx.stroke();
         });
+        ctx.globalAlpha = 1;
+      }
+
+      // Vuurwerk boven de Eindplaneet
+      if (c.vuurwerk) {
+        const kleuren = ['#ff6fae', '#ffe14a', '#5ec8ff', '#7ddc6a', '#ffb347'];
+        for (let i = 0; i < 4; i++) {
+          const fase = (tijd * 0.5 + i * 0.27) % 1;
+          const ronde = Math.floor(tijd * 0.5 + i * 0.27);
+          const vx = b * (0.15 + vast(i * 7 + ronde) * 0.7), vy = h * (0.12 + vast(i * 11 + ronde) * 0.25);
+          ctx.globalAlpha = 1 - fase;
+          for (let k = 0; k < 12; k++) {
+            const a = k / 12 * Math.PI * 2;
+            cirkel(vx + Math.cos(a) * fase * maat * 0.12, vy + Math.sin(a) * fase * maat * 0.12, 4, kleuren[(i + k) % kleuren.length]);
+          }
+        }
         ctx.globalAlpha = 1;
       }
 
@@ -1382,6 +1424,29 @@
             ctx.strokeStyle = LIJN;
             ctx.stroke();
           }
+        }
+
+        // Gouden kasteel
+        if (c.kasteel) {
+          const kx = b * 0.5, ky = horizon + 15, kb = maat * 0.45, kh = maat * 0.2;
+          ctx.lineWidth = 3.5;
+          ctx.strokeStyle = LIJN;
+          ctx.fillStyle = '#ffe9a0';
+          ctx.beginPath(); ctx.rect(kx - kb / 2, ky - kh, kb, kh); ctx.fill(); ctx.stroke();
+          for (const dx of [-0.5, 0, 0.5]) {
+            const tx = kx + dx * kb, th = dx === 0 ? kh * 1.9 : kh * 1.5, tb = kb * 0.18;
+            ctx.fillStyle = '#ffe9a0';
+            ctx.beginPath(); ctx.rect(tx - tb / 2, ky - th, tb, th); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ff9ad5';
+            ctx.beginPath(); ctx.moveTo(tx - tb * 0.65, ky - th); ctx.lineTo(tx, ky - th - tb * 1.1); ctx.lineTo(tx + tb * 0.65, ky - th); ctx.closePath(); ctx.fill(); ctx.stroke();
+            // Wapperend vlaggetje
+            ctx.beginPath(); ctx.moveTo(tx, ky - th - tb * 1.1); ctx.lineTo(tx, ky - th - tb * 1.6); ctx.stroke();
+            ctx.fillStyle = '#7ddc6a';
+            ctx.beginPath(); ctx.moveTo(tx, ky - th - tb * 1.6); ctx.lineTo(tx + tb * 0.5, ky - th - tb * (1.45 + Math.sin(tijd * 5 + dx) * 0.05)); ctx.lineTo(tx, ky - th - tb * 1.3); ctx.closePath(); ctx.fill(); ctx.stroke();
+            cirkel(tx, ky - th * 0.6, tb * 0.2, '#5ec8ff', 2.5);
+          }
+          ctx.fillStyle = '#9b6a3f';
+          ctx.beginPath(); ctx.moveTo(kx - kb * 0.08, ky); ctx.lineTo(kx - kb * 0.08, ky - kh * 0.5); ctx.arc(kx, ky - kh * 0.5, kb * 0.08, Math.PI, 0); ctx.lineTo(kx + kb * 0.08, ky); ctx.closePath(); ctx.fill(); ctx.stroke();
         }
 
         // Reuzenlolly's
@@ -1600,6 +1665,11 @@
         { type: 'spring', aantal: 3, tekst: 'Spring 3 keer over de kaas' },
         { type: 'bezoek', doel: 'oven', x: 0.85, tekst: 'Vind de pizzaoven' },
       ],
+      Eindplaneet: [
+        { type: 'verzamel', ding: 'kroon', aantal: 5, tekst: 'Verzamel 5 gouden kroontjes' },
+        { type: 'spring', aantal: 3, tekst: 'Spring 3 keer van blijdschap' },
+        { type: 'bezoek', doel: 'troon', x: 0.86, tekst: 'Ga op de gouden troon zitten' },
+      ],
       Regenboogplaneet: [
         { type: 'verzamel', ding: 'regenboogster', aantal: 5, tekst: 'Vang 5 regenboogsterren' },
         { type: 'bezoek', doel: 'potGoud', x: 0.72, y: 0.78, tekst: 'Vlieg naar de pot met goud' },
@@ -1609,7 +1679,7 @@
 
     // Zwaartekracht vergeleken met de aarde: op de maan spring je veel hoger!
     const ZWAARTEKRACHT = { Mercurius: 0.38, Venus: 0.9, Aarde: 1, Maan: 0.17, Mars: 0.38,
-      Snoepplaneet: 0.6, IJsjesplaneet: 0.8, Dinoplaneet: 1, Pizzaplaneet: 0.7 };
+      Snoepplaneet: 0.6, IJsjesplaneet: 0.8, Dinoplaneet: 1, Pizzaplaneet: 0.7, Eindplaneet: 0.8 };
 
     // Het mensje in het landschap
     const speler = { x: 0, y: 0, vy: 0, opGrond: true, richting: 1, loopt: false };
@@ -1632,6 +1702,7 @@
       IJsjesplaneet:    { naam: 'sneeuwballen',       kleur: '#ffffff', soort: 'springer', snelheid: 0.1,  aantal: 3 },
       Dinoplaneet:      { naam: 'kleine T-rexjes',    kleur: '#5ccf5a', soort: 'loper',    snelheid: 0.14, aantal: 3 },
       Pizzaplaneet:     { naam: 'hete pepers',        kleur: '#ff3a2a', soort: 'springer', snelheid: 0.11, aantal: 3 },
+      Eindplaneet:      { naam: 'boze robots',        kleur: '#9aa3b8', soort: 'loper',    snelheid: 0.16, aantal: 4 },
       Regenboogplaneet: { naam: 'grijze buiwolken',   kleur: '#9aa3b8', soort: 'vlieger',  snelheid: 0.13, aantal: 4 },
     };
     const MAX_LEVENS = 3;
@@ -1907,7 +1978,8 @@
           l.wachtTijd = 3;
         } else {
           l.voltooid = true;
-          startFeest(letterVan(l) ? 'Planeet voltooid! Letter: ' + letterVan(l).toUpperCase() : 'Planeet voltooid!');
+          if (l.naam === 'Eindplaneet') startFeest('Je hebt het spel uitgespeeld!');
+          else startFeest(letterVan(l) ? 'Planeet voltooid! Letter: ' + letterVan(l).toUpperCase() : 'Planeet voltooid!');
         }
       }
     }
@@ -1974,6 +2046,8 @@
         ctx.beginPath(); ctx.roundRect(x - r * 1.05, y - r * 0.85, r * 2.1, r * 0.35, 5); ctx.fill(); ctx.stroke();
         cirkel(x - r * 0.25, y - r * 0.15, r * 0.18, '#d8402f');
         cirkel(x + r * 0.25, y - r * 0.2, r * 0.15, '#d8402f');
+      } else if (ding === 'kroon') {
+        tekenKroon(x, y + r * 0.5, r);
       } else if (ding === 'regenboogster') {
         const kleuren = ['#ff6f6f', '#ffb347', '#ffe14a', '#7ddc6a', '#5ec8ff', '#b58cff'];
         ctx.fillStyle = kleuren[Math.floor(tijd * 6 + x) % 6];
@@ -2038,6 +2112,15 @@
         ctx.beginPath(); ctx.moveTo(x - m * 0.03, y); ctx.quadraticCurveTo(x, y - m * (0.04 + Math.sin(tijd * 10) * 0.008), x + m * 0.03, y); ctx.fill();
         ctx.fillStyle = '#9a9088';
         ctx.beginPath(); ctx.roundRect(x + m * 0.03, y - m * 0.14, m * 0.025, m * 0.06, 3); ctx.fill(); ctx.stroke();
+      } else if (u.doel === 'troon') {
+        ctx.fillStyle = '#ffd84a';
+        ctx.beginPath(); ctx.roundRect(x - m * 0.06, y - m * 0.26, m * 0.12, m * 0.18, 10); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.roundRect(x - m * 0.075, y - m * 0.1, m * 0.15, m * 0.04, 5); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x - m * 0.06, y - m * 0.06); ctx.lineTo(x - m * 0.06, y); ctx.moveTo(x + m * 0.06, y - m * 0.06); ctx.lineTo(x + m * 0.06, y); ctx.stroke();
+        ctx.fillStyle = '#e3262f';
+        ctx.beginPath(); ctx.roundRect(x - m * 0.045, y - m * 0.23, m * 0.09, m * 0.12, 8); ctx.fill(); ctx.stroke();
+        tekenKroon(x, y - m * 0.27, m * 0.04);
+        y -= m * 0.12;
       } else if (u.doel === 'potGoud') {
         for (let k = 0; k < 5; k++) cirkel(x - m * 0.04 + k * m * 0.02, y - m * 0.045 - (k % 2) * m * 0.01, m * 0.015, '#ffd84a', 2.5);
         ctx.fillStyle = LIJN;
@@ -2375,9 +2458,29 @@
       tekenHelm();
     }
 
+    // Een gouden kroontje met roze steentjes
+    function tekenKroon(x, y, r) {
+      ctx.fillStyle = '#ffd84a';
+      ctx.lineWidth = Math.max(2, r * 0.12);
+      ctx.strokeStyle = LIJN;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x - r, y);
+      ctx.lineTo(x - r, y - r * 0.8);
+      ctx.lineTo(x - r * 0.5, y - r * 0.35);
+      ctx.lineTo(x, y - r);
+      ctx.lineTo(x + r * 0.5, y - r * 0.35);
+      ctx.lineTo(x + r, y - r * 0.8);
+      ctx.lineTo(x + r, y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      for (const dx of [-0.5, 0, 0.5]) cirkel(x + dx * r, y - r * 0.18, r * 0.13, '#ff6fae');
+    }
+
     // ---------- het portaal naar het andere universum ----------
 
-    function portaalZichtbaar() { return gestart && kijkModus === 'overzicht' && (universum === 1 || echtHeelalKlaar() || alleOpen); }
+    function portaalZichtbaar() { return gestart && kijkModus === 'overzicht' && (universum === 1 || echtHeelalKlaar() || UNIVERSUMS[0].alleOpen); }
     function portaalPlek() {
       const m = Math.min(canvas.width, canvas.height);
       return { x: canvas.width * 0.1 + m * 0.03, y: canvas.height - m * 0.16, r: m * 0.075 };
@@ -2439,15 +2542,16 @@
 
     function toonLetters() {
       // Gevonden letters laten zien, de rest als streepje
-      codeKaart.querySelector('.letters').textContent = [...CODE]
-        .map((letter, i) => vindLichaam(UNIVERSUMS[0].volgorde[i]).voltooid ? letter.toUpperCase() : '_').join(' ');
+      const u = UNIVERSUMS[universum];
+      codeKaart.querySelector('.letters').textContent = [...u.code]
+        .map((letter, i) => vindLichaam(u.volgorde[i]).voltooid ? letter.toUpperCase() : '_').join(' ');
     }
 
     slotKnop.addEventListener('click', () => {
       codeKaart.hidden = !codeKaart.hidden;
       if (!codeKaart.hidden) {
         toonLetters();
-        codeKaart.querySelector('.melding').textContent = alleOpen ? '🔓 Alles is al open!' : '';
+        codeKaart.querySelector('.melding').textContent = UNIVERSUMS[universum].alleOpen ? '🔓 Alles is al open!' : '';
         codeVeld.value = '';
         codeVeld.focus();
       }
@@ -2455,12 +2559,24 @@
 
     function probeerCode() {
       const melding = codeKaart.querySelector('.melding');
-      if (codeVeld.value.trim().toLowerCase() === CODE) {
-        alleOpen = true;
+      const u = UNIVERSUMS[universum];
+      if (codeVeld.value.trim().toLowerCase() === u.code) {
+        u.alleOpen = true;
         slotKnop.textContent = '🔓';
         melding.style.color = '#3a8a3a';
-        melding.textContent = '🔓 Goed! Alle planeten en het portaal zijn open.';
-        setTimeout(() => { codeKaart.hidden = true; }, 1500);
+        if (universum === 1) {
+          // In het fantasie-universum vlieg je meteen naar de Eindplaneet
+          melding.textContent = '🔓 Goed! Op naar de Eindplaneet!';
+          setTimeout(() => {
+            codeKaart.hidden = true;
+            const eind = vindLichaam('Eindplaneet');
+            if (poppetje.waar === eind) gaNaarLandschap(eind);
+            else if (!poppetje.reis) startReis(eind);
+          }, 1200);
+        } else {
+          melding.textContent = '🔓 Goed! Alle planeten en het portaal zijn open.';
+          setTimeout(() => { codeKaart.hidden = true; }, 1500);
+        }
       } else {
         melding.style.color = '#c2357a';
         melding.textContent = 'Fout! Probeer het nog eens.';
