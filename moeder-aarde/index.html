@@ -1200,7 +1200,41 @@
     let feest = null;   // confetti als alle uitdagingen van een planeet klaar zijn
 
     // Opdrachten en spulletjes voor een planeet klaarzetten (alleen de eerste keer, daarna onthoudt hij je voortgang)
+    // Gevaarlijke wezens per planeet. 'loper' loopt heen en weer, 'springer' hupt, 'vlieger' en 'kwal' zweven.
+    const WEZENS = {
+      Mercurius: { naam: 'vuurslakken',   kleur: '#ff7a3a', soort: 'loper',    snelheid: 0.09, aantal: 3 },
+      Venus:     { naam: 'zuurslakken',   kleur: '#b6e04a', soort: 'loper',    snelheid: 0.11, aantal: 3 },
+      Aarde:     { naam: 'boze wespen',   kleur: '#ffd84a', soort: 'vlieger',  snelheid: 0.13, aantal: 3 },
+      Maan:      { naam: 'maanspinnen',   kleur: '#b9a8ff', soort: 'springer', snelheid: 0.07, aantal: 3 },
+      Mars:      { naam: 'marsmannetjes', kleur: '#7ddc6a', soort: 'loper',    snelheid: 0.13, aantal: 3 },
+      Jupiter:   { naam: 'onweerwolken',  kleur: '#8a7ab8', soort: 'vlieger',  snelheid: 0.12, aantal: 3 },
+      Saturnus:  { naam: 'ijsmonsters',   kleur: '#bff4ff', soort: 'vlieger',  snelheid: 0.11, aantal: 3 },
+      Uranus:    { naam: 'ijskwallen',    kleur: '#c9a8ff', soort: 'kwal',     snelheid: 0.09, aantal: 4 },
+      Neptunus:  { naam: 'stormkwallen',  kleur: '#4d68e0', soort: 'kwal',     snelheid: 0.16, aantal: 4 },
+    };
+    const MAX_LEVENS = 3;
+    let levens = MAX_LEVENS;
+    let onkwetsbaar = 0;   // even knipperen na een tik, dan kun je niet meteen weer geraakt worden
+    let duw = 0;           // je wordt een stukje weggeduwd als een wezen je raakt
+    let auTekst = 0;       // hoe lang 'Au!' nog in beeld staat
+
+    function maakWezens(l) {
+      if (l.wezens) return;
+      const w = WEZENS[l.naam];
+      l.wezens = [];
+      for (let i = 0; i < w.aantal; i++) {
+        // Ze patrouilleren elk in hun eigen stukje, nooit bij de startplek links
+        const midden = 0.42 + i * (0.44 / Math.max(1, w.aantal - 1));
+        l.wezens.push({
+          x: midden, midden, bereik: 0.08 + vast(i + 100) * 0.04,
+          y: 0.22 + i * (0.5 / w.aantal) + vast(i + 7) * 0.05,
+          richting: i % 2 ? 1 : -1, fase: vast(i + 200) * 6, plat: 0,
+        });
+      }
+    }
+
     function maakUitdagingen(l) {
+      maakWezens(l);
       if (l.uitdagingen) return;
       const gas = !!LANDSCHAPPEN[l.naam].gas;
       l.uitdagingen = UITDAGINGEN[l.naam].map(u => ({ ...u, gedaan: 0, klaar: false }));
@@ -1225,6 +1259,9 @@
 
     // Neerzetten op de planeet, links in beeld
     function zetSpelerNeer(l) {
+      levens = MAX_LEVENS;
+      onkwetsbaar = 0;
+      duw = 0;
       speler.x = canvas.width * 0.18;
       speler.vy = 0;
       speler.richting = 1;
@@ -1276,6 +1313,46 @@
         speler.y += speler.vy * dt;
         const grond = grondY(speler.x);
         if (speler.y >= grond) { speler.y = grond; speler.vy = 0; speler.opGrond = true; }
+      }
+
+      // Weggeduwd worden na een tik
+      if (duw) {
+        speler.x = Math.max(m * 0.08, Math.min(b - m * 0.08, speler.x + duw * dt));
+        duw *= Math.pow(0.02, dt);
+        if (Math.abs(duw) < 5) duw = 0;
+      }
+      if (onkwetsbaar > 0) onkwetsbaar -= dt;
+      if (auTekst > 0) auTekst -= dt;
+
+      // Wezens bewegen en kijken of ze je raken
+      const soort = WEZENS[l.naam].soort;
+      for (const w of l.wezens) {
+        if (w.plat > 0) { w.plat -= dt; continue; }
+        w.x += w.richting * WEZENS[l.naam].snelheid * dt;
+        if (w.x > w.midden + w.bereik) w.richting = -1;
+        if (w.x < w.midden - w.bereik) w.richting = 1;
+        const p = plekVanWezen(l, w);
+        const raak = Math.hypot(p.x - speler.x, p.y - (speler.y - m * 0.08));
+        if (raak > m * 0.085) continue;
+        // Bovenop springen maakt een wezen plat (alleen als je loopt, niet bij het zweven)
+        if (!gas && speler.vy > 0 && speler.y < p.y) {
+          w.plat = 4;
+          speler.vy = -m * 1.1;
+          vonkjes(p.x, p.y);
+          continue;
+        }
+        if (onkwetsbaar > 0) continue;
+        levens--;
+        onkwetsbaar = 1.5;
+        auTekst = 1;
+        duw = (speler.x < p.x ? -1 : 1) * m * 1.5;
+        if (!gas) { speler.vy = -m * 0.7; speler.opGrond = false; }
+        if (levens <= 0) {
+          // Alle levens op: terug naar het begin van de planeet
+          zetSpelerNeer(l);
+          auTekst = 2;
+          onkwetsbaar = 2;
+        }
       }
 
       // Spulletjes oppakken
@@ -1354,8 +1431,8 @@
       const allesKlaar = l.uitdagingen.every(u => u.klaar);
       lijstKaart.querySelector('.feest').textContent = allesKlaar ? '🎉 Alles gehaald op ' + l.naam + '!' : '';
       lijstKaart.querySelector('.toetsen').textContent = LANDSCHAPPEN[l.naam].gas
-        ? 'Zweven: pijltjestoetsen'
-        : 'Lopen: ← →   Springen: spatie of ↑';
+        ? 'Zweven: pijltjestoetsen. Pas op voor de ' + WEZENS[l.naam].naam + '!'
+        : 'Lopen: ← →   Springen: spatie of ↑. Pas op voor de ' + WEZENS[l.naam].naam + '! Spring erbovenop om ze plat te maken.';
       if (allesKlaar && !l.voltooid) {
         l.voltooid = true;
         startFeest();
@@ -1474,6 +1551,158 @@
       }
     }
 
+    // Waar is een wezen nu? (het midden van zijn lijf)
+    function plekVanWezen(l, w) {
+      const b = canvas.width, h = canvas.height, m = spelerMaat();
+      const x = w.x * b;
+      const soort = WEZENS[l.naam].soort;
+      if (LANDSCHAPPEN[l.naam].gas) return { x, y: w.y * h + Math.sin(tijd * 2 + w.fase) * h * 0.05 };
+      const grond = grondY(x);
+      if (soort === 'springer') return { x, y: grond - m * 0.04 - Math.abs(Math.sin(tijd * 1.6 + w.fase)) * m * 0.3 };
+      if (soort === 'vlieger') return { x, y: grond - m * (0.12 + 0.08 * Math.sin(tijd * 2.2 + w.fase)) };
+      return { x, y: grond - m * 0.04 };
+    }
+
+    // Schattig maar gevaarlijk: boze wenkbrauwen en scherpe tandjes
+    function tekenWezen(soortInfo, w, x, y, r) {
+      ctx.save();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = LIJN;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      const soort = soortInfo.soort;
+
+      if (w.plat > 0) {
+        // Plat getrapt: een pannenkoekje met kruisjes als oogjes
+        ctx.fillStyle = soortInfo.kleur;
+        ctx.beginPath(); ctx.ellipse(x, y + r * 0.7, r * 1.3, r * 0.3, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        for (const kant of [-1, 1]) {
+          const ox = x + kant * r * 0.4, oy = y + r * 0.65;
+          ctx.beginPath(); ctx.moveTo(ox - 4, oy - 3); ctx.lineTo(ox + 4, oy + 3); ctx.moveTo(ox + 4, oy - 3); ctx.lineTo(ox - 4, oy + 3); ctx.stroke();
+        }
+        ctx.restore();
+        return;
+      }
+
+      // Pootjes, vleugels of slierten
+      if (soort === 'loper') {
+        const stap = Math.sin(tijd * 10 + w.fase) * r * 0.25;
+        ctx.fillStyle = soortInfo.kleur;
+        for (const kant of [-1, 1]) {
+          ctx.beginPath(); ctx.ellipse(x + kant * r * 0.5 + kant * stap, y + r * 0.9, r * 0.3, r * 0.18, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        }
+      }
+      if (soort === 'springer') {
+        ctx.lineWidth = 3;
+        for (const kant of [-1, 1]) {
+          for (let k = 0; k < 3; k++) {
+            ctx.beginPath();
+            ctx.moveTo(x + kant * r * 0.5, y + r * 0.2);
+            ctx.quadraticCurveTo(x + kant * r * (1.2 + k * 0.2), y - r * 0.3 + k * r * 0.2, x + kant * r * (1.3 + k * 0.25), y + r);
+            ctx.stroke();
+          }
+        }
+      }
+      if (soort === 'vlieger') {
+        const klap = Math.sin(tijd * 25 + w.fase) * 0.5;
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        for (const kant of [-1, 1]) {
+          ctx.save();
+          ctx.translate(x + kant * r * 0.5, y - r * 0.6);
+          ctx.rotate(kant * (0.6 + klap));
+          ctx.beginPath(); ctx.ellipse(0, -r * 0.4, r * 0.35, r * 0.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          ctx.restore();
+        }
+      }
+      if (soort === 'kwal') {
+        ctx.strokeStyle = soortInfo.kleur;
+        ctx.lineWidth = 5;
+        for (let k = -2; k <= 2; k++) {
+          ctx.beginPath();
+          ctx.moveTo(x + k * r * 0.35, y + r * 0.3);
+          for (let j = 1; j <= 4; j++) ctx.lineTo(x + k * r * 0.35 + Math.sin(tijd * 5 + j + k) * r * 0.15, y + r * 0.3 + j * r * 0.3);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = LIJN;
+        ctx.lineWidth = 3;
+      }
+
+      // Lijf
+      ctx.fillStyle = soortInfo.kleur;
+      ctx.beginPath();
+      if (soort === 'kwal') {
+        ctx.arc(x, y + r * 0.3, r, Math.PI, 0);
+        ctx.closePath();
+      } else {
+        ctx.ellipse(x, y, r * 1.05, r * 0.9, 0, 0, Math.PI * 2);
+      }
+      ctx.fill();
+      ctx.stroke();
+      // Wespenstreepjes
+      if (soortInfo.naam === 'boze wespen') {
+        ctx.save();
+        ctx.beginPath(); ctx.ellipse(x, y, r * 1.05, r * 0.9, 0, 0, Math.PI * 2); ctx.clip();
+        ctx.fillStyle = LIJN;
+        ctx.fillRect(x - r * 0.75, y - r, r * 0.25, r * 2);
+        ctx.fillRect(x + r * 0.5, y - r, r * 0.25, r * 2);
+        ctx.restore();
+      }
+      // Voelsprietjes voor marsmannetjes
+      if (soortInfo.naam === 'marsmannetjes') {
+        for (const kant of [-1, 1]) {
+          ctx.beginPath(); ctx.moveTo(x + kant * r * 0.3, y - r * 0.8); ctx.lineTo(x + kant * r * 0.6, y - r * 1.5); ctx.stroke();
+          cirkel(x + kant * r * 0.6, y - r * 1.55, r * 0.15, '#ff6fae', 2.5);
+        }
+      }
+
+      // Boze oogjes die naar het mensje kijken
+      const kijk = speler.x < x ? -1 : 1;
+      const oy = soort === 'kwal' ? y - r * 0.15 : y - r * 0.2;
+      for (const kant of [-1, 1]) {
+        cirkel(x + kant * r * 0.38, oy, r * 0.26, '#fff', 2.5);
+        cirkel(x + kant * r * 0.38 + kijk * r * 0.08, oy + r * 0.04, r * 0.12, LIJN);
+        // Boze wenkbrauw
+        ctx.beginPath();
+        ctx.moveTo(x + kant * r * 0.65, oy - r * 0.42);
+        ctx.lineTo(x + kant * r * 0.12, oy - r * 0.25);
+        ctx.stroke();
+      }
+      // Mondje met tandjes
+      const my = soort === 'kwal' ? y + r * 0.15 : y + r * 0.35;
+      ctx.fillStyle = LIJN;
+      ctx.beginPath(); ctx.ellipse(x, my, r * 0.35, r * 0.15, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      for (const dx of [-0.18, 0.18]) {
+        ctx.beginPath();
+        ctx.moveTo(x + dx * r - r * 0.08, my - r * 0.12);
+        ctx.lineTo(x + dx * r + r * 0.08, my - r * 0.12);
+        ctx.lineTo(x + dx * r, my + r * 0.04);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // Hartjes bovenin: zoveel levens heb je nog
+    function tekenHartje(x, y, r, vol) {
+      ctx.beginPath();
+      ctx.moveTo(x, y + r * 0.9);
+      ctx.bezierCurveTo(x - r * 1.6, y - r * 0.2, x - r * 0.8, y - r * 1.3, x, y - r * 0.45);
+      ctx.bezierCurveTo(x + r * 0.8, y - r * 1.3, x + r * 1.6, y - r * 0.2, x, y + r * 0.9);
+      ctx.fillStyle = vol ? '#ff4f6d' : 'rgba(255,255,255,0.35)';
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = LIJN;
+      ctx.stroke();
+    }
+
+    function tekenLevens() {
+      const m = spelerMaat(), r = m * 0.022;
+      for (let i = 0; i < MAX_LEVENS; i++) {
+        tekenHartje(canvas.width / 2 + (i - 1) * r * 2.8, canvas.height * 0.22, r, i < levens);
+      }
+    }
+
     function tekenSpel(l) {
       maakUitdagingen(l);
       const m = spelerMaat();
@@ -1494,9 +1723,19 @@
         ctx.fill();
       }
       ctx.globalAlpha = 1;
-      // Het mensje zelf; als het loopt wiebelt het een beetje
+      for (const w of l.wezens) {
+        const p = plekVanWezen(l, w);
+        tekenWezen(WEZENS[l.naam], w, p.x, p.y, m * 0.045);
+      }
+      // Het mensje zelf; als het loopt wiebelt het een beetje, na een tik knippert het
       const huppel = speler.loopt && speler.opGrond ? Math.abs(Math.sin(tijd * 12)) * m * 0.01 : 0;
-      tekenPoppetje(speler.x, speler.y - huppel, m * 0.0017, speler.richting);
+      if (onkwetsbaar <= 0 || Math.floor(tijd * 12) % 2 === 0) {
+        tekenPoppetje(speler.x, speler.y - huppel, m * 0.0017, speler.richting);
+      }
+      if (auTekst > 0) {
+        tekenTekst(levens === MAX_LEVENS ? 'Au! Opnieuw beginnen...' : 'Au!', speler.x, speler.y - m * 0.24, m * 0.05, '#ff6f6f');
+      }
+      tekenLevens();
     }
 
     window.addEventListener('keydown', (e) => {
