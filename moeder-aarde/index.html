@@ -144,6 +144,7 @@
     }
     const glitters = [];    // sterretjes die het poppetje achterlaat tijdens het vliegen
     let gekozen = null;     // het hemellichaam waarvan je het kaartje ziet
+    let kijkModus = 'overzicht';   // 'overzicht' = zonnestelsel van boven, 'landschap' = door je ogen op een planeet
 
     function update(dt) {
       tijd += dt;
@@ -179,9 +180,12 @@
         if (poppetje.reis.t >= 1) {
           poppetje.waar = poppetje.reis.naar;
           poppetje.reis = null;
-          // Blij hupje bij aankomst
-          poppetje.sprong = 0.01;
-          poppetje.sprongSnelheid = 2;
+          // Je blijft op de planeet en kijkt rond
+          kijkModus = 'landschap';
+          const l = poppetje.waar;
+          toonInfo(l, LANDSCHAPPEN[l.naam].gas
+            ? l.naam + ' heeft geen vaste grond. Je zweeft boven de wolken!'
+            : 'Je bent geland op ' + l.naam + '!');
         }
       }
       for (const g of glitters) { g.leven -= dt * 1.5; g.y += 15 * dt; }
@@ -685,7 +689,11 @@
 
     canvas.addEventListener('mousemove', (e) => {
       muis = { x: e.clientX, y: e.clientY };
-      const klikbaar = gestart ? lichaamOp(e.clientX, e.clientY) : opKnop(e.clientX, e.clientY);
+      let klikbaar;
+      if (!gestart) klikbaar = opKnop(e.clientX, e.clientY);
+      else if (poppetje.reis) klikbaar = false;
+      else if (kijkModus === 'landschap') klikbaar = opTerugKnop(e.clientX, e.clientY);
+      else klikbaar = lichaamOp(e.clientX, e.clientY);
       canvas.style.cursor = klikbaar ? 'pointer' : 'default';
     });
 
@@ -699,15 +707,20 @@
         }
         return;
       }
+      if (poppetje.reis) return;
+      if (kijkModus === 'landschap') {
+        if (opTerugKnop(e.clientX, e.clientY)) kijkModus = 'overzicht';
+        return;
+      }
       const doel = lichaamOp(e.clientX, e.clientY);
       if (!doel) return;
       gekozen = doel;
       if (doel.isZon) {
         toonInfo(doel, 'Au, veel te heet! Hier kun je niet landen.');
       } else if (doel === poppetje.waar) {
+        // Terug naar beneden, rondkijken op je eigen planeet
+        kijkModus = 'landschap';
         toonInfo(doel, 'Hier sta je nu!');
-      } else if (poppetje.reis) {
-        toonInfo(doel, 'Even wachten, je bent nog onderweg.');
       } else {
         // Het poppetje vliegt erheen
         toonInfo(doel, 'Op weg naar ' + doel.naam + '!');
@@ -730,6 +743,358 @@
         const plek = reisPositie();
         tekenPoppetje(plek.x, plek.y);
       }
+    }
+
+    // Cartoontekst met een dikke rand
+    function tekenTekst(tekst, x, y, fg, kleur = '#fff6a8') {
+      ctx.font = '700 ' + fg + 'px ' + FONT;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = fg * 0.2;
+      ctx.strokeStyle = LIJN;
+      ctx.strokeText(tekst, x, y);
+      ctx.fillStyle = kleur;
+      ctx.fillText(tekst, x, y);
+    }
+
+    // De rand van je ruimtehelm, zodat je ziet dat je door je eigen ogen kijkt
+    function tekenHelm() {
+      const b = canvas.width, h = canvas.height, maat = Math.min(b, h);
+      const rand = maat * 0.06;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, b, h);
+      ctx.roundRect(rand, rand, b - rand * 2, h - rand * 2, maat * 0.18);
+      ctx.fillStyle = '#e9e4ff';
+      ctx.fill('evenodd');
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = LIJN;
+      ctx.beginPath();
+      ctx.roundRect(rand, rand, b - rand * 2, h - rand * 2, maat * 0.18);
+      ctx.stroke();
+      // Glimmetje op het glas
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = maat * 0.02;
+      ctx.beginPath();
+      ctx.arc(rand + maat * 0.2, rand + maat * 0.2, maat * 0.12, Math.PI * 1.05, Math.PI * 1.45);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // ---------- landschappen: zo ziet het eruit als je op een planeet staat ----------
+
+    // Hoe elke planeet eruitziet van dichtbij. 'gas' = geen vaste grond, alleen wolkenlagen.
+    // 'zon' = hoe groot de zon aan de hemel is (hoe verder weg, hoe kleiner).
+    const LANDSCHAPPEN = {
+      Mercurius: { lucht: ['#0b0820', '#2a2050'], grond: '#c9bfb5', donker: '#9a9088', zon: 0.17, sterren: true, kraters: true },
+      Venus:     { lucht: ['#d9822f', '#ffd59a'], grond: '#d98a4a', donker: '#a8582a', zon: 0, vulkanen: true, dikkeWolken: true },
+      Aarde:     { lucht: ['#5ab8ff', '#d4f1ff'], grond: '#7ddc6a', donker: '#4fae4a', zon: 0.07, bomen: true, wolkjes: true },
+      Maan:      { lucht: ['#05030f', '#151030'], grond: '#dcd8e6', donker: '#aaa5ba', zon: 0.07, sterren: true, kraters: true, aardeInLucht: true, vlag: true },
+      Mars:      { lucht: ['#d99a6c', '#f7d9b5'], grond: '#e0704a', donker: '#b5502f', zon: 0.045, vulkaan: true, stenen: true, marsmaantjes: true },
+      Jupiter:   { lucht: ['#b8763f', '#f5d7a8'], gas: ['#ffcf8a', '#f2a65a', '#fff0d6', '#e8b070'], zon: 0.025, rodeVlek: true },
+      Saturnus:  { lucht: ['#cdb15e', '#fff3c4'], gas: ['#fff0a0', '#f3dc8a', '#fffbe0'], zon: 0.02, ringInLucht: true },
+      Uranus:    { lucht: ['#4fb8c0', '#c9fbf8'], gas: ['#a6f0ee', '#8adcd9', '#d6fffd'], zon: 0.012 },
+      Neptunus:  { lucht: ['#14206a', '#5b7cff'], gas: ['#6f8cff', '#4d68e0', '#9fb2ff'], zon: 0.008, wind: true },
+    };
+
+    // Vaste 'willekeurige' getallen, zodat bomen en stenen niet elke keer verspringen
+    function vast(i) {
+      const x = Math.sin(i * 12.9898) * 43758.5453;
+      return x - Math.floor(x);
+    }
+
+    // Hoogte van een heuvelrand op plek x
+    function heuvelY(x, basis, hoogte, fase) {
+      const f = 0.006;
+      return basis + Math.sin(x * f + fase) * hoogte + Math.sin(x * f * 2.3 + fase * 1.7) * hoogte * 0.4;
+    }
+
+    function tekenHeuvel(basis, hoogte, fase, kleur) {
+      const b = canvas.width, h = canvas.height;
+      ctx.beginPath();
+      ctx.moveTo(-10, h + 10);
+      for (let x = -10; x <= b + 10; x += 8) ctx.lineTo(x, heuvelY(x, basis, hoogte, fase));
+      ctx.lineTo(b + 10, h + 10);
+      ctx.closePath();
+      ctx.fillStyle = kleur;
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = LIJN;
+      ctx.stroke();
+    }
+
+    // Golvende wolkenlaag voor gasplaneten, schuift langzaam opzij
+    function tekenWolkenlaag(basis, hoogte, fase, snelheid, kleur) {
+      const b = canvas.width, h = canvas.height;
+      const schuif = tijd * snelheid;
+      ctx.beginPath();
+      ctx.moveTo(-10, h + 10);
+      for (let x = -10; x <= b + 10; x += 8) {
+        ctx.lineTo(x, basis + Math.sin((x + schuif) * 0.012 + fase) * hoogte + Math.sin((x + schuif) * 0.031 + fase) * hoogte * 0.35);
+      }
+      ctx.lineTo(b + 10, h + 10);
+      ctx.closePath();
+      ctx.fillStyle = kleur;
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(42,27,74,0.45)';
+      ctx.stroke();
+    }
+
+    function tekenLandschap(l) {
+      const b = canvas.width, h = canvas.height, maat = Math.min(b, h);
+      const c = LANDSCHAPPEN[l.naam];
+      const horizon = h * 0.6;
+
+      // Lucht
+      const lucht = ctx.createLinearGradient(0, 0, 0, horizon);
+      lucht.addColorStop(0, c.lucht[0]);
+      lucht.addColorStop(1, c.lucht[1]);
+      ctx.fillStyle = lucht;
+      ctx.fillRect(0, 0, b, h);
+
+      // Sterren (alleen waar geen lucht is om ze te verbergen)
+      if (c.sterren) {
+        for (const st of sterren) {
+          if (st.y * h > horizon) continue;
+          ctx.globalAlpha = 0.6 + 0.4 * Math.sin(tijd * 2 + st.fase);
+          cirkel(st.x * b, st.y * h, st.grootte * 0.35, st.kleur);
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      // Neptunus: wind die hard langs suist
+      if (c.wind) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.lineCap = 'round';
+        ctx.lineWidth = 4;
+        for (let i = 0; i < 14; i++) {
+          const y = vast(i + 3) * horizon * 0.9;
+          const x = ((vast(i) * b + tijd * (500 + vast(i + 9) * 400)) % (b + 300)) - 150;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.quadraticCurveTo(x + 60, y - 12, x + 140, y);
+          ctx.stroke();
+        }
+      }
+
+      // De zon: dichtbij groot met gezichtje, ver weg een klein fel lichtje
+      if (c.zon > 0) {
+        const zr = maat * c.zon, zx = b * 0.74, zy = h * 0.25;
+        if (zr > 20) {
+          tekenZon(zx, zy, zr);
+        } else {
+          const gloed = ctx.createRadialGradient(zx, zy, 0, zx, zy, zr * 6 + 10);
+          gloed.addColorStop(0, 'rgba(255,240,180,0.9)');
+          gloed.addColorStop(1, 'rgba(255,240,180,0)');
+          cirkel(zx, zy, zr * 6 + 10, gloed);
+          cirkel(zx, zy, Math.max(zr, 3), '#fffbe0');
+        }
+      }
+
+      // Saturnus: de ringen staan als een enorme regenboogboog aan de hemel
+      if (c.ringInLucht) {
+        const kleuren = ['#ffe9b0', '#f3c98a', '#ffd9ec', '#e8d3a0'];
+        kleuren.forEach((k, i) => {
+          ctx.strokeStyle = k;
+          ctx.lineWidth = maat * 0.035;
+          ctx.globalAlpha = 0.85;
+          ctx.beginPath();
+          ctx.ellipse(b * 0.5, horizon + h * 0.05, b * 0.75 - i * maat * 0.04, h * 0.42 - i * maat * 0.04, -0.12, Math.PI, Math.PI * 2);
+          ctx.stroke();
+        });
+        ctx.globalAlpha = 1;
+      }
+
+      // Op de maan zie je de aarde hangen, met haar gezichtje
+      if (c.aardeInLucht) tekenLichaam(AARDE, { x: b * 0.27, y: h * 0.27, r: maat * 0.09 }, true);
+
+      // Mars heeft twee piepkleine aardappelmaantjes
+      if (c.marsmaantjes) {
+        cirkel(b * 0.25, h * 0.18, maat * 0.018, '#c9bfb5', 2.5);
+        cirkel(b * 0.42, h * 0.1, maat * 0.011, '#c9bfb5', 2);
+      }
+
+      // Wolkjes aan de hemel (aarde)
+      if (c.wolkjes) {
+        for (let i = 0; i < 4; i++) {
+          const wx = ((vast(i) * b + tijd * 18 * (1 + i * 0.3)) % (b + 200)) - 100;
+          const wy = h * (0.12 + vast(i + 5) * 0.25), wr = maat * 0.035;
+          for (const [dx, dy, dr] of [[0, 0, 1], [1.1, -0.4, 1.3], [2.2, 0, 1]]) {
+            cirkel(wx + dx * wr, wy + dy * wr, dr * wr, '#ffffff', 3);
+          }
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(wx, wy - wr * 0.2, wr * 2.2, wr);
+        }
+      }
+
+      if (c.gas) {
+        // Gasplaneet: geen grond, alleen lagen wolken onder je
+        c.gas.forEach((kleur, i) => {
+          tekenWolkenlaag(horizon + i * h * 0.1, h * 0.025 + i * 4, i * 1.7, 25 + i * 30, kleur);
+        });
+        if (c.rodeVlek) {
+          const vx = ((b * 0.6 + tijd * 40) % (b + 300)) - 150, vy = horizon + h * 0.27;
+          ctx.save();
+          ctx.translate(vx, vy);
+          ctx.scale(1, 0.45);
+          cirkel(0, 0, maat * 0.12, '#e0563a', 4);
+          ctx.strokeStyle = '#ff9a7a';
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          ctx.arc(0, 0, maat * 0.07, tijd, tijd + Math.PI * 1.3);
+          ctx.stroke();
+          ctx.restore();
+        }
+      } else {
+        // Vaste grond: heuvels achter, dan een vulkaan, dan de grond waar je op staat
+        if (c.vulkanen || c.vulkaan) {
+          const aantal = c.vulkaan ? 1 : 3;
+          for (let i = 0; i < aantal; i++) {
+            const vx = c.vulkaan ? b * 0.68 : b * (0.2 + i * 0.32);
+            const vb = c.vulkaan ? maat * 0.55 : maat * 0.22;
+            const vh = c.vulkaan ? maat * 0.28 : maat * 0.17;
+            const top = horizon - vh;
+            ctx.beginPath();
+            ctx.moveTo(vx - vb / 2, horizon + 20);
+            ctx.lineTo(vx - vb * 0.09, top);
+            ctx.lineTo(vx + vb * 0.09, top);
+            ctx.lineTo(vx + vb / 2, horizon + 20);
+            ctx.closePath();
+            ctx.fillStyle = c.donker;
+            ctx.fill();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = LIJN;
+            ctx.stroke();
+            if (c.vulkanen) {
+              // Venus: gloeiende lava en een rookpluim
+              ctx.fillStyle = '#ffdd55';
+              ctx.beginPath(); ctx.ellipse(vx, top, vb * 0.09, 5, 0, 0, Math.PI * 2); ctx.fill();
+              for (let k = 0; k < 3; k++) {
+                const op = (tijd * 0.4 + k / 3) % 1;
+                ctx.globalAlpha = 1 - op;
+                cirkel(vx + Math.sin(op * 6 + i) * 10, top - op * maat * 0.15, 8 + op * 18, '#b07a5a');
+              }
+              ctx.globalAlpha = 1;
+            }
+          }
+        }
+        tekenHeuvel(horizon, h * 0.03, 1, c.donker);
+        tekenHeuvel(horizon + h * 0.12, h * 0.025, 4, c.grond);
+
+        // Kraters op de grond
+        if (c.kraters) {
+          for (let i = 0; i < 6; i++) {
+            const kx = vast(i + 20) * b, ky = horizon + h * 0.2 + vast(i + 30) * h * 0.18;
+            const kr = maat * (0.03 + vast(i + 40) * 0.05);
+            ctx.beginPath();
+            ctx.ellipse(kx, ky, kr, kr * 0.35, 0, 0, Math.PI * 2);
+            ctx.fillStyle = c.donker;
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = LIJN;
+            ctx.stroke();
+          }
+        }
+
+        // Stenen op Mars
+        if (c.stenen) {
+          for (let i = 0; i < 7; i++) {
+            const sx = vast(i + 50) * b, sy = horizon + h * 0.2 + vast(i + 60) * h * 0.2;
+            const sr = maat * (0.015 + vast(i + 70) * 0.03);
+            ctx.beginPath();
+            ctx.ellipse(sx, sy, sr * 1.3, sr, 0, Math.PI, Math.PI * 2);
+            ctx.closePath();
+            ctx.fillStyle = c.donker;
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = LIJN;
+            ctx.stroke();
+          }
+        }
+
+        // Bomen en bloemetjes op aarde
+        if (c.bomen) {
+          for (let i = 0; i < 5; i++) {
+            const bx = b * (0.08 + i * 0.21 + vast(i) * 0.06);
+            const by = heuvelY(bx, horizon + h * 0.12, h * 0.025, 4) + 6;
+            const bg = maat * (0.05 + vast(i + 3) * 0.03);
+            ctx.fillStyle = '#9b6a3f';
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = LIJN;
+            ctx.beginPath(); ctx.roundRect(bx - bg * 0.15, by - bg * 1.6, bg * 0.3, bg * 1.6, 4); ctx.fill(); ctx.stroke();
+            cirkel(bx, by - bg * 1.9, bg * 0.85, '#5ccf5a', 3.5);
+            cirkel(bx - bg * 0.3, by - bg * 2.1, bg * 0.15, '#ff7a9a');
+            cirkel(bx + bg * 0.35, by - bg * 1.75, bg * 0.15, '#ff7a9a');
+          }
+          for (let i = 0; i < 14; i++) {
+            const fx = vast(i + 80) * b, fy = horizon + h * 0.22 + vast(i + 90) * h * 0.18;
+            for (let k = 0; k < 5; k++) {
+              const a = k / 5 * Math.PI * 2;
+              cirkel(fx + Math.cos(a) * 6, fy + Math.sin(a) * 6, 5, ['#ffb3d9', '#fff6a8', '#ffffff'][i % 3]);
+            }
+            cirkel(fx, fy, 4, '#ffcf3a');
+          }
+        }
+
+        // Vlag op de maan
+        if (c.vlag) {
+          const vx = b * 0.68, vy = heuvelY(b * 0.68, horizon + h * 0.12, h * 0.025, 4) + 10;
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = LIJN;
+          ctx.beginPath(); ctx.moveTo(vx, vy); ctx.lineTo(vx, vy - maat * 0.2); ctx.stroke();
+          ctx.fillStyle = '#ff9ad5';
+          ctx.beginPath(); ctx.roundRect(vx, vy - maat * 0.2, maat * 0.12, maat * 0.075, 6); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#fff6a8';
+          sterVorm(vx + maat * 0.06, vy - maat * 0.162, maat * 0.022, 5, 0.5);
+          ctx.fill();
+        }
+      }
+
+      // Venus: dikke gele wolken die de lucht dichtzitten
+      if (c.dikkeWolken) {
+        for (let i = 0; i < 3; i++) {
+          ctx.fillStyle = 'rgba(255,220,150,0.45)';
+          ctx.beginPath();
+          const y = h * (0.08 + i * 0.12), schuif = tijd * (15 + i * 10);
+          ctx.moveTo(-10, y - 40);
+          for (let x = -10; x <= b + 10; x += 10) ctx.lineTo(x, y + Math.sin((x + schuif) * 0.015 + i) * 18);
+          ctx.lineTo(b + 10, y - 60);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+
+      tekenTekst((c.gas ? 'Je zweeft boven ' : 'Je staat op ') + l.naam, b / 2, h * 0.14, Math.min(b * 0.06, 40));
+      tekenHelm();
+      tekenTerugKnop();
+    }
+
+    // Knop om weer de ruimte in te gaan
+    function terugKnop() {
+      const kb = Math.min(canvas.width * 0.6, 300), kh = Math.min(kb * 0.22, 60);
+      return { x: canvas.width / 2 - kb / 2, y: canvas.height - Math.min(canvas.width, canvas.height) * 0.06 - kh - 24, b: kb, h: kh };
+    }
+    function opTerugKnop(x, y) {
+      const k = terugKnop();
+      return x >= k.x && x <= k.x + k.b && y >= k.y && y <= k.y + k.h;
+    }
+    function tekenTerugKnop() {
+      const k = terugKnop();
+      const erop = opTerugKnop(muis.x, muis.y);
+      ctx.save();
+      ctx.translate(k.x + k.b / 2, k.y + k.h / 2);
+      const schaal = erop ? 1.07 : 1;
+      ctx.scale(schaal, schaal);
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = LIJN;
+      ctx.fillStyle = '#4a57c2';
+      ctx.beginPath(); ctx.roundRect(-k.b / 2, -k.h / 2 + 6, k.b, k.h, k.h / 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#8fa2ff';
+      ctx.beginPath(); ctx.roundRect(-k.b / 2, -k.h / 2, k.b, k.h, k.h / 2); ctx.fill(); ctx.stroke();
+      ctx.restore();
+      tekenTekst('Terug de ruimte in', k.x + k.b / 2, k.y + k.h / 2 + 2, k.h * 0.45, '#ffffff');
     }
 
     // Door de ogen van het mensje: je kijkt door je ruimtehelm en de planeet komt steeds dichterbij
@@ -763,39 +1128,9 @@
       const groei = 0.02 + 0.5 * t * t * t;
       tekenLichaam(poppetje.reis.naar, { x: mx + schud, y: my + schud, r: maat * groei }, true);
 
-      // Tekst bovenin
-      const fg = Math.min(b * 0.06, 40);
-      ctx.font = '700 ' + fg + 'px ' + FONT;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.lineJoin = 'round';
-      ctx.lineWidth = fg * 0.2;
-      ctx.strokeStyle = LIJN;
-      const tekst = 'Op weg naar ' + poppetje.reis.naar.naam + '!';
-      ctx.strokeText(tekst, mx, h * 0.12);
-      ctx.fillStyle = '#fff6a8';
-      ctx.fillText(tekst, mx, h * 0.12);
+      tekenTekst('Op weg naar ' + poppetje.reis.naar.naam + '!', mx, h * 0.14, Math.min(b * 0.06, 40));
 
-      // De rand van je ruimtehelm
-      const rand = maat * 0.06;
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(0, 0, b, h);
-      ctx.roundRect(rand, rand, b - rand * 2, h - rand * 2, maat * 0.18);
-      ctx.fillStyle = '#e9e4ff';
-      ctx.fill('evenodd');
-      ctx.lineWidth = 6;
-      ctx.strokeStyle = LIJN;
-      ctx.beginPath();
-      ctx.roundRect(rand, rand, b - rand * 2, h - rand * 2, maat * 0.18);
-      ctx.stroke();
-      // Glimmetje op het glas
-      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-      ctx.lineWidth = maat * 0.02;
-      ctx.beginPath();
-      ctx.arc(rand + maat * 0.2, rand + maat * 0.2, maat * 0.12, Math.PI * 1.05, Math.PI * 1.45);
-      ctx.stroke();
-      ctx.restore();
+      tekenHelm();
     }
 
     function draw() {
@@ -804,7 +1139,8 @@
         const t = poppetje.reis.t;
         const zicht = Math.max(0, Math.min(1, t / 0.12, (1 - t) / 0.12));
         if (zicht >= 1) { tekenDoorJeOgen(); return; }
-        tekenOverzicht();
+        if (t < 0.5) tekenOverzicht();
+        else tekenLandschap(poppetje.reis.naar);
         // Het oog-beeld eerst op een los canvas tekenen, en dat doorzichtig over het overzicht leggen
         laag.width = canvas.width;
         laag.height = canvas.height;
@@ -816,7 +1152,8 @@
         ctx.globalAlpha = 1;
         return;
       }
-      tekenOverzicht();
+      if (kijkModus === 'landschap') tekenLandschap(poppetje.waar);
+      else tekenOverzicht();
     }
 
     function tekenOverzicht() {
