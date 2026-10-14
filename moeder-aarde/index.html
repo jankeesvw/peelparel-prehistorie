@@ -63,7 +63,11 @@
     const vallendeSterren = [];
 
     // Het poppetje: springt van blijdschap als je op START drukt
-    const poppetje = { sprong: 0, sprongSnelheid: 0 };
+    // Het poppetje staat op 'waar' (de aarde of een planeet). Tijdens een reis vliegt het van 'van' naar 'naar'.
+    const AARDE = { naam: 'aarde' };
+    const poppetje = { sprong: 0, sprongSnelheid: 0, waar: AARDE, reis: null };
+    const REISTIJD = 1.4;   // seconden
+    const glitters = [];    // sterretjes die het poppetje achterlaat tijdens het vliegen
 
     function update(dt) {
       tijd += dt;
@@ -81,6 +85,25 @@
       for (let i = vallendeSterren.length - 1; i >= 0; i--) {
         if (vallendeSterren[i].leven <= 0) vallendeSterren.splice(i, 1);
       }
+
+      // Reis naar een andere planeet
+      if (poppetje.reis) {
+        poppetje.reis.t += dt / REISTIJD;
+        const plek = reisPositie();
+        if (Math.random() < 0.8) {
+          glitters.push({ x: plek.x + (Math.random() - 0.5) * 10, y: plek.y - Math.random() * 20, leven: 1,
+            kleur: ['#fff6a8', '#ff9ad5', '#9ae6ff'][Math.floor(Math.random() * 3)] });
+        }
+        if (poppetje.reis.t >= 1) {
+          poppetje.waar = poppetje.reis.naar;
+          poppetje.reis = null;
+          // Blij hupje bij aankomst
+          poppetje.sprong = 0.01;
+          poppetje.sprongSnelheid = 2;
+        }
+      }
+      for (const g of glitters) { g.leven -= dt * 1.5; g.y += 15 * dt; }
+      for (let i = glitters.length - 1; i >= 0; i--) if (glitters[i].leven <= 0) glitters.splice(i, 1);
 
       // Sprong van het poppetje
       if (poppetje.sprong > 0 || poppetje.sprongSnelheid > 0) {
@@ -258,6 +281,29 @@
       return Math.min(canvas.width, canvas.height) * 0.13;
     }
 
+    // Waar staat een hemellichaam nu op het scherm, en hoe groot is het?
+    function plekVan(lichaam) {
+      const mx = canvas.width / 2, my = canvas.height / 2, r = aardeStraal();
+      if (lichaam === AARDE) return { x: mx, y: my, r };
+      return {
+        x: mx + Math.cos(lichaam.hoek) * lichaam.afstand * r,
+        y: my + Math.sin(lichaam.hoek) * lichaam.afstand * r * 0.35,
+        r: lichaam.grootte * r,
+      };
+    }
+
+    // Plek van de voetjes tijdens de reis: een boog van het ene naar het andere hemellichaam
+    function reisPositie() {
+      const t = Math.min(poppetje.reis.t, 1);
+      const zacht = t * t * (3 - 2 * t);
+      const a = plekVan(poppetje.reis.van), b = plekVan(poppetje.reis.naar);
+      const ax = a.x, ay = a.y - a.r, bx = b.x, by = b.y - b.r;
+      return {
+        x: ax + (bx - ax) * zacht,
+        y: ay + (by - ay) * zacht - Math.sin(Math.PI * t) * aardeStraal() * 1.5,
+      };
+    }
+
     function tekenBanen() {
       const mx = canvas.width / 2, my = canvas.height / 2, r = aardeStraal();
       ctx.strokeStyle = 'rgba(255,255,255,0.18)';
@@ -313,9 +359,11 @@
       ctx.restore();
       cirkel(x, y, pr, null, 3);
 
-      gezichtje(x, y + pr * 0.1, pr * 0.85, { slaperig: p.slaperig, fase: p.hoek * 3 });
+      const bezoek = poppetje.waar === p && !poppetje.reis;
+      gezichtje(x, y + pr * 0.1, pr * 0.85, { slaperig: p.slaperig && !bezoek, blij: bezoek, fase: p.hoek * 3 });
 
       if (p.ring) tekenRing(x, y, pr, true);
+      if (bezoek) tekenPoppetje(x, y - pr);
     }
 
     // Landen als ronde vlekjes
@@ -364,14 +412,15 @@
       ctx.restore();
 
       cirkel(mx, my, r, null, 4);
-      gezichtje(mx, my + r * 0.1, r * 0.75, { blij: gestart && poppetje.sprong > 0 });
+      gezichtje(mx, my + r * 0.1, r * 0.75, { blij: gestart && poppetje.waar === AARDE && poppetje.sprong > 0 });
 
-      tekenPoppetje(mx, my - r, r);
+      if (poppetje.waar === AARDE && !poppetje.reis) tekenPoppetje(mx, my - r);
     }
 
     // Een klein mensje dat bovenop de aarde staat en zwaait
-    function tekenPoppetje(x, voetY, r) {
-      const s = r * 0.0085;                    // schaal: poppetje groeit mee met de aarde
+    function tekenPoppetje(x, voetY) {
+      const r = aardeStraal();
+      const s = r * 0.0065;                    // schaal: poppetje groeit mee met de aarde
       const wiebel = Math.sin(tijd * 3) * 2 * s;
       const y = voetY - poppetje.sprong * r * 0.6 + wiebel;
       ctx.save();
@@ -506,9 +555,21 @@
       ctx.restore();
     }
 
+    // Op welk hemellichaam wordt geklikt? Wat vooraan staat telt eerst.
+    function lichaamOp(x, y) {
+      const voor = planeten.filter(p => Math.sin(p.hoek) >= 0);
+      const achter = planeten.filter(p => Math.sin(p.hoek) < 0);
+      for (const l of [...voor, AARDE, ...achter]) {
+        const pl = plekVan(l);
+        if (Math.hypot(x - pl.x, y - pl.y) <= Math.max(pl.r * 1.15, 25)) return l;
+      }
+      return null;
+    }
+
     canvas.addEventListener('mousemove', (e) => {
       muis = { x: e.clientX, y: e.clientY };
-      canvas.style.cursor = !gestart && opKnop(e.clientX, e.clientY) ? 'pointer' : 'default';
+      const klikbaar = gestart ? (lichaamOp(e.clientX, e.clientY) && !poppetje.reis) : opKnop(e.clientX, e.clientY);
+      canvas.style.cursor = klikbaar ? 'pointer' : 'default';
     });
 
     canvas.addEventListener('click', (e) => {
@@ -517,8 +578,33 @@
         canvas.style.cursor = 'default';
         poppetje.sprong = 0.01;
         poppetje.sprongSnelheid = 3;
+        return;
+      }
+      // Klik op een planeet (of de aarde): het poppetje vliegt erheen
+      if (gestart && !poppetje.reis) {
+        const doel = lichaamOp(e.clientX, e.clientY);
+        if (doel && doel !== poppetje.waar) {
+          poppetje.sprong = 0;
+          poppetje.sprongSnelheid = 0;
+          poppetje.reis = { van: poppetje.waar, naar: doel, t: 0 };
+          poppetje.waar = null;
+        }
       }
     });
+
+    function tekenReis() {
+      for (const g of glitters) {
+        ctx.globalAlpha = Math.max(g.leven, 0);
+        ctx.fillStyle = g.kleur;
+        sterVorm(g.x, g.y, 5 * g.leven + 2, 5, 0.5);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      if (poppetje.reis) {
+        const plek = reisPositie();
+        tekenPoppetje(plek.x, plek.y);
+      }
+    }
 
     function draw() {
       tekenRuimte();
@@ -527,6 +613,7 @@
       for (const p of planeten) if (Math.sin(p.hoek) < 0) tekenPlaneet(p);
       tekenAarde();
       for (const p of planeten) if (Math.sin(p.hoek) >= 0) tekenPlaneet(p);
+      tekenReis();
       if (!gestart) tekenStartscherm();
     }
 
