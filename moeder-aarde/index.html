@@ -369,7 +369,7 @@
       tekenPoppetje(mx, my - r, r);
     }
 
-    // Een klein holbewonertje dat bovenop de aarde staat en zwaait
+    // Een klein mensje dat bovenop de aarde staat en zwaait
     function tekenPoppetje(x, voetY, r) {
       const s = r * 0.0085;                    // schaal: poppetje groeit mee met de aarde
       const wiebel = Math.sin(tijd * 3) * 2 * s;
@@ -382,63 +382,57 @@
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
 
-      // Beentjes
-      ctx.fillStyle = '#ffd1a8';
-      ctx.beginPath(); ctx.roundRect(-11, -18, 8, 18, 4); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.roundRect(3, -18, 8, 18, 4); ctx.fill(); ctx.stroke();
+      // Schoentjes
+      ctx.fillStyle = '#ff6f6f';
+      ctx.beginPath(); ctx.ellipse(-8, -3, 8, 5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(8, -3, 8, 5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-      // Armpje links omlaag, rechts zwaait
-      ctx.lineWidth = 7;
-      ctx.strokeStyle = LIJN;
-      ctx.beginPath(); ctx.moveTo(-14, -36); ctx.lineTo(-24, -24); ctx.stroke();
+      // Spijkerbroek
+      ctx.fillStyle = '#4a7bd8';
+      ctx.beginPath(); ctx.roundRect(-12, -24, 10, 20, 4); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(2, -24, 10, 20, 4); ctx.fill(); ctx.stroke();
+
+      // Armpje links omlaag, rechts zwaait (in een geel shirt-mouwtje)
       const zwaai = Math.sin(tijd * 8) * 0.4;
-      const hx = 14 + Math.cos(-1.1 + zwaai) * 16, hy = -36 + Math.sin(-1.1 + zwaai) * 16;
-      ctx.beginPath(); ctx.moveTo(14, -36); ctx.lineTo(hx, hy); ctx.stroke();
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = '#ffd1a8';
-      ctx.beginPath(); ctx.moveTo(-14, -36); ctx.lineTo(-24, -24); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(14, -36); ctx.lineTo(hx, hy); ctx.stroke();
+      const hx = 14 + Math.cos(-1.1 + zwaai) * 16, hy = -38 + Math.sin(-1.1 + zwaai) * 16;
+      for (const [ax, ay, bx, by] of [[-14, -38, -24, -24], [14, -38, hx, hy]]) {
+        ctx.lineWidth = 9; ctx.strokeStyle = LIJN;
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+        ctx.lineWidth = 5.5; ctx.strokeStyle = '#ffd1a8';
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      }
       ctx.lineWidth = 3.5;
       ctx.strokeStyle = LIJN;
 
-      // Vellen jurkje met vlekjes (prehistorisch!)
-      ctx.fillStyle = '#e8944a';
-      ctx.beginPath();
-      ctx.moveTo(-15, -44);
-      ctx.lineTo(15, -44);
-      ctx.lineTo(18, -16);
-      ctx.lineTo(10, -20);
-      ctx.lineTo(4, -14);
-      ctx.lineTo(-3, -20);
-      ctx.lineTo(-10, -14);
-      ctx.lineTo(-18, -18);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      cirkel(-6, -34, 3, '#b8652a');
-      cirkel(7, -27, 2.5, '#b8652a');
+      // T-shirt met een sterretje
+      ctx.fillStyle = '#ffd84a';
+      ctx.beginPath(); ctx.roundRect(-16, -46, 32, 26, 9); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ff8ac4';
+      sterVorm(0, -33, 6, 5, 0.5);
+      ctx.lineWidth = 2;
+      ctx.fill(); ctx.stroke();
+      ctx.lineWidth = 3.5;
 
-      // Hoofd
+      // Hoofd met oortjes
+      cirkel(-21, -62, 5, '#ffd1a8', 3);
+      cirkel(21, -62, 5, '#ffd1a8', 3);
       cirkel(0, -64, 22, '#ffd1a8', 3.5);
 
-      // Haar: wilde bos met een botje erin
-      ctx.fillStyle = '#7a4a2a';
+      // Kort bruin haar met een kuifje
+      ctx.fillStyle = '#6b4226';
       ctx.beginPath();
-      ctx.arc(0, -68, 22, Math.PI * 1.05, Math.PI * 1.95);
-      ctx.lineTo(18, -74);
-      for (let i = 0; i < 6; i++) ctx.lineTo(16 - i * 7, -80 + (i % 2) * 6);
+      ctx.arc(0, -64, 22, Math.PI * 1.08, Math.PI * 1.92);
+      ctx.quadraticCurveTo(10, -76, 0, -73);
+      ctx.quadraticCurveTo(-10, -74, -20, -70);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      // Botje
-      ctx.fillStyle = '#fffbe8';
-      ctx.save();
-      ctx.translate(10, -88);
-      ctx.rotate(-0.4);
-      ctx.beginPath(); ctx.roundRect(-9, -2.5, 18, 5, 2); ctx.fill(); ctx.stroke();
-      cirkel(-9, -3, 3.5, '#fffbe8', 2.5); cirkel(-9, 3, 3.5, '#fffbe8', 2.5);
-      cirkel(9, -3, 3.5, '#fffbe8', 2.5); cirkel(9, 3, 3.5, '#fffbe8', 2.5);
-      ctx.restore();
+      ctx.beginPath();
+      ctx.moveTo(-2, -86);
+      ctx.quadraticCurveTo(4, -96, 10, -92);
+      ctx.quadraticCurveTo(4, -90, 3, -85);
+      ctx.fill();
+      ctx.stroke();
 
       gezichtje(0, -60, 20, { blij: poppetje.sprong > 0, fase: 1 });
       ctx.restore();
