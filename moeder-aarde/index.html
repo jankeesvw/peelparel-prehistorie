@@ -24,6 +24,24 @@
     #info dt { font-weight: 700; }
     #info dd { margin: 0; }
     #info .weetje { margin: 12px 0 0; padding: 10px 12px; background: #fff0a8; border: 3px solid #2a1b4a; border-radius: 16px; font-size: 16px; }
+    #uitdagingen {
+      position: fixed; top: 16px; left: 16px; width: min(290px, calc(100vw - 32px)); box-sizing: border-box;
+      background: #f2fff0; color: #2a1b4a; border: 4px solid #2a1b4a; border-radius: 24px;
+      box-shadow: 0 7px 0 #2a1b4a; padding: 14px 16px; font-family: 'Fredoka', sans-serif;
+      animation: plop 0.35s cubic-bezier(.3,1.6,.5,1);
+    }
+    #uitdagingen[hidden] { display: none; }
+    #uitdagingen h3 { margin: 0 0 8px; font-size: 22px; }
+    #uitdagingen ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    #uitdagingen li { display: flex; gap: 8px; align-items: flex-start; font-size: 17px; line-height: 1.25; }
+    #uitdagingen li .vinkje { flex: none; width: 24px; height: 24px; border: 3px solid #2a1b4a; border-radius: 8px; background: #fff; display: grid; place-items: center; font-size: 15px; }
+    #uitdagingen li.klaar { color: #3a8a3a; }
+    #uitdagingen li.klaar .tekst { text-decoration: line-through; }
+    #uitdagingen li.klaar .vinkje { background: #7ddc6a; }
+    #uitdagingen .teller { color: #c2357a; font-weight: 700; }
+    #uitdagingen .toetsen { margin: 10px 0 0; font-size: 14px; color: #6a5a8a; }
+    #uitdagingen .feest { margin: 10px 0 0; padding: 8px 10px; background: #fff0a8; border: 3px solid #2a1b4a; border-radius: 14px; font-size: 16px; font-weight: 700; }
+    #uitdagingen .feest:empty { display: none; }
     #sluit {
       position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border-radius: 50%;
       border: 3px solid #2a1b4a; background: #ffb3d9; color: #2a1b4a; font: 700 18px 'Fredoka', sans-serif; cursor: pointer;
@@ -32,6 +50,12 @@
 </head>
 <body>
   <canvas id="game"></canvas>
+  <div id="uitdagingen" hidden>
+    <h3></h3>
+    <ul></ul>
+    <p class="feest"></p>
+    <p class="toetsen"></p>
+  </div>
   <div id="info" hidden>
     <button id="sluit" aria-label="Sluiten">✕</button>
     <h2><span class="bol"></span><span class="naam"></span></h2>
@@ -181,8 +205,8 @@
           poppetje.waar = poppetje.reis.naar;
           poppetje.reis = null;
           // Je blijft op de planeet en kijkt rond
-          kijkModus = 'landschap';
           const l = poppetje.waar;
+          gaNaarLandschap(l);
           toonInfo(l, LANDSCHAPPEN[l.naam].gas
             ? l.naam + ' heeft geen vaste grond. Je zweeft boven de wolken!'
             : 'Je bent geland op ' + l.naam + '!');
@@ -190,6 +214,8 @@
       }
       for (const g of glitters) { g.leven -= dt * 1.5; g.y += 15 * dt; }
       for (let i = glitters.length - 1; i >= 0; i--) if (glitters[i].leven <= 0) glitters.splice(i, 1);
+
+      updateSpeler(dt);
 
       // Sprong van het poppetje
       if (poppetje.sprong > 0 || poppetje.sprongSnelheid > 0) {
@@ -511,16 +537,26 @@
       if (l.uiterlijk === 'schuineRing') tekenRing(x, y, r, true, 1.4, 1.6, 0.35);
 
       if (bezoek) tekenPoppetje(x, y - r);
+      if (l.voltooid && !ooglens) {
+        ctx.fillStyle = '#ffd84a';
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = LIJN;
+        sterVorm(x + r * 0.9, y - r * 0.9, Math.max(8, r * 0.35), 5, 0.5);
+        ctx.fill();
+        ctx.stroke();
+      }
     }
 
     // Een klein mensje dat bovenop de aarde staat en zwaait
-    function tekenPoppetje(x, voetY) {
+    // 'schaal' en 'richting' (1 = rechts, -1 = links) kun je meegeven voor het landschap
+    function tekenPoppetje(x, voetY, schaal, richting = 1) {
       const e = eenheid();
-      const s = e * 0.0045;                    // schaal: poppetje groeit mee met het zonnestelsel
-      const wiebel = Math.sin(tijd * 3) * 2 * s;
-      const y = voetY - poppetje.sprong * e * 0.5 + wiebel;
+      const s = schaal || e * 0.0045;          // schaal: poppetje groeit mee met het zonnestelsel
+      const wiebel = schaal ? 0 : Math.sin(tijd * 3) * 2 * s;
+      const y = voetY - (schaal ? 0 : poppetje.sprong * e * 0.5) + wiebel;
       ctx.save();
       ctx.translate(x, y);
+      if (richting < 0) ctx.scale(-1, 1);
       ctx.scale(s, s);
       ctx.lineWidth = 3.5;
       ctx.strokeStyle = LIJN;
@@ -651,6 +687,17 @@
       ctx.restore();
     }
 
+    // Op de planeet gaan staan: uitdagingen klaarzetten en de lijst links laten zien
+    function gaNaarLandschap(l) {
+      kijkModus = 'landschap';
+      maakUitdagingen(l);
+      zetSpelerNeer(l);
+      werkLijstBij(l);
+      lijstKaart.hidden = true;
+      void lijstKaart.offsetWidth;
+      lijstKaart.hidden = false;
+    }
+
     // Op welk hemellichaam wordt geklikt? Wat vooraan (lager op het scherm) staat telt eerst.
     function lichaamOp(x, y) {
       const opVolgorde = [...lichamen].sort((a, b) => plekVan(b).y - plekVan(a).y);
@@ -709,7 +756,10 @@
       }
       if (poppetje.reis) return;
       if (kijkModus === 'landschap') {
-        if (opTerugKnop(e.clientX, e.clientY)) kijkModus = 'overzicht';
+        if (opTerugKnop(e.clientX, e.clientY)) {
+          kijkModus = 'overzicht';
+          lijstKaart.hidden = true;
+        }
         return;
       }
       const doel = lichaamOp(e.clientX, e.clientY);
@@ -719,7 +769,7 @@
         toonInfo(doel, 'Au, veel te heet! Hier kun je niet landen.');
       } else if (doel === poppetje.waar) {
         // Terug naar beneden, rondkijken op je eigen planeet
-        kijkModus = 'landschap';
+        gaNaarLandschap(doel);
         toonInfo(doel, 'Hier sta je nu!');
       } else {
         // Het poppetje vliegt erheen
@@ -935,7 +985,7 @@
           tekenWolkenlaag(horizon + i * h * 0.1, h * 0.025 + i * 4, i * 1.7, 25 + i * 30, kleur);
         });
         if (c.rodeVlek) {
-          const vx = ((b * 0.6 + tijd * 40) % (b + 300)) - 150, vy = horizon + h * 0.27;
+          const vx = b * 0.7, vy = h * 0.8;
           ctx.save();
           ctx.translate(vx, vy);
           ctx.scale(1, 0.45);
@@ -1044,13 +1094,27 @@
           ctx.lineWidth = 4;
           ctx.strokeStyle = LIJN;
           ctx.beginPath(); ctx.moveTo(vx, vy); ctx.lineTo(vx, vy - maat * 0.2); ctx.stroke();
-          ctx.fillStyle = '#ff9ad5';
-          ctx.beginPath(); ctx.roundRect(vx, vy - maat * 0.2, maat * 0.12, maat * 0.075, 6); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = '#fff6a8';
-          sterVorm(vx + maat * 0.06, vy - maat * 0.162, maat * 0.022, 5, 0.5);
-          ctx.fill();
+          // De Brabantse vlag: rood-wit geblokt, 4 rijen van 6 vakjes, wappert een beetje
+          const vb = maat * 0.15, vh = maat * 0.1, vtop = vy - maat * 0.2;
+          for (let rij = 0; rij < 4; rij++) {
+            for (let kol = 0; kol < 6; kol++) {
+              const golf = Math.sin(tijd * 3 + kol * 0.8) * maat * 0.004 * kol;
+              ctx.fillStyle = (rij + kol) % 2 === 0 ? '#e3262f' : '#ffffff';
+              ctx.fillRect(vx + kol * vb / 6, vtop + rij * vh / 4 + golf, vb / 6 + 0.5, vh / 4 + 0.5);
+            }
+          }
+          ctx.strokeStyle = LIJN;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(vx, vtop);
+          for (let kol = 0; kol <= 6; kol++) ctx.lineTo(vx + kol * vb / 6, vtop + Math.sin(tijd * 3 + Math.min(kol, 5) * 0.8) * maat * 0.004 * Math.min(kol, 5));
+          for (let kol = 6; kol >= 0; kol--) ctx.lineTo(vx + kol * vb / 6, vtop + vh + Math.sin(tijd * 3 + Math.min(kol, 5) * 0.8) * maat * 0.004 * Math.min(kol, 5));
+          ctx.closePath();
+          ctx.stroke();
         }
       }
+
+      tekenSpel(l);
 
       // Venus: dikke gele wolken die de lucht dichtzitten
       if (c.dikkeWolken) {
@@ -1067,9 +1131,375 @@
       }
 
       tekenTekst((c.gas ? 'Je zweeft boven ' : 'Je staat op ') + l.naam, b / 2, h * 0.14, Math.min(b * 0.06, 40));
+      tekenFeest();
       tekenHelm();
       tekenTerugKnop();
     }
+
+    // ---------- uitdagingen op de planeten ----------
+
+    // Per planeet drie opdrachten. 'verzamel' = dingen oppakken, 'spring' = zo vaak springen,
+    // 'bezoek' = naar een plek lopen of vliegen (x en y als deel van het scherm), 'hoog' = helemaal naar boven vliegen.
+    const UITDAGINGEN = {
+      Mercurius: [
+        { type: 'verzamel', ding: 'ijs', aantal: 4, tekst: 'Zoek 4 stukjes ijs' },
+        { type: 'spring', aantal: 3, tekst: 'Spring 3 keer' },
+        { type: 'bezoek', doel: 'krater', x: 0.8, tekst: 'Loop naar de grote krater' },
+      ],
+      Venus: [
+        { type: 'verzamel', ding: 'lava', aantal: 3, tekst: 'Verzamel 3 lavastenen' },
+        { type: 'bezoek', doel: 'vulkaan', x: 0.52, tekst: 'Loop naar de middelste vulkaan' },
+        { type: 'bezoek', doel: 'sonde', x: 0.9, tekst: 'Vind de oude ruimtesonde' },
+      ],
+      Aarde: [
+        { type: 'verzamel', ding: 'bloem', aantal: 5, tekst: 'Pluk 5 bloemen' },
+        { type: 'spring', aantal: 3, tekst: 'Spring 3 keer' },
+        { type: 'bezoek', doel: 'boom', x: 0.08 + 2 * 0.21 + vast(2) * 0.06, tekst: 'Geef de middelste boom een knuffel' },
+      ],
+      Maan: [
+        { type: 'spring', aantal: 3, tekst: 'Spring 3 keer (kijk hoe hoog!)' },
+        { type: 'bezoek', doel: 'vlag', x: 0.68, tekst: 'Loop naar de vlag' },
+        { type: 'verzamel', ding: 'maansteen', aantal: 4, tekst: 'Verzamel 4 maanstenen' },
+      ],
+      Mars: [
+        { type: 'bezoek', doel: 'rover', x: 0.3, tekst: 'Vind de marsrover' },
+        { type: 'verzamel', ding: 'marssteen', aantal: 4, tekst: 'Verzamel 4 rode stenen' },
+        { type: 'bezoek', doel: 'vulkaan', x: 0.68, tekst: 'Loop naar de grote vulkaan' },
+      ],
+      Jupiter: [
+        { type: 'verzamel', ding: 'bliksem', aantal: 5, tekst: 'Vang 5 bliksemflitsen' },
+        { type: 'bezoek', doel: 'rodeVlek', x: 0.7, y: 0.8, tekst: 'Vlieg naar de rode vlek' },
+        { type: 'hoog', tekst: 'Vlieg helemaal naar boven' },
+      ],
+      Saturnus: [
+        { type: 'verzamel', ding: 'ijs', aantal: 5, tekst: 'Vang 5 ijsbrokjes uit de ringen' },
+        { type: 'bezoek', doel: 'zeshoek', x: 0.3, y: 0.45, tekst: 'Vlieg naar de zeshoek-wolk' },
+        { type: 'hoog', tekst: 'Vlieg omhoog naar de ringen' },
+      ],
+      Uranus: [
+        { type: 'verzamel', ding: 'diamant', aantal: 5, tekst: 'Vang 5 diamanten' },
+        { type: 'bezoek', doel: 'ijswolk', x: 0.65, y: 0.4, tekst: 'Vlieg naar de ijskoude wolk' },
+        { type: 'hoog', tekst: 'Vlieg helemaal naar boven' },
+      ],
+      Neptunus: [
+        { type: 'verzamel', ding: 'ijs', aantal: 5, tekst: 'Vang 5 ijskristallen' },
+        { type: 'bezoek', doel: 'donkereVlek', x: 0.35, y: 0.78, tekst: 'Vlieg naar de donkere storm' },
+        { type: 'hoog', tekst: 'Vlieg tegen de wind in naar boven' },
+      ],
+    };
+
+    // Zwaartekracht vergeleken met de aarde: op de maan spring je veel hoger!
+    const ZWAARTEKRACHT = { Mercurius: 0.38, Venus: 0.9, Aarde: 1, Maan: 0.17, Mars: 0.38 };
+
+    // Het mensje in het landschap
+    const speler = { x: 0, y: 0, vy: 0, opGrond: true, richting: 1, loopt: false };
+    const toetsen = {};
+    let feest = null;   // confetti als alle uitdagingen van een planeet klaar zijn
+
+    // Opdrachten en spulletjes voor een planeet klaarzetten (alleen de eerste keer, daarna onthoudt hij je voortgang)
+    function maakUitdagingen(l) {
+      if (l.uitdagingen) return;
+      const gas = !!LANDSCHAPPEN[l.naam].gas;
+      l.uitdagingen = UITDAGINGEN[l.naam].map(u => ({ ...u, gedaan: 0, klaar: false }));
+      l.spulletjes = [];
+      for (const u of l.uitdagingen) {
+        if (u.type !== 'verzamel') continue;
+        for (let i = 0; i < u.aantal; i++) {
+          l.spulletjes.push({
+            ding: u.ding,
+            x: 0.12 + (i + 0.2 + vast(i + l.naam.length) * 0.6) * 0.76 / u.aantal,
+            y: gas ? 0.25 + vast(i * 3 + l.naam.length) * 0.5 : null,
+            hoog: !gas && i % 2 === 1,   // sommige dingen zweven een beetje: daarvoor moet je springen
+            gepakt: false,
+          });
+        }
+      }
+    }
+
+    function horizonY() { return canvas.height * 0.6; }
+    function grondY(x) { return heuvelY(x, horizonY() + canvas.height * 0.12, canvas.height * 0.025, 4) + 6; }
+    function spelerMaat() { return Math.min(canvas.width, canvas.height); }
+
+    // Neerzetten op de planeet, links in beeld
+    function zetSpelerNeer(l) {
+      speler.x = canvas.width * 0.18;
+      speler.vy = 0;
+      speler.richting = 1;
+      speler.y = LANDSCHAPPEN[l.naam].gas ? horizonY() - canvas.height * 0.05 : grondY(speler.x);
+      speler.opGrond = true;
+    }
+
+    function plekVanDing(l, d) {
+      const b = canvas.width, h = canvas.height, m = spelerMaat();
+      const x = d.x * b;
+      if (d.y !== null) return { x, y: d.y * h };
+      return { x, y: grondY(x) - m * (d.hoog ? 0.2 : 0.05) };
+    }
+
+    function plekVanDoel(u) {
+      const b = canvas.width, h = canvas.height;
+      const x = u.x * b;
+      return { x, y: u.y !== undefined ? u.y * h : grondY(x) };
+    }
+
+    function updateSpeler(dt) {
+      const l = poppetje.waar;
+      if (!l || kijkModus !== 'landschap' || poppetje.reis) return;
+      const b = canvas.width, h = canvas.height, m = spelerMaat();
+      const gas = !!LANDSCHAPPEN[l.naam].gas;
+      const links = toetsen.ArrowLeft || toetsen.a, rechts = toetsen.ArrowRight || toetsen.d;
+      const omhoog = toetsen.ArrowUp || toetsen.w || toetsen[' '], omlaag = toetsen.ArrowDown || toetsen.s;
+      const snelheid = m * 0.55;
+
+      speler.loopt = !!(links || rechts);
+      if (links) { speler.x -= snelheid * dt; speler.richting = -1; }
+      if (rechts) { speler.x += snelheid * dt; speler.richting = 1; }
+      speler.x = Math.max(m * 0.08, Math.min(b - m * 0.08, speler.x));
+
+      if (gas) {
+        // Zweven: alle kanten op
+        if (omhoog) speler.y -= snelheid * dt;
+        if (omlaag) speler.y += snelheid * dt;
+        speler.y = Math.max(h * 0.12, Math.min(horizonY() + h * 0.3, speler.y));
+      } else {
+        // Lopen en springen; hoe zwakker de zwaartekracht, hoe hoger je springt
+        const g = m * 5 * ZWAARTEKRACHT[l.naam];
+        if (omhoog && speler.opGrond) {
+          speler.vy = -m * 1.6;
+          speler.opGrond = false;
+          telOp(l, 'spring');
+        }
+        speler.vy += g * dt;
+        speler.y += speler.vy * dt;
+        const grond = grondY(speler.x);
+        if (speler.y >= grond) { speler.y = grond; speler.vy = 0; speler.opGrond = true; }
+      }
+
+      // Spulletjes oppakken
+      const midden = speler.y - m * 0.08;
+      for (const d of l.spulletjes) {
+        if (d.gepakt) continue;
+        const p = plekVanDing(l, d);
+        if (Math.hypot(p.x - speler.x, p.y - midden) < m * 0.08) {
+          d.gepakt = true;
+          telOp(l, 'verzamel', d.ding);
+          vonkjes(p.x, p.y);
+        }
+      }
+
+      // Plekken bezoeken en naar boven vliegen
+      for (const u of l.uitdagingen) {
+        if (u.klaar) continue;
+        if (u.type === 'bezoek') {
+          const p = plekVanDoel(u);
+          const dichtbij = gas ? Math.hypot(p.x - speler.x, p.y - midden) < m * 0.1 : Math.abs(p.x - speler.x) < m * 0.07;
+          if (dichtbij) { u.klaar = true; vonkjes(p.x, p.y - m * 0.1); werkLijstBij(l); }
+        }
+        if (u.type === 'hoog' && speler.y < h * 0.2) { u.klaar = true; werkLijstBij(l); }
+      }
+
+      // Feest bijwerken
+      if (feest) {
+        feest.tijd -= dt;
+        for (const c of feest.snippers) { c.x += c.vx * dt; c.y += c.vy * dt; c.vy += 300 * dt; c.draai += dt * 5; }
+        if (feest.tijd <= 0) feest = null;
+      }
+    }
+
+    function telOp(l, type, ding) {
+      for (const u of l.uitdagingen) {
+        if (u.klaar || u.type !== type || (ding && u.ding !== ding)) continue;
+        u.gedaan++;
+        if (u.gedaan >= u.aantal) u.klaar = true;
+        werkLijstBij(l);
+        return;
+      }
+    }
+
+    // Glinsterende sterretjes als je iets haalt
+    function vonkjes(x, y) {
+      for (let i = 0; i < 12; i++) {
+        glitters.push({ x: x + (Math.random() - 0.5) * 40, y: y + (Math.random() - 0.5) * 40, leven: 1,
+          kleur: ['#fff6a8', '#ff9ad5', '#9ae6ff'][i % 3] });
+      }
+    }
+
+    // De lijst links op het scherm invullen
+    const lijstKaart = document.getElementById('uitdagingen');
+    function werkLijstBij(l) {
+      lijstKaart.querySelector('h3').textContent = 'Uitdagingen op ' + l.naam;
+      const ul = lijstKaart.querySelector('ul');
+      ul.innerHTML = '';
+      for (const u of l.uitdagingen) {
+        const li = document.createElement('li');
+        if (u.klaar) li.className = 'klaar';
+        const vinkje = document.createElement('span');
+        vinkje.className = 'vinkje';
+        vinkje.textContent = u.klaar ? '✓' : '';
+        const tekst = document.createElement('span');
+        tekst.className = 'tekst';
+        tekst.textContent = u.tekst + ' ';
+        li.append(vinkje, tekst);
+        if (u.aantal && u.type !== 'bezoek') {
+          const teller = document.createElement('span');
+          teller.className = 'teller';
+          teller.textContent = Math.min(u.gedaan, u.aantal) + '/' + u.aantal;
+          li.append(teller);
+        }
+        ul.append(li);
+      }
+      const allesKlaar = l.uitdagingen.every(u => u.klaar);
+      lijstKaart.querySelector('.feest').textContent = allesKlaar ? '🎉 Alles gehaald op ' + l.naam + '!' : '';
+      lijstKaart.querySelector('.toetsen').textContent = LANDSCHAPPEN[l.naam].gas
+        ? 'Zweven: pijltjestoetsen'
+        : 'Lopen: ← →   Springen: spatie of ↑';
+      if (allesKlaar && !l.voltooid) {
+        l.voltooid = true;
+        startFeest();
+      }
+    }
+
+    function startFeest() {
+      const snippers = [];
+      for (let i = 0; i < 120; i++) {
+        snippers.push({ x: canvas.width / 2, y: canvas.height * 0.4, vx: (Math.random() - 0.5) * 900, vy: -Math.random() * 700 - 100,
+          draai: Math.random() * 6, kleur: ['#ff9ad5', '#fff6a8', '#9ae6ff', '#7ddc6a', '#ffb347'][i % 5] });
+      }
+      feest = { tijd: 4, snippers };
+    }
+
+    function tekenFeest() {
+      if (!feest) return;
+      for (const c of feest.snippers) {
+        ctx.save();
+        ctx.translate(c.x, c.y);
+        ctx.rotate(c.draai);
+        ctx.fillStyle = c.kleur;
+        ctx.fillRect(-6, -3, 12, 6);
+        ctx.restore();
+      }
+      tekenTekst('Planeet voltooid!', canvas.width / 2, canvas.height * 0.32, Math.min(canvas.width * 0.08, 60), '#ff9ad5');
+    }
+
+    // Kleine plaatjes van de spulletjes die je moet verzamelen
+    function tekenDing(ding, x, y, r) {
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = LIJN;
+      ctx.lineJoin = 'round';
+      if (ding === 'ijs' || ding === 'diamant') {
+        ctx.fillStyle = ding === 'ijs' ? '#bff4ff' : '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(x, y - r); ctx.lineTo(x + r * 0.7, y - r * 0.2); ctx.lineTo(x, y + r); ctx.lineTo(x - r * 0.7, y - r * 0.2);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x - r * 0.7, y - r * 0.2); ctx.lineTo(x + r * 0.7, y - r * 0.2); ctx.stroke();
+      } else if (ding === 'bliksem') {
+        ctx.fillStyle = '#ffe14a';
+        ctx.beginPath();
+        ctx.moveTo(x + r * 0.2, y - r); ctx.lineTo(x - r * 0.5, y + r * 0.1); ctx.lineTo(x, y + r * 0.1);
+        ctx.lineTo(x - r * 0.2, y + r); ctx.lineTo(x + r * 0.5, y - r * 0.15); ctx.lineTo(x, y - r * 0.15);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      } else if (ding === 'bloem') {
+        for (let k = 0; k < 5; k++) {
+          const a = k / 5 * Math.PI * 2 + tijd;
+          cirkel(x + Math.cos(a) * r * 0.55, y + Math.sin(a) * r * 0.55, r * 0.45, '#ff8ac4', 2.5);
+        }
+        cirkel(x, y, r * 0.4, '#ffe14a', 2.5);
+      } else {
+        // Stenen: lava, maansteen of marssteen
+        const kleur = { lava: '#ff7a3a', maansteen: '#e8e4f2', marssteen: '#d8553a' }[ding];
+        ctx.fillStyle = kleur;
+        ctx.beginPath();
+        ctx.moveTo(x - r, y + r * 0.4); ctx.lineTo(x - r * 0.6, y - r * 0.6); ctx.lineTo(x + r * 0.3, y - r * 0.8);
+        ctx.lineTo(x + r, y); ctx.lineTo(x + r * 0.6, y + r * 0.6); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        if (ding === 'lava') { ctx.strokeStyle = '#ffe14a'; ctx.beginPath(); ctx.moveTo(x - r * 0.4, y); ctx.lineTo(x + r * 0.4, y - r * 0.3); ctx.stroke(); }
+      }
+    }
+
+    // Plekken die je moet bezoeken (vulkaan, vlag en boom staan al in het landschap)
+    function tekenDoel(u, x, y, m) {
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = LIJN;
+      if (u.doel === 'krater') {
+        ctx.fillStyle = '#9a9088';
+        ctx.beginPath(); ctx.ellipse(x, y + 4, m * 0.12, m * 0.035, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#7a7068';
+        ctx.beginPath(); ctx.ellipse(x, y + 6, m * 0.08, m * 0.02, 0, 0, Math.PI * 2); ctx.fill();
+      } else if (u.doel === 'sonde') {
+        ctx.fillStyle = '#cfd6e6';
+        ctx.beginPath(); ctx.roundRect(x - m * 0.04, y - m * 0.07, m * 0.08, m * 0.07, 6); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x - m * 0.04, y); ctx.lineTo(x - m * 0.06, y + 4); ctx.moveTo(x + m * 0.04, y); ctx.lineTo(x + m * 0.06, y + 4); ctx.stroke();
+        cirkel(x, y - m * 0.1, m * 0.025, '#ffd84a', 3);
+        ctx.beginPath(); ctx.moveTo(x, y - m * 0.07); ctx.lineTo(x, y - m * 0.075); ctx.stroke();
+      } else if (u.doel === 'rover') {
+        ctx.fillStyle = '#f2f2f2';
+        ctx.beginPath(); ctx.roundRect(x - m * 0.06, y - m * 0.07, m * 0.12, m * 0.04, 6); ctx.fill(); ctx.stroke();
+        for (const dx of [-0.045, 0, 0.045]) cirkel(x + dx * m, y - m * 0.018, m * 0.017, '#555', 3);
+        ctx.beginPath(); ctx.moveTo(x + m * 0.03, y - m * 0.07); ctx.lineTo(x + m * 0.03, y - m * 0.12); ctx.stroke();
+        cirkel(x + m * 0.03, y - m * 0.125, m * 0.015, '#9ae6ff', 3);
+        cirkel(x + m * 0.035, y - m * 0.128, m * 0.005, LIJN);
+      } else if (u.doel === 'rodeVlek' || u.doel === 'donkereVlek') {
+        if (u.doel === 'donkereVlek') {
+          ctx.save(); ctx.translate(x, y); ctx.scale(1, 0.5);
+          cirkel(0, 0, m * 0.1, '#1d2a7a', 4);
+          ctx.strokeStyle = '#5b7cff'; ctx.lineWidth = 5;
+          ctx.beginPath(); ctx.arc(0, 0, m * 0.06, -tijd * 2, -tijd * 2 + Math.PI * 1.3); ctx.stroke();
+          ctx.restore();
+        }
+      } else if (u.doel === 'zeshoek') {
+        ctx.fillStyle = '#ffe9b0';
+        ctx.beginPath();
+        for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + tijd * 0.3; ctx.lineTo(x + Math.cos(a) * m * 0.08, y + Math.sin(a) * m * 0.08); }
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        gezichtje(x, y + m * 0.01, m * 0.05, { fase: 2 });
+      } else if (u.doel === 'ijswolk') {
+        for (const [dx, dy, dr] of [[-0.05, 0, 0.04], [0, -0.02, 0.055], [0.05, 0, 0.04]]) cirkel(x + dx * m, y + dy * m, dr * m, '#e6fbff', 3.5);
+        ctx.fillStyle = '#e6fbff';
+        ctx.fillRect(x - m * 0.05, y - m * 0.01, m * 0.1, m * 0.035);
+        gezichtje(x, y - m * 0.005, m * 0.04, { slaperig: true });
+      }
+      // Een pijltje erboven zolang je er nog niet bent geweest
+      if (!u.klaar) {
+        const py = y - m * 0.2 + Math.sin(tijd * 4) * 6;
+        ctx.fillStyle = '#ff6fae';
+        ctx.beginPath(); ctx.moveTo(x - 12, py - 14); ctx.lineTo(x + 12, py - 14); ctx.lineTo(x, py + 4); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+      } else {
+        ctx.fillStyle = '#fff6a8';
+        sterVorm(x, y - m * 0.2, 14, 5, 0.5);
+        ctx.fill(); ctx.stroke();
+      }
+    }
+
+    function tekenSpel(l) {
+      const m = spelerMaat();
+      for (const u of l.uitdagingen) {
+        if (u.type !== 'bezoek') continue;
+        const p = plekVanDoel(u);
+        tekenDoel(u, p.x, p.y, m);
+      }
+      for (const d of l.spulletjes) {
+        if (d.gepakt) continue;
+        const p = plekVanDing(l, d);
+        tekenDing(d.ding, p.x, p.y + Math.sin(tijd * 3 + d.x * 10) * 4, m * 0.03);
+      }
+      for (const g of glitters) {
+        ctx.globalAlpha = Math.max(g.leven, 0);
+        ctx.fillStyle = g.kleur;
+        sterVorm(g.x, g.y, 6 * g.leven + 2, 5, 0.5);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      // Het mensje zelf; als het loopt wiebelt het een beetje
+      const huppel = speler.loopt && speler.opGrond ? Math.abs(Math.sin(tijd * 12)) * m * 0.01 : 0;
+      tekenPoppetje(speler.x, speler.y - huppel, m * 0.0017, speler.richting);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      toetsen[e.key] = true;
+      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(e.key)) e.preventDefault();
+    });
+    window.addEventListener('keyup', (e) => { toetsen[e.key] = false; });
 
     // Knop om weer de ruimte in te gaan
     function terugKnop() {
