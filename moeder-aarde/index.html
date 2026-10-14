@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>moeder-aarde</title>
   <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; color: #111; font-family: sans-serif; }
-    canvas { display: block; background: #fff; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #fff; font-family: sans-serif; }
+    canvas { display: block; background: #000; }
   </style>
 </head>
 <body>
@@ -23,8 +23,171 @@
     pasGrootteAan();
     window.addEventListener('resize', pasGrootteAan);
 
+    let tijd = 0;
+
+    // Sterren op willekeurige plekken (0 tot 1, zodat ze meeschalen met het venster)
+    const sterren = [];
+    for (let i = 0; i < 400; i++) {
+      sterren.push({ x: Math.random(), y: Math.random(), grootte: Math.random() * 1.6 + 0.3, fase: Math.random() * Math.PI * 2 });
+    }
+
+    // Nevels: grote zachte kleurwolken in de verte
+    const nevels = [
+      { x: 0.15, y: 0.75, r: 0.35, kleur: '120,40,180' },
+      { x: 0.85, y: 0.2,  r: 0.3,  kleur: '30,90,200' },
+      { x: 0.7,  y: 0.85, r: 0.25, kleur: '200,50,110' },
+    ];
+
+    // Planeten die rond de aarde draaien (afstand en grootte ten opzichte van de aarde)
+    const planeten = [
+      { naam: 'maan',    afstand: 1.7, grootte: 0.27, snelheid: 0.6,  kleur: '#cfcfcf', hoek: 0 },
+      { naam: 'mars',    afstand: 2.6, grootte: 0.35, snelheid: 0.3,  kleur: '#c1440e', hoek: 2 },
+      { naam: 'jupiter', afstand: 3.6, grootte: 0.7,  snelheid: 0.15, kleur: '#d8a46a', hoek: 4, strepen: true },
+      { naam: 'saturnus',afstand: 4.6, grootte: 0.55, snelheid: 0.1,  kleur: '#e3c77d', hoek: 1, ring: true },
+    ];
+
+    // Vallende sterren
+    const vallendeSterren = [];
+
     function update(dt) {
-      // spel-logica
+      tijd += dt;
+      for (const p of planeten) p.hoek += p.snelheid * dt;
+
+      // Af en toe een nieuwe vallende ster
+      if (Math.random() < dt * 0.4) {
+        vallendeSterren.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height * 0.5, leven: 1 });
+      }
+      for (const v of vallendeSterren) {
+        v.x += 600 * dt;
+        v.y += 300 * dt;
+        v.leven -= dt;
+      }
+      for (let i = vallendeSterren.length - 1; i >= 0; i--) {
+        if (vallendeSterren[i].leven <= 0) vallendeSterren.splice(i, 1);
+      }
+    }
+
+    function tekenRuimte() {
+      const b = canvas.width, h = canvas.height;
+      ctx.fillStyle = '#02010a';
+      ctx.fillRect(0, 0, b, h);
+
+      // Nevels
+      for (const n of nevels) {
+        const r = n.r * Math.max(b, h);
+        const g = ctx.createRadialGradient(n.x * b, n.y * h, 0, n.x * b, n.y * h, r);
+        g.addColorStop(0, 'rgba(' + n.kleur + ',0.35)');
+        g.addColorStop(1, 'rgba(' + n.kleur + ',0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, b, h);
+      }
+
+      // Twinkelende sterren
+      for (const s of sterren) {
+        const fel = 0.5 + 0.5 * Math.sin(tijd * 2 + s.fase);
+        ctx.fillStyle = 'rgba(255,255,255,' + (0.3 + 0.7 * fel) + ')';
+        ctx.fillRect(s.x * b, s.y * h, s.grootte, s.grootte);
+      }
+
+      // Spiraalstelsel in de verte, draait heel langzaam
+      const gx = b * 0.18, gy = h * 0.22, gr = Math.min(b, h) * 0.12;
+      for (let arm = 0; arm < 2; arm++) {
+        for (let i = 0; i < 120; i++) {
+          const t = i / 120;
+          const hoek = arm * Math.PI + t * Math.PI * 3 + tijd * 0.05;
+          const x = gx + Math.cos(hoek) * t * gr;
+          const y = gy + Math.sin(hoek) * t * gr * 0.45;
+          ctx.fillStyle = 'rgba(200,180,255,' + (1 - t) * 0.8 + ')';
+          ctx.fillRect(x, y, 2, 2);
+        }
+      }
+      const kern = ctx.createRadialGradient(gx, gy, 0, gx, gy, gr * 0.3);
+      kern.addColorStop(0, 'rgba(255,240,220,0.9)');
+      kern.addColorStop(1, 'rgba(255,240,220,0)');
+      ctx.fillStyle = kern;
+      ctx.beginPath();
+      ctx.arc(gx, gy, gr * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Vallende sterren
+      ctx.lineWidth = 2;
+      for (const v of vallendeSterren) {
+        ctx.strokeStyle = 'rgba(255,255,255,' + v.leven + ')';
+        ctx.beginPath();
+        ctx.moveTo(v.x, v.y);
+        ctx.lineTo(v.x - 80, v.y - 40);
+        ctx.stroke();
+      }
+
+      // De zon rechtsboven, met een gloed
+      const zx = b * 0.9, zy = h * 0.12, zr = Math.min(b, h) * 0.09;
+      const gloed = ctx.createRadialGradient(zx, zy, zr * 0.5, zx, zy, zr * 3);
+      gloed.addColorStop(0, 'rgba(255,200,60,0.6)');
+      gloed.addColorStop(1, 'rgba(255,120,0,0)');
+      ctx.fillStyle = gloed;
+      ctx.beginPath();
+      ctx.arc(zx, zy, zr * 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffd23f';
+      ctx.beginPath();
+      ctx.arc(zx, zy, zr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function aardeStraal() {
+      return Math.min(canvas.width, canvas.height) * 0.09;
+    }
+
+    // Banen tekenen; planeten achter de aarde (bovenkant van de baan) eerst, daarna de aarde, daarna de rest
+    function tekenBanen() {
+      const mx = canvas.width / 2, my = canvas.height / 2, r = aardeStraal();
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 1;
+      for (const p of planeten) {
+        ctx.beginPath();
+        ctx.ellipse(mx, my, p.afstand * r, p.afstand * r * 0.35, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    function tekenPlaneet(p) {
+      const mx = canvas.width / 2, my = canvas.height / 2, r = aardeStraal();
+      const x = mx + Math.cos(p.hoek) * p.afstand * r;
+      const y = my + Math.sin(p.hoek) * p.afstand * r * 0.35;
+      const pr = p.grootte * r;
+
+      if (p.ring) {
+        ctx.strokeStyle = 'rgba(230,210,160,0.8)';
+        ctx.lineWidth = pr * 0.25;
+        ctx.beginPath();
+        ctx.ellipse(x, y, pr * 1.9, pr * 0.5, -0.3, Math.PI, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, pr, 0, Math.PI * 2);
+      ctx.fillStyle = p.kleur;
+      ctx.fill();
+      ctx.clip();
+      if (p.strepen) {
+        ctx.fillStyle = 'rgba(150,90,50,0.6)';
+        for (let i = -2; i <= 2; i++) ctx.fillRect(x - pr, y + i * pr * 0.35 - pr * 0.07, pr * 2, pr * 0.14);
+      }
+      const schaduw = ctx.createRadialGradient(x - pr * 0.4, y - pr * 0.4, pr * 0.1, x, y, pr);
+      schaduw.addColorStop(0, 'rgba(255,255,255,0.2)');
+      schaduw.addColorStop(1, 'rgba(0,0,0,0.5)');
+      ctx.fillStyle = schaduw;
+      ctx.fillRect(x - pr, y - pr, pr * 2, pr * 2);
+      ctx.restore();
+
+      if (p.ring) {
+        ctx.strokeStyle = 'rgba(230,210,160,0.8)';
+        ctx.lineWidth = pr * 0.25;
+        ctx.beginPath();
+        ctx.ellipse(x, y, pr * 1.9, pr * 0.5, -0.3, 0, Math.PI);
+        ctx.stroke();
+      }
     }
 
     // Landen als vlekken: positie en grootte ten opzichte van de straal van de aarde
@@ -41,7 +204,7 @@
     function tekenAarde() {
       const mx = canvas.width / 2;
       const my = canvas.height / 2;
-      const straal = Math.min(canvas.width, canvas.height) * 0.3;
+      const straal = aardeStraal();
 
       ctx.save();
       // Oceaan
@@ -77,8 +240,12 @@
     }
 
     function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      tekenRuimte();
+      tekenBanen();
+      // Wat achter de aarde langs gaat eerst tekenen
+      for (const p of planeten) if (Math.sin(p.hoek) < 0) tekenPlaneet(p);
       tekenAarde();
+      for (const p of planeten) if (Math.sin(p.hoek) >= 0) tekenPlaneet(p);
     }
 
     let vorige = performance.now();
