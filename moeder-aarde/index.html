@@ -777,6 +777,9 @@
         poppetje.sprong = 0;
         poppetje.sprongSnelheid = 0;
         poppetje.reis = { van: poppetje.waar, naar: doel, t: 0 };
+        // Alvast klaarzetten, want aan het eind van de reis zie je het landschap al verschijnen
+        maakUitdagingen(doel);
+        zetSpelerNeer(doel);
         poppetje.waar = null;
       }
     });
@@ -1472,6 +1475,7 @@
     }
 
     function tekenSpel(l) {
+      maakUitdagingen(l);
       const m = spelerMaat();
       for (const u of l.uitdagingen) {
         if (u.type !== 'bezoek') continue;
