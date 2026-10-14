@@ -42,7 +42,33 @@
     #uitdagingen .toetsen { margin: 10px 0 0; font-size: 14px; color: #6a5a8a; }
     #uitdagingen .feest { margin: 10px 0 0; padding: 8px 10px; background: #fff0a8; border: 3px solid #2a1b4a; border-radius: 14px; font-size: 16px; font-weight: 700; }
     #uitdagingen .feest:empty { display: none; }
-    #sluit {
+    #slotKnop {
+      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: 60px; height: 60px; border-radius: 50%;
+      border: 4px solid #2a1b4a; background: #ffd84a; box-shadow: 0 5px 0 #2a1b4a; font-size: 28px; cursor: pointer;
+    }
+    #slotKnop:hover { transform: translateX(-50%) scale(1.1); }
+    #slotKnop[hidden] { display: none; }
+    #codeKaart {
+      position: fixed; bottom: 92px; left: 50%; transform: translateX(-50%); width: min(320px, calc(100vw - 32px)); box-sizing: border-box;
+      background: #fff7fb; color: #2a1b4a; border: 4px solid #2a1b4a; border-radius: 24px; box-shadow: 0 7px 0 #2a1b4a;
+      padding: 16px 18px; font-family: 'Fredoka', sans-serif; text-align: center;
+    }
+    #codeKaart[hidden] { display: none; }
+    #codeKaart h3 { margin: 0 0 6px; font-size: 24px; }
+    #codeKaart .uitleg { margin: 0 0 8px; font-size: 15px; color: #6a5a8a; }
+    #codeKaart .letters { margin: 0 0 12px; font-size: 28px; letter-spacing: 6px; font-weight: 700; color: #c2357a; }
+    #codeKaart input {
+      width: 100%; box-sizing: border-box; font: 700 22px 'Fredoka', sans-serif; text-align: center; padding: 8px;
+      border: 3px solid #2a1b4a; border-radius: 14px; margin-bottom: 10px; color: #2a1b4a;
+    }
+    #codeOk {
+      font: 700 20px 'Fredoka', sans-serif; padding: 6px 24px; border: 3px solid #2a1b4a; border-radius: 999px;
+      background: #7ddc6a; color: #2a1b4a; box-shadow: 0 4px 0 #2a1b4a; cursor: pointer;
+    }
+    #codeKaart .melding { margin: 10px 0 0; font-weight: 700; min-height: 1.2em; }
+    #codeKaart.fout { animation: schud 0.4s; }
+    @keyframes schud { 0%,100% { transform: translateX(-50%); } 25% { transform: translateX(calc(-50% - 10px)); } 75% { transform: translateX(calc(-50% + 10px)); } }
+    #sluit, #codeSluit {
       position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border-radius: 50%;
       border: 3px solid #2a1b4a; background: #ffb3d9; color: #2a1b4a; font: 700 18px 'Fredoka', sans-serif; cursor: pointer;
     }
@@ -55,6 +81,15 @@
     <ul></ul>
     <p class="feest"></p>
     <p class="toetsen"></p>
+  </div>
+  <button id="slotKnop" hidden aria-label="Geheime code">🔒</button>
+  <div id="codeKaart" hidden>
+    <h3>Geheime code</h3>
+    <p class="uitleg">Elke planeet die je voltooit geeft je een letter.</p>
+    <p class="letters"></p>
+    <input type="text" maxlength="12" placeholder="typ de code" autocomplete="off">
+    <button id="codeOk">OK</button>
+    <p class="melding"></p>
   </div>
   <div id="info" hidden>
     <button id="sluit" aria-label="Sluiten">✕</button>
@@ -204,7 +239,17 @@
       const naam = UNIVERSUMS[universum].volgorde.find(n => !vindLichaam(n).voltooid);
       return naam ? vindLichaam(naam) : null;
     }
+    // Geheime cheatcode: wie hem weet, kan overal heen
+    const CODE = 'kroket12';
+    let alleOpen = false;
+    // Elke planeet van ons zonnestelsel geeft (op volgorde) één letter van de code
+    function letterVan(l) {
+      const i = UNIVERSUMS[0].volgorde.indexOf(l.naam);
+      return i >= 0 && i < CODE.length ? CODE[i] : null;
+    }
+
     function isOpen(l) {
+      if (alleOpen) return true;
       const volgorde = UNIVERSUMS[universum].volgorde;
       const plek = volgorde.indexOf(l.naam);
       if (plek < 0) return true;
@@ -1851,7 +1896,7 @@
       const allesKlaar = l.uitdagingen.every(u => u.klaar);
       lijstKaart.querySelector('.feest').textContent = !allesKlaar ? ''
         : l.level < AANTAL_LEVELS ? '🎉 Level ' + l.level + ' gehaald! Zo meteen begint level ' + (l.level + 1) + '...'
-        : '🏆 Alle levels gehaald op ' + l.naam + '!';
+        : '🏆 Alle levels gehaald op ' + l.naam + '!' + (letterVan(l) ? ' Je krijgt de letter ' + letterVan(l).toUpperCase() + ' voor de geheime code.' : '');
       lijstKaart.querySelector('.toetsen').textContent = LANDSCHAPPEN[l.naam].gas
         ? 'Zweven: pijltjestoetsen. Pas op voor de ' + WEZENS[l.naam].naam + '!'
         : 'Lopen: ← →   Springen: spatie of ↑. Pas op voor de ' + WEZENS[l.naam].naam + '! Spring erbovenop om ze plat te maken.';
@@ -1862,7 +1907,7 @@
           l.wachtTijd = 3;
         } else {
           l.voltooid = true;
-          startFeest('Planeet voltooid!');
+          startFeest(letterVan(l) ? 'Planeet voltooid! Letter: ' + letterVan(l).toUpperCase() : 'Planeet voltooid!');
         }
       }
     }
@@ -2332,7 +2377,7 @@
 
     // ---------- het portaal naar het andere universum ----------
 
-    function portaalZichtbaar() { return gestart && kijkModus === 'overzicht' && (universum === 1 || echtHeelalKlaar()); }
+    function portaalZichtbaar() { return gestart && kijkModus === 'overzicht' && (universum === 1 || echtHeelalKlaar() || alleOpen); }
     function portaalPlek() {
       const m = Math.min(canvas.width, canvas.height);
       return { x: canvas.width * 0.1 + m * 0.03, y: canvas.height - m * 0.16, r: m * 0.075 };
@@ -2387,7 +2432,54 @@
       }
     }
 
+    // ---------- slot met geheime code ----------
+    const slotKnop = document.getElementById('slotKnop');
+    const codeKaart = document.getElementById('codeKaart');
+    const codeVeld = codeKaart.querySelector('input');
+
+    function toonLetters() {
+      // Gevonden letters laten zien, de rest als streepje
+      codeKaart.querySelector('.letters').textContent = [...CODE]
+        .map((letter, i) => vindLichaam(UNIVERSUMS[0].volgorde[i]).voltooid ? letter.toUpperCase() : '_').join(' ');
+    }
+
+    slotKnop.addEventListener('click', () => {
+      codeKaart.hidden = !codeKaart.hidden;
+      if (!codeKaart.hidden) {
+        toonLetters();
+        codeKaart.querySelector('.melding').textContent = alleOpen ? '🔓 Alles is al open!' : '';
+        codeVeld.value = '';
+        codeVeld.focus();
+      }
+    });
+
+    function probeerCode() {
+      const melding = codeKaart.querySelector('.melding');
+      if (codeVeld.value.trim().toLowerCase() === CODE) {
+        alleOpen = true;
+        slotKnop.textContent = '🔓';
+        melding.style.color = '#3a8a3a';
+        melding.textContent = '🔓 Goed! Alle planeten en het portaal zijn open.';
+        setTimeout(() => { codeKaart.hidden = true; }, 1500);
+      } else {
+        melding.style.color = '#c2357a';
+        melding.textContent = 'Fout! Probeer het nog eens.';
+        codeKaart.classList.remove('fout');
+        void codeKaart.offsetWidth;
+        codeKaart.classList.add('fout');
+      }
+    }
+    document.getElementById('codeOk').addEventListener('click', probeerCode);
+    codeVeld.addEventListener('keydown', (e) => {
+      e.stopPropagation();   // typen in het vakje laat het mensje niet bewegen
+      if (e.key === 'Enter') probeerCode();
+    });
+
     function draw() {
+      // Het slot zie je alleen in het zonnestelsel
+      const slotZichtbaar = gestart && kijkModus === 'overzicht' && !poppetje.reis && !portaalReis;
+      if (slotKnop.hidden === slotZichtbaar) slotKnop.hidden = !slotZichtbaar;
+      if (!slotZichtbaar && !codeKaart.hidden) codeKaart.hidden = true;
       if (portaalReis) { tekenPortaalReis(); return; }
       // Tijdens een reis zie je alles door je eigen ogen; aan het begin en eind vervaagt het naar het overzicht
       if (poppetje.reis) {
