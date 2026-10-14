@@ -27,9 +27,58 @@
       // spel-logica
     }
 
+    // Landen als vlekken: positie en grootte ten opzichte van de straal van de aarde
+    const landen = [
+      { x: -0.35, y: -0.35, r: 0.32 },
+      { x: -0.15, y: -0.5,  r: 0.22 },
+      { x: -0.45, y: 0.05,  r: 0.2 },
+      { x: 0.3,   y: -0.1,  r: 0.25 },
+      { x: 0.4,   y: 0.2,   r: 0.2 },
+      { x: 0.25,  y: 0.45,  r: 0.18 },
+      { x: -0.1,  y: 0.55,  r: 0.15 },
+    ];
+
+    function tekenAarde() {
+      const mx = canvas.width / 2;
+      const my = canvas.height / 2;
+      const straal = Math.min(canvas.width, canvas.height) * 0.3;
+
+      ctx.save();
+      // Oceaan
+      ctx.beginPath();
+      ctx.arc(mx, my, straal, 0, Math.PI * 2);
+      ctx.fillStyle = '#1e6fd9';
+      ctx.fill();
+      ctx.clip();
+
+      // Land, alleen binnen de bol zichtbaar
+      ctx.fillStyle = '#3aa845';
+      for (const land of landen) {
+        ctx.beginPath();
+        ctx.arc(mx + land.x * straal, my + land.y * straal, land.r * straal, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // IJskappen
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(mx, my - straal, straal * 0.45, straal * 0.15, 0, 0, Math.PI * 2);
+      ctx.ellipse(mx, my + straal, straal * 0.35, straal * 0.12, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Schaduw zodat het een bol lijkt
+      const licht = ctx.createRadialGradient(mx - straal * 0.4, my - straal * 0.4, straal * 0.1, mx, my, straal);
+      licht.addColorStop(0, 'rgba(255,255,255,0.25)');
+      licht.addColorStop(0.6, 'rgba(0,0,0,0)');
+      licht.addColorStop(1, 'rgba(0,0,0,0.35)');
+      ctx.fillStyle = licht;
+      ctx.fillRect(mx - straal, my - straal, straal * 2, straal * 2);
+      ctx.restore();
+    }
+
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // hier komt het tekenen
+      tekenAarde();
     }
 
     let vorige = performance.now();
