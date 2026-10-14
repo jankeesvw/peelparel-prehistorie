@@ -1319,39 +1319,74 @@
     let duw = 0;           // je wordt een stukje weggeduwd als een wezen je raakt
     let auTekst = 0;       // hoe lang 'Au!' nog in beeld staat
 
+    const AANTAL_LEVELS = 3;
+
     function maakWezens(l) {
       if (l.wezens) return;
       const w = WEZENS[l.naam];
+      const aantal = w.aantal + ((l.level || 1) - 1);   // elk level één wezen erbij
       l.wezens = [];
-      for (let i = 0; i < w.aantal; i++) {
+      for (let i = 0; i < aantal; i++) {
         // Ze patrouilleren elk in hun eigen stukje, nooit bij de startplek links
-        const midden = 0.42 + i * (0.44 / Math.max(1, w.aantal - 1));
+        const midden = 0.42 + i * (0.44 / Math.max(1, aantal - 1));
         l.wezens.push({
           x: midden, midden, bereik: 0.08 + vast(i + 100) * 0.04,
-          y: 0.22 + i * (0.5 / w.aantal) + vast(i + 7) * 0.05,
-          richting: i % 2 ? 1 : -1, fase: vast(i + 200) * 6, plat: 0,
+          y: 0.22 + i * (0.5 / aantal) + vast(i + 7 + (l.level || 1) * 13) * 0.05,
+          richting: i % 2 ? 1 : -1, fase: vast(i + 200 + (l.level || 1) * 13) * 6, plat: 0,
         });
       }
     }
 
     function maakUitdagingen(l) {
+      if (!l.level) l.level = 1;
       maakWezens(l);
       if (l.uitdagingen) return;
       const gas = !!LANDSCHAPPEN[l.naam].gas;
-      l.uitdagingen = UITDAGINGEN[l.naam].map(u => ({ ...u, gedaan: 0, klaar: false }));
+      const n = l.level;
+      const zaad = l.naam.length + n * 17;   // ander level, andere plekken voor de spulletjes
+
+      // Elk level: meer verzamelen en vaker springen. Vanaf level 2 ook wezens platmaken en terug naar je raket.
+      l.uitdagingen = UITDAGINGEN[l.naam].map(u => {
+        const nieuw = { ...u, gedaan: 0, klaar: false };
+        if (u.type === 'verzamel' || u.type === 'spring') {
+          nieuw.aantal = u.aantal + 2 * (n - 1);
+          nieuw.tekst = u.tekst.replace(/\d+/, nieuw.aantal);
+        }
+        return nieuw;
+      });
+      if (n >= 2 && !gas) {
+        l.uitdagingen.push({ type: 'plat', aantal: n, gedaan: 0, klaar: false, tekst: 'Maak ' + n + ' ' + WEZENS[l.naam].naam + ' plat' });
+      }
+      if (n >= 2) {
+        l.uitdagingen.push({ type: 'bezoek', doel: 'raket', x: 0.08, y: gas ? 0.5 : undefined, laatste: true, klaar: false, gedaan: 0,
+          tekst: 'Ga als laatste terug naar je raket' });
+      }
+
       l.spulletjes = [];
       for (const u of l.uitdagingen) {
         if (u.type !== 'verzamel') continue;
         for (let i = 0; i < u.aantal; i++) {
           l.spulletjes.push({
             ding: u.ding,
-            x: 0.12 + (i + 0.2 + vast(i + l.naam.length) * 0.6) * 0.76 / u.aantal,
-            y: gas ? 0.25 + vast(i * 3 + l.naam.length) * 0.5 : null,
-            hoog: !gas && i % 2 === 1,   // sommige dingen zweven een beetje: daarvoor moet je springen
+            x: 0.12 + (i + 0.2 + vast(i + zaad) * 0.6) * 0.8 / u.aantal,
+            y: gas ? 0.2 + vast(i * 3 + zaad) * 0.55 : null,
+            // sommige dingen zweven: daarvoor moet je springen. In hogere levels vaker.
+            hoog: !gas && (n === 3 ? i % 3 !== 0 : i % 2 === 1),
             gepakt: false,
           });
         }
       }
+    }
+
+    // Volgend level klaarzetten op dezelfde planeet
+    function volgendLevel(l) {
+      l.level++;
+      l.uitdagingen = null;
+      l.wezens = null;
+      l.levelKlaar = false;
+      maakUitdagingen(l);
+      zetSpelerNeer(l);
+      werkLijstBij(l);
     }
 
     function horizonY() { return canvas.height * 0.6; }
@@ -1429,7 +1464,7 @@
       const soort = WEZENS[l.naam].soort;
       for (const w of l.wezens) {
         if (w.plat > 0) { w.plat -= dt; continue; }
-        w.x += w.richting * WEZENS[l.naam].snelheid * dt;
+        w.x += w.richting * WEZENS[l.naam].snelheid * (1 + 0.25 * (l.level - 1)) * dt;
         if (w.x > w.midden + w.bereik) w.richting = -1;
         if (w.x < w.midden - w.bereik) w.richting = 1;
         const p = plekVanWezen(l, w);
@@ -1438,6 +1473,7 @@
         // Bovenop springen maakt een wezen plat (alleen als je loopt, niet bij het zweven)
         if (!gas && speler.vy > 0 && speler.y < p.y) {
           w.plat = 4;
+          telOp(l, 'plat');
           speler.vy = -m * 1.1;
           vonkjes(p.x, p.y);
           continue;
@@ -1472,6 +1508,8 @@
       for (const u of l.uitdagingen) {
         if (u.klaar) continue;
         if (u.type === 'bezoek') {
+          // 'laatste' telt pas als de rest al gedaan is
+          if (u.laatste && l.uitdagingen.some(a => a !== u && !a.klaar)) continue;
           const p = plekVanDoel(u);
           const dichtbij = gas ? Math.hypot(p.x - speler.x, p.y - midden) < m * 0.1 : Math.abs(p.x - speler.x) < m * 0.07;
           if (dichtbij) { u.klaar = true; vonkjes(p.x, p.y - m * 0.1); werkLijstBij(l); }
@@ -1484,6 +1522,11 @@
         feest.tijd -= dt;
         for (const c of feest.snippers) { c.x += c.vx * dt; c.y += c.vy * dt; c.vy += 300 * dt; c.draai += dt * 5; }
         if (feest.tijd <= 0) feest = null;
+      }
+      // Na een gehaald level even feest, dan door naar het volgende
+      if (l.wachtTijd > 0) {
+        l.wachtTijd -= dt;
+        if (l.wachtTijd <= 0) volgendLevel(l);
       }
     }
 
@@ -1508,7 +1551,7 @@
     // De lijst links op het scherm invullen
     const lijstKaart = document.getElementById('uitdagingen');
     function werkLijstBij(l) {
-      lijstKaart.querySelector('h3').textContent = 'Uitdagingen op ' + l.naam;
+      lijstKaart.querySelector('h3').textContent = l.naam + ': level ' + l.level + ' van ' + AANTAL_LEVELS;
       const ul = lijstKaart.querySelector('ul');
       ul.innerHTML = '';
       for (const u of l.uitdagingen) {
@@ -1530,23 +1573,31 @@
         ul.append(li);
       }
       const allesKlaar = l.uitdagingen.every(u => u.klaar);
-      lijstKaart.querySelector('.feest').textContent = allesKlaar ? '🎉 Alles gehaald op ' + l.naam + '!' : '';
+      lijstKaart.querySelector('.feest').textContent = !allesKlaar ? ''
+        : l.level < AANTAL_LEVELS ? '🎉 Level ' + l.level + ' gehaald! Zo meteen begint level ' + (l.level + 1) + '...'
+        : '🏆 Alle levels gehaald op ' + l.naam + '!';
       lijstKaart.querySelector('.toetsen').textContent = LANDSCHAPPEN[l.naam].gas
         ? 'Zweven: pijltjestoetsen. Pas op voor de ' + WEZENS[l.naam].naam + '!'
         : 'Lopen: ← →   Springen: spatie of ↑. Pas op voor de ' + WEZENS[l.naam].naam + '! Spring erbovenop om ze plat te maken.';
-      if (allesKlaar && !l.voltooid) {
-        l.voltooid = true;
-        startFeest();
+      if (allesKlaar && !l.levelKlaar) {
+        l.levelKlaar = true;
+        if (l.level < AANTAL_LEVELS) {
+          startFeest('Level ' + l.level + ' gehaald!');
+          l.wachtTijd = 3;
+        } else {
+          l.voltooid = true;
+          startFeest('Planeet voltooid!');
+        }
       }
     }
 
-    function startFeest() {
+    function startFeest(tekst) {
       const snippers = [];
       for (let i = 0; i < 120; i++) {
         snippers.push({ x: canvas.width / 2, y: canvas.height * 0.4, vx: (Math.random() - 0.5) * 900, vy: -Math.random() * 700 - 100,
           draai: Math.random() * 6, kleur: ['#ff9ad5', '#fff6a8', '#9ae6ff', '#7ddc6a', '#ffb347'][i % 5] });
       }
-      feest = { tijd: 4, snippers };
+      feest = { tijd: 4, snippers, tekst };
     }
 
     function tekenFeest() {
@@ -1559,7 +1610,7 @@
         ctx.fillRect(-6, -3, 12, 6);
         ctx.restore();
       }
-      tekenTekst('Planeet voltooid!', canvas.width / 2, canvas.height * 0.32, Math.min(canvas.width * 0.08, 60), '#ff9ad5');
+      tekenTekst(feest.tekst, canvas.width / 2, canvas.height * 0.32, Math.min(canvas.width * 0.08, 60), '#ff9ad5');
     }
 
     // Kleine plaatjes van de spulletjes die je moet verzamelen
@@ -1639,13 +1690,38 @@
         ctx.fillRect(x - m * 0.05, y - m * 0.01, m * 0.1, m * 0.035);
         gezichtje(x, y - m * 0.005, m * 0.04, { slaperig: true });
       }
+      if (u.doel === 'raket') {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = LIJN;
+        // Vinnen
+        ctx.fillStyle = '#ff6f6f';
+        for (const kant of [-1, 1]) {
+          ctx.beginPath(); ctx.moveTo(kant * m * 0.03, -m * 0.06); ctx.lineTo(kant * m * 0.06, 0); ctx.lineTo(kant * m * 0.03, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
+        // Romp
+        ctx.fillStyle = '#f2f2f2';
+        ctx.beginPath();
+        ctx.moveTo(0, -m * 0.2);
+        ctx.quadraticCurveTo(m * 0.05, -m * 0.13, m * 0.035, 0);
+        ctx.lineTo(-m * 0.035, 0);
+        ctx.quadraticCurveTo(-m * 0.05, -m * 0.13, 0, -m * 0.2);
+        ctx.fill(); ctx.stroke();
+        cirkel(0, -m * 0.11, m * 0.017, '#9ae6ff', 3);
+        ctx.fillStyle = '#ff6f6f';
+        ctx.beginPath(); ctx.moveTo(0, -m * 0.2); ctx.quadraticCurveTo(m * 0.03, -m * 0.17, m * 0.033, -m * 0.155); ctx.lineTo(-m * 0.033, -m * 0.155); ctx.quadraticCurveTo(-m * 0.03, -m * 0.17, 0, -m * 0.2); ctx.fill(); ctx.stroke();
+        ctx.restore();
+        y -= m * 0.08;
+      }
+      const magErheen = !u.laatste || (poppetje.waar && poppetje.waar.uitdagingen.every(a => a === u || a.klaar));
       // Een pijltje erboven zolang je er nog niet bent geweest
-      if (!u.klaar) {
+      if (!u.klaar && magErheen) {
         const py = y - m * 0.2 + Math.sin(tijd * 4) * 6;
         ctx.fillStyle = '#ff6fae';
         ctx.beginPath(); ctx.moveTo(x - 12, py - 14); ctx.lineTo(x + 12, py - 14); ctx.lineTo(x, py + 4); ctx.closePath();
         ctx.fill(); ctx.stroke();
-      } else {
+      } else if (u.klaar) {
         ctx.fillStyle = '#fff6a8';
         sterVorm(x, y - m * 0.2, 14, 5, 0.5);
         ctx.fill(); ctx.stroke();
