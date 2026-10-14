@@ -41,7 +41,9 @@
   </div>
   <script>
     const canvas = document.getElementById('game');
-    const ctx = canvas.getContext('2d');
+    const schermCtx = canvas.getContext('2d');
+    let ctx = schermCtx;   // tijdelijk een ander canvas als we de reis laten in- en uitvagen
+    const laag = document.createElement('canvas');
 
     // Het canvas vult de hele pagina, ook als het venster van grootte verandert.
     function pasGrootteAan() {
@@ -133,7 +135,13 @@
 
     // Het poppetje staat op 'waar' (een planeet of de maan). Tijdens een reis vliegt het van 'van' naar 'naar'.
     const poppetje = { sprong: 0, sprongSnelheid: 0, waar: AARDE, reis: null };
-    const REISTIJD = 1.6;   // seconden
+    const REISTIJD = 3.5;   // seconden
+    // Sterren die langs je heen suizen als je door de ruimte vliegt (gezien door je eigen ogen)
+    const suisSterren = [];
+    for (let i = 0; i < 220; i++) {
+      suisSterren.push({ hoek: Math.random() * Math.PI * 2, afstand: Math.random(), snelheid: 0.4 + Math.random() * 0.8,
+        kleur: ['#fff6a8', '#ffffff', '#ffc8ec', '#b8f0ff'][Math.floor(Math.random() * 4)] });
+    }
     const glitters = [];    // sterretjes die het poppetje achterlaat tijdens het vliegen
     let gekozen = null;     // het hemellichaam waarvan je het kaartje ziet
 
@@ -158,6 +166,11 @@
       // Reis naar een andere planeet
       if (poppetje.reis) {
         poppetje.reis.t += dt / REISTIJD;
+        // Hoe dichter bij, hoe sneller de sterren langs suizen
+        for (const st of suisSterren) {
+          st.afstand += st.snelheid * dt * (0.6 + poppetje.reis.t * 1.5) * (0.2 + st.afstand);
+          if (st.afstand > 1.3) { st.afstand = 0.02; st.hoek = Math.random() * Math.PI * 2; }
+        }
         const plek = reisPositie();
         if (Math.random() < 0.8) {
           glitters.push({ x: plek.x + (Math.random() - 0.5) * 10, y: plek.y - Math.random() * 20, leven: 1,
@@ -423,12 +436,13 @@
       { x: -0.4,  y: 0.65,  r: 0.18 },
     ];
 
-    function tekenLichaam(l) {
-      const { x, y, r } = plekVan(l);
+    // 'plek' kan je zelf meegeven, bijvoorbeeld om een planeet groot in beeld te tekenen tijdens de reis
+    function tekenLichaam(l, plek = plekVan(l), ooglens = false) {
+      const { x, y, r } = plek;
       const bezoek = poppetje.waar === l && !poppetje.reis;
 
       // Gekozen hemellichaam krijgt een kloppend stippelrondje
-      if (l === gekozen) {
+      if (l === gekozen && !ooglens) {
         ctx.strokeStyle = '#fff6a8';
         ctx.lineWidth = 3;
         ctx.setLineDash([5, 7]);
@@ -718,7 +732,94 @@
       }
     }
 
+    // Door de ogen van het mensje: je kijkt door je ruimtehelm en de planeet komt steeds dichterbij
+    function tekenDoorJeOgen() {
+      const b = canvas.width, h = canvas.height;
+      const mx = b / 2, my = h / 2;
+      const t = Math.min(poppetje.reis.t, 1);
+      const maat = Math.min(b, h);
+      const schud = Math.sin(tijd * 30) * 1.5 * t;
+
+      tekenRuimte();
+      ctx.fillStyle = 'rgba(27,20,64,0.55)';
+      ctx.fillRect(0, 0, b, h);
+
+      // Suizende sterren: streepjes vanuit het midden naar buiten
+      ctx.lineCap = 'round';
+      const lang = Math.hypot(b, h) / 2;
+      for (const st of suisSterren) {
+        const a = st.afstand * lang, staart = a * (0.08 + t * 0.25);
+        ctx.strokeStyle = st.kleur;
+        ctx.globalAlpha = Math.min(1, st.afstand * 3);
+        ctx.lineWidth = 1 + st.afstand * 4;
+        ctx.beginPath();
+        ctx.moveTo(mx + Math.cos(st.hoek) * (a - staart), my + Math.sin(st.hoek) * (a - staart));
+        ctx.lineTo(mx + Math.cos(st.hoek) * a, my + Math.sin(st.hoek) * a);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
+      // Het doel groeit van een stipje tot een reus die het hele raam vult
+      const groei = 0.02 + 0.5 * t * t * t;
+      tekenLichaam(poppetje.reis.naar, { x: mx + schud, y: my + schud, r: maat * groei }, true);
+
+      // Tekst bovenin
+      const fg = Math.min(b * 0.06, 40);
+      ctx.font = '700 ' + fg + 'px ' + FONT;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = fg * 0.2;
+      ctx.strokeStyle = LIJN;
+      const tekst = 'Op weg naar ' + poppetje.reis.naar.naam + '!';
+      ctx.strokeText(tekst, mx, h * 0.12);
+      ctx.fillStyle = '#fff6a8';
+      ctx.fillText(tekst, mx, h * 0.12);
+
+      // De rand van je ruimtehelm
+      const rand = maat * 0.06;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, b, h);
+      ctx.roundRect(rand, rand, b - rand * 2, h - rand * 2, maat * 0.18);
+      ctx.fillStyle = '#e9e4ff';
+      ctx.fill('evenodd');
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = LIJN;
+      ctx.beginPath();
+      ctx.roundRect(rand, rand, b - rand * 2, h - rand * 2, maat * 0.18);
+      ctx.stroke();
+      // Glimmetje op het glas
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = maat * 0.02;
+      ctx.beginPath();
+      ctx.arc(rand + maat * 0.2, rand + maat * 0.2, maat * 0.12, Math.PI * 1.05, Math.PI * 1.45);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     function draw() {
+      // Tijdens een reis zie je alles door je eigen ogen; aan het begin en eind vervaagt het naar het overzicht
+      if (poppetje.reis) {
+        const t = poppetje.reis.t;
+        const zicht = Math.max(0, Math.min(1, t / 0.12, (1 - t) / 0.12));
+        if (zicht >= 1) { tekenDoorJeOgen(); return; }
+        tekenOverzicht();
+        // Het oog-beeld eerst op een los canvas tekenen, en dat doorzichtig over het overzicht leggen
+        laag.width = canvas.width;
+        laag.height = canvas.height;
+        ctx = laag.getContext('2d');
+        tekenDoorJeOgen();
+        ctx = schermCtx;
+        ctx.globalAlpha = zicht;
+        ctx.drawImage(laag, 0, 0);
+        ctx.globalAlpha = 1;
+        return;
+      }
+      tekenOverzicht();
+    }
+
+    function tekenOverzicht() {
       tekenRuimte();
       tekenBanen();
       // Van achter (hoog op het scherm) naar voor tekenen, zodat planeten netjes achter de zon langs gaan
