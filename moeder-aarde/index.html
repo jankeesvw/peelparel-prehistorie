@@ -4,9 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>moeder-aarde</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
   <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #fff; font-family: sans-serif; }
-    canvas { display: block; background: #000; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #1b1440; color: #fff; font-family: 'Fredoka', sans-serif; }
+    canvas { display: block; background: #1b1440; }
   </style>
 </head>
 <body>
@@ -23,31 +24,46 @@
     pasGrootteAan();
     window.addEventListener('resize', pasGrootteAan);
 
+    // Cartoon-stijl: één donkere lijnkleur voor alle randen
+    const LIJN = '#2a1b4a';
+    const FONT = "'Fredoka', sans-serif";
+
     let tijd = 0;
+    let gestart = false;   // wordt true na een klik op START
+    let muis = { x: -1, y: -1 };
 
     // Sterren op willekeurige plekken (0 tot 1, zodat ze meeschalen met het venster)
     const sterren = [];
-    for (let i = 0; i < 400; i++) {
-      sterren.push({ x: Math.random(), y: Math.random(), grootte: Math.random() * 1.6 + 0.3, fase: Math.random() * Math.PI * 2 });
+    for (let i = 0; i < 160; i++) {
+      sterren.push({
+        x: Math.random(), y: Math.random(),
+        grootte: Math.random() * 5 + 2,
+        fase: Math.random() * Math.PI * 2,
+        kleur: ['#fff6a8', '#ffffff', '#ffc8ec', '#b8f0ff'][Math.floor(Math.random() * 4)],
+        vorm: Math.random() < 0.35 ? 'ster' : 'stip',
+      });
     }
 
-    // Nevels: grote zachte kleurwolken in de verte
+    // Nevels: zachte pastelwolken
     const nevels = [
-      { x: 0.15, y: 0.75, r: 0.35, kleur: '120,40,180' },
-      { x: 0.85, y: 0.2,  r: 0.3,  kleur: '30,90,200' },
-      { x: 0.7,  y: 0.85, r: 0.25, kleur: '200,50,110' },
+      { x: 0.15, y: 0.8,  r: 0.35, kleur: '200,120,255' },
+      { x: 0.85, y: 0.3,  r: 0.3,  kleur: '110,180,255' },
+      { x: 0.7,  y: 0.9,  r: 0.25, kleur: '255,130,200' },
     ];
 
     // Planeten die rond de aarde draaien (afstand en grootte ten opzichte van de aarde)
     const planeten = [
-      { naam: 'maan',    afstand: 1.7, grootte: 0.27, snelheid: 0.6,  kleur: '#cfcfcf', hoek: 0 },
-      { naam: 'mars',    afstand: 2.6, grootte: 0.35, snelheid: 0.3,  kleur: '#c1440e', hoek: 2 },
-      { naam: 'jupiter', afstand: 3.6, grootte: 0.7,  snelheid: 0.15, kleur: '#d8a46a', hoek: 4, strepen: true },
-      { naam: 'saturnus',afstand: 4.6, grootte: 0.55, snelheid: 0.1,  kleur: '#e3c77d', hoek: 1, ring: true },
+      { naam: 'maan',     afstand: 1.7, grootte: 0.27, snelheid: 0.6,  kleur: '#e8e4f2', hoek: 0, slaperig: true },
+      { naam: 'mars',     afstand: 2.5, grootte: 0.33, snelheid: 0.3,  kleur: '#ff8a65', hoek: 2 },
+      { naam: 'jupiter',  afstand: 3.3, grootte: 0.55, snelheid: 0.15, kleur: '#ffcf8a', hoek: 4, strepen: true },
+      { naam: 'saturnus', afstand: 4.1, grootte: 0.45, snelheid: 0.1,  kleur: '#fff0a0', hoek: 1, ring: true },
     ];
 
     // Vallende sterren
     const vallendeSterren = [];
+
+    // Het poppetje: springt van blijdschap als je op START drukt
+    const poppetje = { sprong: 0, sprongSnelheid: 0 };
 
     function update(dt) {
       tijd += dt;
@@ -58,96 +74,216 @@
         vallendeSterren.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height * 0.5, leven: 1 });
       }
       for (const v of vallendeSterren) {
-        v.x += 600 * dt;
-        v.y += 300 * dt;
+        v.x += 500 * dt;
+        v.y += 250 * dt;
         v.leven -= dt;
       }
       for (let i = vallendeSterren.length - 1; i >= 0; i--) {
         if (vallendeSterren[i].leven <= 0) vallendeSterren.splice(i, 1);
       }
+
+      // Sprong van het poppetje
+      if (poppetje.sprong > 0 || poppetje.sprongSnelheid > 0) {
+        poppetje.sprong += poppetje.sprongSnelheid * dt;
+        poppetje.sprongSnelheid -= 9 * dt;
+        if (poppetje.sprong <= 0) { poppetje.sprong = 0; poppetje.sprongSnelheid = 0; }
+      }
     }
+
+    // ---------- hulpjes ----------
+
+    function cirkel(x, y, r, vul, rand) {
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      if (vul) { ctx.fillStyle = vul; ctx.fill(); }
+      if (rand) { ctx.lineWidth = rand; ctx.strokeStyle = LIJN; ctx.stroke(); }
+    }
+
+    function sterVorm(x, y, r, punten, binnen) {
+      ctx.beginPath();
+      for (let i = 0; i < punten * 2; i++) {
+        const hoek = -Math.PI / 2 + i * Math.PI / punten;
+        const afstand = i % 2 === 0 ? r : r * binnen;
+        ctx.lineTo(x + Math.cos(hoek) * afstand, y + Math.sin(hoek) * afstand);
+      }
+      ctx.closePath();
+    }
+
+    // Een schattig gezichtje: ogen met glimmetje, blosjes en een glimlach
+    function gezichtje(x, y, r, opties = {}) {
+      const knipper = (Math.sin(tijd * 1.3 + (opties.fase || 0)) > 0.985);
+      const oogX = r * 0.35, oogY = -r * 0.05, oogR = r * 0.14;
+      ctx.lineCap = 'round';
+
+      if (opties.slaperig || knipper) {
+        // Dichte oogjes als boogjes
+        ctx.strokeStyle = LIJN;
+        ctx.lineWidth = Math.max(2, r * 0.07);
+        for (const kant of [-1, 1]) {
+          ctx.beginPath();
+          ctx.arc(x + kant * oogX, y + oogY, oogR * 0.8, Math.PI * 0.15, Math.PI * 0.85);
+          ctx.stroke();
+        }
+      } else if (opties.blij) {
+        // ^^ oogjes
+        ctx.strokeStyle = LIJN;
+        ctx.lineWidth = Math.max(2, r * 0.07);
+        for (const kant of [-1, 1]) {
+          ctx.beginPath();
+          ctx.arc(x + kant * oogX, y + oogY + oogR * 0.5, oogR * 0.8, Math.PI * 1.15, Math.PI * 1.85);
+          ctx.stroke();
+        }
+      } else {
+        for (const kant of [-1, 1]) {
+          cirkel(x + kant * oogX, y + oogY, oogR, LIJN);
+          cirkel(x + kant * oogX - oogR * 0.3, y + oogY - oogR * 0.35, oogR * 0.4, '#fff');
+        }
+      }
+
+      // Blosjes
+      ctx.fillStyle = 'rgba(255,110,150,0.55)';
+      for (const kant of [-1, 1]) {
+        ctx.beginPath();
+        ctx.ellipse(x + kant * r * 0.55, y + r * 0.2, r * 0.14, r * 0.08, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Mondje
+      ctx.strokeStyle = LIJN;
+      ctx.lineWidth = Math.max(2, r * 0.06);
+      ctx.beginPath();
+      ctx.arc(x, y + r * 0.15, r * 0.12, Math.PI * 0.15, Math.PI * 0.85);
+      ctx.stroke();
+    }
+
+    // ---------- ruimte ----------
 
     function tekenRuimte() {
       const b = canvas.width, h = canvas.height;
-      ctx.fillStyle = '#02010a';
+      const lucht = ctx.createLinearGradient(0, 0, 0, h);
+      lucht.addColorStop(0, '#1b1440');
+      lucht.addColorStop(1, '#3a2470');
+      ctx.fillStyle = lucht;
       ctx.fillRect(0, 0, b, h);
 
       // Nevels
       for (const n of nevels) {
         const r = n.r * Math.max(b, h);
         const g = ctx.createRadialGradient(n.x * b, n.y * h, 0, n.x * b, n.y * h, r);
-        g.addColorStop(0, 'rgba(' + n.kleur + ',0.35)');
+        g.addColorStop(0, 'rgba(' + n.kleur + ',0.3)');
         g.addColorStop(1, 'rgba(' + n.kleur + ',0)');
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, b, h);
       }
 
-      // Twinkelende sterren
+      // Twinkelende sterren: stipjes en schattige vijfpuntsterren
       for (const s of sterren) {
-        const fel = 0.5 + 0.5 * Math.sin(tijd * 2 + s.fase);
-        ctx.fillStyle = 'rgba(255,255,255,' + (0.3 + 0.7 * fel) + ')';
-        ctx.fillRect(s.x * b, s.y * h, s.grootte, s.grootte);
-      }
-
-      // Spiraalstelsel in de verte, draait heel langzaam
-      const gx = b * 0.18, gy = h * 0.22, gr = Math.min(b, h) * 0.12;
-      for (let arm = 0; arm < 2; arm++) {
-        for (let i = 0; i < 120; i++) {
-          const t = i / 120;
-          const hoek = arm * Math.PI + t * Math.PI * 3 + tijd * 0.05;
-          const x = gx + Math.cos(hoek) * t * gr;
-          const y = gy + Math.sin(hoek) * t * gr * 0.45;
-          ctx.fillStyle = 'rgba(200,180,255,' + (1 - t) * 0.8 + ')';
-          ctx.fillRect(x, y, 2, 2);
+        const fel = 0.6 + 0.4 * Math.sin(tijd * 2 + s.fase);
+        ctx.globalAlpha = fel;
+        ctx.fillStyle = s.kleur;
+        if (s.vorm === 'ster') {
+          sterVorm(s.x * b, s.y * h, s.grootte * (0.8 + 0.3 * fel), 5, 0.5);
+          ctx.fill();
+        } else {
+          cirkel(s.x * b, s.y * h, s.grootte * 0.35, s.kleur);
         }
       }
-      const kern = ctx.createRadialGradient(gx, gy, 0, gx, gy, gr * 0.3);
-      kern.addColorStop(0, 'rgba(255,240,220,0.9)');
-      kern.addColorStop(1, 'rgba(255,240,220,0)');
-      ctx.fillStyle = kern;
-      ctx.beginPath();
-      ctx.arc(gx, gy, gr * 0.3, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.globalAlpha = 1;
 
-      // Vallende sterren
-      ctx.lineWidth = 2;
-      for (const v of vallendeSterren) {
-        ctx.strokeStyle = 'rgba(255,255,255,' + v.leven + ')';
+      // Spiraalstelsel als snoepje, draait langzaam
+      const gx = b * 0.15, gy = h * 0.2, gr = Math.min(b, h) * 0.1;
+      ctx.lineCap = 'round';
+      for (let arm = 0; arm < 2; arm++) {
         ctx.beginPath();
-        ctx.moveTo(v.x, v.y);
-        ctx.lineTo(v.x - 80, v.y - 40);
+        for (let i = 0; i <= 60; i++) {
+          const t = i / 60;
+          const hoek = arm * Math.PI + t * Math.PI * 2.5 + tijd * 0.3;
+          ctx.lineTo(gx + Math.cos(hoek) * t * gr, gy + Math.sin(hoek) * t * gr * 0.6);
+        }
+        ctx.strokeStyle = arm === 0 ? 'rgba(255,170,230,0.8)' : 'rgba(180,170,255,0.8)';
+        ctx.lineWidth = gr * 0.12;
         ctx.stroke();
       }
+      cirkel(gx, gy, gr * 0.15, '#fff3c4');
 
-      // De zon rechtsboven, met een gloed
-      const zx = b * 0.9, zy = h * 0.12, zr = Math.min(b, h) * 0.09;
-      const gloed = ctx.createRadialGradient(zx, zy, zr * 0.5, zx, zy, zr * 3);
-      gloed.addColorStop(0, 'rgba(255,200,60,0.6)');
-      gloed.addColorStop(1, 'rgba(255,120,0,0)');
-      ctx.fillStyle = gloed;
-      ctx.beginPath();
-      ctx.arc(zx, zy, zr * 3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffd23f';
-      ctx.beginPath();
-      ctx.arc(zx, zy, zr, 0, Math.PI * 2);
-      ctx.fill();
+      // Vallende sterren met een regenboogstaartje
+      for (const v of vallendeSterren) {
+        ctx.globalAlpha = v.leven;
+        ctx.lineCap = 'round';
+        const kleuren = ['#ff9ad5', '#ffe17a', '#9ae6ff'];
+        kleuren.forEach((k, i) => {
+          ctx.strokeStyle = k;
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(v.x, v.y + (i - 1) * 4);
+          ctx.lineTo(v.x - 70, v.y - 35 + (i - 1) * 4);
+          ctx.stroke();
+        });
+        ctx.fillStyle = '#fff6a8';
+        sterVorm(v.x, v.y, 9, 5, 0.5);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      tekenZon(b * 0.88, h * 0.16, Math.min(b, h) * 0.08);
     }
+
+    // De zon met draaiende stralen en een blij gezicht
+    function tekenZon(x, y, r) {
+      const gloed = ctx.createRadialGradient(x, y, r, x, y, r * 2.6);
+      gloed.addColorStop(0, 'rgba(255,220,100,0.45)');
+      gloed.addColorStop(1, 'rgba(255,180,60,0)');
+      ctx.fillStyle = gloed;
+      cirkel(x, y, r * 2.6, gloed);
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(tijd * 0.3);
+      ctx.fillStyle = '#ffb347';
+      ctx.strokeStyle = LIJN;
+      ctx.lineWidth = 3;
+      ctx.lineJoin = 'round';
+      sterVorm(0, 0, r * 1.45, 12, 0.72);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      cirkel(x, y, r, '#ffe066', 3);
+      gezichtje(x, y + r * 0.05, r, { blij: true });
+    }
+
+    // ---------- aarde en planeten ----------
 
     function aardeStraal() {
-      return Math.min(canvas.width, canvas.height) * 0.09;
+      return Math.min(canvas.width, canvas.height) * 0.13;
     }
 
-    // Banen tekenen; planeten achter de aarde (bovenkant van de baan) eerst, daarna de aarde, daarna de rest
     function tekenBanen() {
       const mx = canvas.width / 2, my = canvas.height / 2, r = aardeStraal();
-      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 10]);
       for (const p of planeten) {
         ctx.beginPath();
         ctx.ellipse(mx, my, p.afstand * r, p.afstand * r * 0.35, 0, 0, Math.PI * 2);
         ctx.stroke();
       }
+      ctx.setLineDash([]);
+    }
+
+    function tekenRing(x, y, pr, voorkant) {
+      ctx.lineWidth = pr * 0.22;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = LIJN;
+      const van = voorkant ? 0 : Math.PI, tot = voorkant ? Math.PI : Math.PI * 2;
+      ctx.beginPath();
+      ctx.ellipse(x, y, pr * 1.8, pr * 0.5, -0.3, van, tot);
+      ctx.stroke();
+      ctx.lineWidth = pr * 0.14;
+      ctx.strokeStyle = '#ffb3d9';
+      ctx.beginPath();
+      ctx.ellipse(x, y, pr * 1.8, pr * 0.5, -0.3, van, tot);
+      ctx.stroke();
     }
 
     function tekenPlaneet(p) {
@@ -156,88 +292,239 @@
       const y = my + Math.sin(p.hoek) * p.afstand * r * 0.35;
       const pr = p.grootte * r;
 
-      if (p.ring) {
-        ctx.strokeStyle = 'rgba(230,210,160,0.8)';
-        ctx.lineWidth = pr * 0.25;
-        ctx.beginPath();
-        ctx.ellipse(x, y, pr * 1.9, pr * 0.5, -0.3, Math.PI, Math.PI * 2);
-        ctx.stroke();
-      }
+      if (p.ring) tekenRing(x, y, pr, false);
 
       ctx.save();
-      ctx.beginPath();
-      ctx.arc(x, y, pr, 0, Math.PI * 2);
-      ctx.fillStyle = p.kleur;
-      ctx.fill();
+      cirkel(x, y, pr, p.kleur);
       ctx.clip();
       if (p.strepen) {
-        ctx.fillStyle = 'rgba(150,90,50,0.6)';
-        for (let i = -2; i <= 2; i++) ctx.fillRect(x - pr, y + i * pr * 0.35 - pr * 0.07, pr * 2, pr * 0.14);
+        ctx.fillStyle = '#f2a65a';
+        for (let i = -2; i <= 2; i += 2) ctx.fillRect(x - pr, y + i * pr * 0.4 - pr * 0.1, pr * 2, pr * 0.2);
       }
-      const schaduw = ctx.createRadialGradient(x - pr * 0.4, y - pr * 0.4, pr * 0.1, x, y, pr);
-      schaduw.addColorStop(0, 'rgba(255,255,255,0.2)');
-      schaduw.addColorStop(1, 'rgba(0,0,0,0.5)');
-      ctx.fillStyle = schaduw;
-      ctx.fillRect(x - pr, y - pr, pr * 2, pr * 2);
+      if (p.naam === 'maan') {
+        cirkel(x - pr * 0.45, y - pr * 0.5, pr * 0.18, '#cfc8e0');
+        cirkel(x + pr * 0.5, y + pr * 0.45, pr * 0.14, '#cfc8e0');
+      }
+      // Zacht licht bovenop
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(x - pr * 0.4, y - pr * 0.5, pr * 0.3, pr * 0.15, -0.6, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
+      cirkel(x, y, pr, null, 3);
 
-      if (p.ring) {
-        ctx.strokeStyle = 'rgba(230,210,160,0.8)';
-        ctx.lineWidth = pr * 0.25;
-        ctx.beginPath();
-        ctx.ellipse(x, y, pr * 1.9, pr * 0.5, -0.3, 0, Math.PI);
-        ctx.stroke();
-      }
+      gezichtje(x, y + pr * 0.1, pr * 0.85, { slaperig: p.slaperig, fase: p.hoek * 3 });
+
+      if (p.ring) tekenRing(x, y, pr, true);
     }
 
-    // Landen als vlekken: positie en grootte ten opzichte van de straal van de aarde
+    // Landen als ronde vlekjes
     const landen = [
-      { x: -0.35, y: -0.35, r: 0.32 },
-      { x: -0.15, y: -0.5,  r: 0.22 },
-      { x: -0.45, y: 0.05,  r: 0.2 },
-      { x: 0.3,   y: -0.1,  r: 0.25 },
-      { x: 0.4,   y: 0.2,   r: 0.2 },
-      { x: 0.25,  y: 0.45,  r: 0.18 },
-      { x: -0.1,  y: 0.55,  r: 0.15 },
+      { x: -0.4,  y: -0.45, r: 0.3 },
+      { x: -0.15, y: -0.65, r: 0.22 },
+      { x: -0.7,  y: 0.1,   r: 0.22 },
+      { x: 0.55,  y: -0.35, r: 0.25 },
+      { x: 0.7,   y: 0.15,  r: 0.2 },
+      { x: 0.35,  y: 0.7,   r: 0.2 },
+      { x: -0.4,  y: 0.65,  r: 0.18 },
     ];
 
     function tekenAarde() {
       const mx = canvas.width / 2;
       const my = canvas.height / 2;
-      const straal = aardeStraal();
+      const r = aardeStraal();
 
       ctx.save();
-      // Oceaan
-      ctx.beginPath();
-      ctx.arc(mx, my, straal, 0, Math.PI * 2);
-      ctx.fillStyle = '#1e6fd9';
-      ctx.fill();
+      cirkel(mx, my, r, '#5ec8ff');
       ctx.clip();
 
-      // Land, alleen binnen de bol zichtbaar
-      ctx.fillStyle = '#3aa845';
+      // Land met een donkerder randje
       for (const land of landen) {
-        ctx.beginPath();
-        ctx.arc(mx + land.x * straal, my + land.y * straal, land.r * straal, 0, Math.PI * 2);
-        ctx.fill();
+        cirkel(mx + land.x * r, my + land.y * r, land.r * r, '#7ddc6a');
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#4fae4a';
+        ctx.stroke();
       }
 
-      // IJskappen
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.ellipse(mx, my - straal, straal * 0.45, straal * 0.15, 0, 0, Math.PI * 2);
-      ctx.ellipse(mx, my + straal, straal * 0.35, straal * 0.12, 0, 0, Math.PI * 2);
-      ctx.fill();
+      // Wolkjes die over de aarde drijven
+      for (let i = 0; i < 3; i++) {
+        const wx = mx + ((tijd * 15 + i * 90) % (r * 2.6)) - r * 1.3;
+        const wy = my - r * 0.3 + i * r * 0.35;
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        cirkel(wx, wy, r * 0.09, 'rgba(255,255,255,0.85)');
+        cirkel(wx + r * 0.1, wy - r * 0.04, r * 0.11, 'rgba(255,255,255,0.85)');
+        cirkel(wx + r * 0.21, wy, r * 0.08, 'rgba(255,255,255,0.85)');
+      }
 
-      // Schaduw zodat het een bol lijkt
-      const licht = ctx.createRadialGradient(mx - straal * 0.4, my - straal * 0.4, straal * 0.1, mx, my, straal);
-      licht.addColorStop(0, 'rgba(255,255,255,0.25)');
-      licht.addColorStop(0.6, 'rgba(0,0,0,0)');
-      licht.addColorStop(1, 'rgba(0,0,0,0.35)');
-      ctx.fillStyle = licht;
-      ctx.fillRect(mx - straal, my - straal, straal * 2, straal * 2);
+      // Glimmetje
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.beginPath();
+      ctx.ellipse(mx - r * 0.45, my - r * 0.55, r * 0.25, r * 0.12, -0.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      cirkel(mx, my, r, null, 4);
+      gezichtje(mx, my + r * 0.1, r * 0.75, { blij: gestart && poppetje.sprong > 0 });
+
+      tekenPoppetje(mx, my - r, r);
+    }
+
+    // Een klein holbewonertje dat bovenop de aarde staat en zwaait
+    function tekenPoppetje(x, voetY, r) {
+      const s = r * 0.0085;                    // schaal: poppetje groeit mee met de aarde
+      const wiebel = Math.sin(tijd * 3) * 2 * s;
+      const y = voetY - poppetje.sprong * r * 0.6 + wiebel;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(s, s);
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = LIJN;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+
+      // Beentjes
+      ctx.fillStyle = '#ffd1a8';
+      ctx.beginPath(); ctx.roundRect(-11, -18, 8, 18, 4); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(3, -18, 8, 18, 4); ctx.fill(); ctx.stroke();
+
+      // Armpje links omlaag, rechts zwaait
+      ctx.lineWidth = 7;
+      ctx.strokeStyle = LIJN;
+      ctx.beginPath(); ctx.moveTo(-14, -36); ctx.lineTo(-24, -24); ctx.stroke();
+      const zwaai = Math.sin(tijd * 8) * 0.4;
+      const hx = 14 + Math.cos(-1.1 + zwaai) * 16, hy = -36 + Math.sin(-1.1 + zwaai) * 16;
+      ctx.beginPath(); ctx.moveTo(14, -36); ctx.lineTo(hx, hy); ctx.stroke();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#ffd1a8';
+      ctx.beginPath(); ctx.moveTo(-14, -36); ctx.lineTo(-24, -24); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(14, -36); ctx.lineTo(hx, hy); ctx.stroke();
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = LIJN;
+
+      // Vellen jurkje met vlekjes (prehistorisch!)
+      ctx.fillStyle = '#e8944a';
+      ctx.beginPath();
+      ctx.moveTo(-15, -44);
+      ctx.lineTo(15, -44);
+      ctx.lineTo(18, -16);
+      ctx.lineTo(10, -20);
+      ctx.lineTo(4, -14);
+      ctx.lineTo(-3, -20);
+      ctx.lineTo(-10, -14);
+      ctx.lineTo(-18, -18);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      cirkel(-6, -34, 3, '#b8652a');
+      cirkel(7, -27, 2.5, '#b8652a');
+
+      // Hoofd
+      cirkel(0, -64, 22, '#ffd1a8', 3.5);
+
+      // Haar: wilde bos met een botje erin
+      ctx.fillStyle = '#7a4a2a';
+      ctx.beginPath();
+      ctx.arc(0, -68, 22, Math.PI * 1.05, Math.PI * 1.95);
+      ctx.lineTo(18, -74);
+      for (let i = 0; i < 6; i++) ctx.lineTo(16 - i * 7, -80 + (i % 2) * 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Botje
+      ctx.fillStyle = '#fffbe8';
+      ctx.save();
+      ctx.translate(10, -88);
+      ctx.rotate(-0.4);
+      ctx.beginPath(); ctx.roundRect(-9, -2.5, 18, 5, 2); ctx.fill(); ctx.stroke();
+      cirkel(-9, -3, 3.5, '#fffbe8', 2.5); cirkel(-9, 3, 3.5, '#fffbe8', 2.5);
+      cirkel(9, -3, 3.5, '#fffbe8', 2.5); cirkel(9, 3, 3.5, '#fffbe8', 2.5);
+      ctx.restore();
+
+      gezichtje(0, -60, 20, { blij: poppetje.sprong > 0, fase: 1 });
       ctx.restore();
     }
+
+    // ---------- startscherm ----------
+
+    function startKnop() {
+      const b = Math.min(canvas.width * 0.5, 260), h = b * 0.32;
+      return { x: canvas.width / 2 - b / 2, y: canvas.height * 0.82 - h / 2, b, h };
+    }
+
+    function opKnop(x, y) {
+      const k = startKnop();
+      return x >= k.x && x <= k.x + k.b && y >= k.y && y <= k.y + k.h;
+    }
+
+    function tekenStartscherm() {
+      // Titel
+      const tg = Math.min(canvas.width * 0.09, 64);
+      const ty = canvas.height * 0.1 + Math.sin(tijd * 2) * 4;
+      ctx.font = '700 ' + tg + 'px ' + FONT;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = tg * 0.18;
+      ctx.strokeStyle = LIJN;
+      ctx.strokeText('Moeder Aarde', canvas.width / 2, ty);
+      const tk = ctx.createLinearGradient(0, ty - tg / 2, 0, ty + tg / 2);
+      tk.addColorStop(0, '#fff6a8');
+      tk.addColorStop(1, '#ff9ad5');
+      ctx.fillStyle = tk;
+      ctx.fillText('Moeder Aarde', canvas.width / 2, ty);
+
+      // Knop die zachtjes klopt, en groter wordt als de muis erop staat
+      const k = startKnop();
+      const erop = opKnop(muis.x, muis.y);
+      const puls = 1 + Math.sin(tijd * 4) * 0.03 + (erop ? 0.08 : 0);
+      const cx = k.x + k.b / 2, cy = k.y + k.h / 2;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(puls, puls);
+      // Schaduwrandje onder
+      ctx.fillStyle = '#c2357a';
+      ctx.beginPath(); ctx.roundRect(-k.b / 2, -k.h / 2 + 7, k.b, k.h, k.h / 2); ctx.fill();
+      ctx.lineWidth = 4; ctx.strokeStyle = LIJN; ctx.stroke();
+      // Knop zelf
+      const kg = ctx.createLinearGradient(0, -k.h / 2, 0, k.h / 2);
+      kg.addColorStop(0, '#ffb3d9');
+      kg.addColorStop(1, '#ff6fae');
+      ctx.fillStyle = kg;
+      ctx.beginPath(); ctx.roundRect(-k.b / 2, -k.h / 2, k.b, k.h, k.h / 2); ctx.fill(); ctx.stroke();
+      // Glimmetje
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.beginPath(); ctx.roundRect(-k.b / 2 + k.h * 0.4, -k.h / 2 + 6, k.b * 0.35, k.h * 0.18, 6); ctx.fill();
+      // Tekst
+      const fg = k.h * 0.55;
+      ctx.font = '700 ' + fg + 'px ' + FONT;
+      ctx.lineWidth = fg * 0.18;
+      ctx.strokeStyle = LIJN;
+      ctx.strokeText('START', 0, 3);
+      ctx.fillStyle = '#fff';
+      ctx.fillText('START', 0, 3);
+      // Sterretjes naast de tekst
+      ctx.fillStyle = '#fff6a8';
+      ctx.lineWidth = 2.5;
+      for (const kant of [-1, 1]) {
+        sterVorm(kant * k.b * 0.36, 0, k.h * 0.18, 5, 0.5);
+        ctx.fill(); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    canvas.addEventListener('mousemove', (e) => {
+      muis = { x: e.clientX, y: e.clientY };
+      canvas.style.cursor = !gestart && opKnop(e.clientX, e.clientY) ? 'pointer' : 'default';
+    });
+
+    canvas.addEventListener('click', (e) => {
+      if (!gestart && opKnop(e.clientX, e.clientY)) {
+        gestart = true;
+        canvas.style.cursor = 'default';
+        poppetje.sprong = 0.01;
+        poppetje.sprongSnelheid = 3;
+      }
+    });
 
     function draw() {
       tekenRuimte();
@@ -246,11 +533,12 @@
       for (const p of planeten) if (Math.sin(p.hoek) < 0) tekenPlaneet(p);
       tekenAarde();
       for (const p of planeten) if (Math.sin(p.hoek) >= 0) tekenPlaneet(p);
+      if (!gestart) tekenStartscherm();
     }
 
     let vorige = performance.now();
     function loop(nu) {
-      update((nu - vorige) / 1000);
+      update(Math.min((nu - vorige) / 1000, 0.05));
       vorige = nu;
       draw();
       requestAnimationFrame(loop);
