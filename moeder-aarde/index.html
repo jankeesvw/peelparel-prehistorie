@@ -1724,7 +1724,8 @@
     let levens = MAX_LEVENS;
     let onkwetsbaar = 0;   // even knipperen na een tik, dan kun je niet meteen weer geraakt worden
     let duw = 0;           // je wordt een stukje weggeduwd als een wezen je raakt
-    let auTekst = 0;       // hoe lang 'Au!' nog in beeld staat
+    let auTekst = 0;
+    let slaan = -1;        // hoe lang de klap nog duurt (toets X); onder nul = mag weer slaan       // hoe lang 'Au!' nog in beeld staat
 
     const AANTAL_LEVELS = 3;
 
@@ -1865,26 +1866,43 @@
         if (Math.abs(duw) < 5) duw = 0;
       }
       if (onkwetsbaar > 0) onkwetsbaar -= dt;
+      slaan = Math.max(-1, slaan - dt);
+      if ((toetsen.x || toetsen.X || toetsen.f) && slaan <= -0.15) slaan = 0.25;
       if (auTekst > 0) auTekst -= dt;
 
       // Wezens bewegen en kijken of ze je raken
       const soort = WEZENS[l.naam].soort;
       for (const w of l.wezens) {
-        if (w.plat > 0) { w.plat -= dt; continue; }
+        if (w.dood) continue;
+        if (w.plat > 0) {
+          // Even plat liggen, dan verdwijnt het wezen in een wolkje sterretjes
+          w.plat -= dt;
+          if (w.plat <= 0) {
+            w.dood = true;
+            const p = plekVanWezen(l, w);
+            vonkjes(p.x, p.y);
+          }
+          continue;
+        }
         w.x += w.richting * WEZENS[l.naam].snelheid * (1 + 0.25 * (l.level - 1)) * dt;
         if (w.x > w.midden + w.bereik) w.richting = -1;
         if (w.x < w.midden - w.bereik) w.richting = 1;
         const p = plekVanWezen(l, w);
-        const raak = Math.hypot(p.x - speler.x, p.y - (speler.y - m * 0.08));
-        if (raak > m * 0.085) continue;
-        // Bovenop springen maakt een wezen plat (alleen als je loopt, niet bij het zweven)
-        if (!gas && speler.vy > 0 && speler.y < p.y) {
-          w.plat = 4;
+        // Bovenop springen maakt een wezen plat (alleen als je loopt, niet bij het zweven).
+        // Je voeten hoeven alleen ongeveer boven op het wezen te komen terwijl je naar beneden valt.
+        const opWezen = Math.abs(p.x - speler.x) < m * 0.11 && speler.y > p.y - m * 0.2 && speler.y < p.y + m * 0.07;
+        // Ook raak als je ermee botst terwijl je slaat
+        const geslagen = slaan > 0 && Math.abs(p.y - (speler.y - m * 0.08)) < m * 0.14
+          && (p.x - speler.x) * speler.richting > -m * 0.03 && (p.x - speler.x) * speler.richting < m * 0.17;
+        if ((!gas && !speler.opGrond && speler.vy > 0 && opWezen) || geslagen) {
+          w.plat = 0.7;
           telOp(l, 'plat');
-          speler.vy = -m * 1.1;
+          if (!geslagen) speler.vy = -m * 1.1;
           vonkjes(p.x, p.y);
           continue;
         }
+        const raak = Math.hypot(p.x - speler.x, p.y - (speler.y - m * 0.08));
+        if (raak > m * 0.075) continue;
         if (onkwetsbaar > 0) continue;
         levens--;
         onkwetsbaar = 1.5;
@@ -1984,8 +2002,8 @@
         : l.level < AANTAL_LEVELS ? '🎉 Level ' + l.level + ' gehaald! Zo meteen begint level ' + (l.level + 1) + '...'
         : '🏆 Alle levels gehaald op ' + l.naam + '!' + (letterVan(l) ? ' Je krijgt de letter ' + letterVan(l).toUpperCase() + ' voor de geheime code.' : '');
       lijstKaart.querySelector('.toetsen').textContent = LANDSCHAPPEN[l.naam].gas
-        ? 'Zweven: pijltjestoetsen. Pas op voor de ' + WEZENS[l.naam].naam + '!'
-        : 'Lopen: ← →   Springen: spatie of ↑. Pas op voor de ' + WEZENS[l.naam].naam + '! Spring erbovenop om ze plat te maken.';
+        ? 'Zweven: pijltjestoetsen. Slaan: X. Pas op voor de ' + WEZENS[l.naam].naam + '!'
+        : 'Lopen: ← →   Springen: spatie of ↑   Slaan: X. Spring op de ' + WEZENS[l.naam].naam + ' of geef ze een klap!';
       if (allesKlaar && !l.levelKlaar) {
         l.levelKlaar = true;
         if (l.level < AANTAL_LEVELS) {
@@ -2394,6 +2412,7 @@
       }
       ctx.globalAlpha = 1;
       for (const w of l.wezens) {
+        if (w.dood) continue;
         const p = plekVanWezen(l, w);
         tekenWezen(WEZENS[l.naam], w, p.x, p.y, m * 0.045);
       }
@@ -2401,6 +2420,15 @@
       const huppel = speler.loopt && speler.opGrond ? Math.abs(Math.sin(tijd * 12)) * m * 0.01 : 0;
       if (onkwetsbaar <= 0 || Math.floor(tijd * 12) % 2 === 0) {
         tekenPoppetje(speler.x, speler.y - huppel, m * 0.0017, speler.richting);
+      }
+      if (slaan > 0) {
+        // Een flitsende klapster voor het mensje
+        ctx.fillStyle = '#fff6a8';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = LIJN;
+        sterVorm(speler.x + speler.richting * m * 0.1, speler.y - m * 0.08, m * (0.03 + slaan * 0.12), 6, 0.45);
+        ctx.fill();
+        ctx.stroke();
       }
       if (auTekst > 0) {
         tekenTekst(levens === MAX_LEVENS ? 'Au! Opnieuw beginnen...' : 'Au!', speler.x, speler.y - m * 0.24, m * 0.05, '#ff6f6f');
